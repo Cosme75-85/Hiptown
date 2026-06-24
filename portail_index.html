@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hiptown — Portail client</title>
+  <link rel="stylesheet" href="portail_style.css"/>
+</head>
+<body>
+
+<header>
+  <img src="Logo%20Hiptown%20site.png" alt="Hiptown" class="logo"/>
+  <p id="header-tagline">Votre espace client</p>
+</header>
+
+<main class="container">
+
+  <!-- ÉTAPE 0 : PIN -->
+  <section id="step-pin">
+    <div class="pin-box">
+      <p class="pin-title">Entrez votre code d'accès</p>
+      <div class="pin-dots" id="pin-dots">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pin-error" id="pin-error">Code incorrect, réessayez.</div>
+      <div class="pin-keypad">
+        <button class="pin-key" data-val="1">1</button>
+        <button class="pin-key" data-val="2">2</button>
+        <button class="pin-key" data-val="3">3</button>
+        <button class="pin-key" data-val="4">4</button>
+        <button class="pin-key" data-val="5">5</button>
+        <button class="pin-key" data-val="6">6</button>
+        <button class="pin-key" data-val="7">7</button>
+        <button class="pin-key" data-val="8">8</button>
+        <button class="pin-key" data-val="9">9</button>
+        <button class="pin-key pin-back" data-val="back">⌫</button>
+        <button class="pin-key" data-val="0">0</button>
+        <button class="pin-key pin-clear" data-val="clear">C</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLEAU DE BORD -->
+  <section id="step-dashboard" hidden>
+    <div class="dashboard-header">
+      <div class="company-badge" id="company-badge"></div>
+      <div>
+        <h1 class="welcome-title" id="welcome-title"></h1>
+        <p class="welcome-sub">Bienvenue sur votre espace Hiptown</p>
+      </div>
+    </div>
+
+    <div class="tiles-grid">
+
+      <a class="tile" href="https://cosme75-85.github.io/Hiptown-Accueil-1/" target="_blank">
+        <div class="tile-icon" style="background:#e8faf7;color:#085041;">🔔</div>
+        <div class="tile-content">
+          <div class="tile-title">Accueil visiteurs</div>
+          <div class="tile-desc">Prévenez-nous de votre arrivée en bas du bâtiment</div>
+        </div>
+        <div class="tile-arrow">→</div>
+      </a>
+
+      <a class="tile" href="https://marcel.hiptown.co/auth/login" target="_blank">
+        <div class="tile-icon" style="background:#fef3c7;color:#92400e;">📱</div>
+        <div class="tile-content">
+          <div class="tile-title">Marcel BY Hiptown</div>
+          <div class="tile-desc">Accédez à tous vos services Hiptown</div>
+        </div>
+        <div class="tile-arrow">→</div>
+      </a>
+
+      <a class="tile" href="https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" target="_blank">
+        <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">📄</div>
+        <div class="tile-content">
+          <div class="tile-title">Mes factures</div>
+          <div class="tile-desc">Consultez et téléchargez vos factures</div>
+        </div>
+        <div class="tile-arrow">→</div>
+      </a>
+
+      <a class="tile" id="tile-incident" href="#" target="_blank">
+        <div class="tile-icon" style="background:#fee2e2;color:#dc2626;">⚠️</div>
+        <div class="tile-content">
+          <div class="tile-title">Signaler un incident</div>
+          <div class="tile-desc">Signalez un dysfonctionnement en quelques clics</div>
+        </div>
+        <div class="tile-arrow">→</div>
+      </a>
+
+      <a class="tile" href="https://g.page/r/CU4ouN9TY1R8EBM/review" target="_blank">
+        <div class="tile-icon" style="background:#fef9c3;color:#854d0e;">⭐</div>
+        <div class="tile-content">
+          <div class="tile-title">Laisser un avis</div>
+          <div class="tile-desc">Partagez votre expérience sur Google</div>
+        </div>
+        <div class="tile-arrow">→</div>
+      </a>
+
+    </div>
+
+    <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
+  </section>
+
+</main>
+
+<footer>
+  <p>Hiptown Bordeaux &copy; <span id="year"></span></p>
+</footer>
+
+<script src="portail_config.js"></script>
+<script src="portail_app.js"></script>
+</body>
+</html>
