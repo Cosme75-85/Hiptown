@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hiptown — Portail client</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="Style.CSS"/>
 </head>
 <body>
 
@@ -37,6 +37,7 @@
         <button class="pin-key" data-val="0">0</button>
         <button class="pin-key pin-clear" data-val="clear">C</button>
       </div>
+      <button class="direct-btn" id="direct-hiptown">Accès Hiptown (équipe)</button>
     </div>
   </section>
 
@@ -49,57 +50,60 @@
         <p class="welcome-sub">Bienvenue sur votre espace Hiptown</p>
       </div>
     </div>
+    <div class="tiles-grid" id="tiles-grid"></div>
+    <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
+  </section>
 
-    <div class="tiles-grid">
+  <!-- PAGE INFORMATIONS -->
+  <section id="step-info" hidden>
+    <button class="back-btn" id="back-from-info">← Retour</button>
+    <h2 class="step-title">Informations pratiques</h2>
+    <div class="info-grid">
 
-      <a class="tile" href="https://cosme75-85.github.io/Hiptown-Accueil-1/" target="_blank">
-        <div class="tile-icon" style="background:#e8faf7;color:#085041;">🔔</div>
-        <div class="tile-content">
-          <div class="tile-title">Accueil visiteurs</div>
-          <div class="tile-desc">Prévenez-nous de votre arrivée en bas du bâtiment</div>
+      <!-- Machine à café -->
+      <div class="info-card" id="info-cafe">
+        <div class="info-card-header">
+          <span class="info-icon">☕</span>
+          <span class="info-card-title">Machine à café</span>
+          <span class="info-chevron">▼</span>
         </div>
-        <div class="tile-arrow">→</div>
-      </a>
-
-      <a class="tile" href="https://marcel.hiptown.co/auth/login" target="_blank">
-        <div class="tile-icon" style="background:#fef3c7;color:#92400e;">📱</div>
-        <div class="tile-content">
-          <div class="tile-title">Marcel BY Hiptown</div>
-          <div class="tile-desc">Accédez à tous vos services Hiptown</div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#" target="_blank">🔧 Entretien</a>
+          <a class="info-item" href="#" target="_blank">🔄 Changement de filtre</a>
+          <a class="info-item" href="#" target="_blank">💧 Détartrage</a>
+          <a class="info-item" href="#" target="_blank">☕ Grains</a>
         </div>
-        <div class="tile-arrow">→</div>
-      </a>
+      </div>
 
-      <a class="tile" href="https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" target="_blank">
-        <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">📄</div>
-        <div class="tile-content">
-          <div class="tile-title">Mes factures</div>
-          <div class="tile-desc">Consultez et téléchargez vos factures</div>
+      <!-- Lave-vaisselle -->
+      <div class="info-card" id="info-lave">
+        <div class="info-card-header">
+          <span class="info-icon">🍽️</span>
+          <span class="info-card-title">Lave-vaisselle</span>
+          <span class="info-chevron">▼</span>
         </div>
-        <div class="tile-arrow">→</div>
-      </a>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#" target="_blank">🔧 Entretien</a>
+          <a class="info-item" href="#" target="_blank">🧴 Produit</a>
+          <a class="info-item" href="#" target="_blank">⚠️ Signaler un problème</a>
+        </div>
+      </div>
 
-      <a class="tile" id="tile-incident" href="#" target="_blank">
-        <div class="tile-icon" style="background:#fee2e2;color:#dc2626;">⚠️</div>
-        <div class="tile-content">
-          <div class="tile-title">Signaler un incident</div>
-          <div class="tile-desc">Signalez un dysfonctionnement en quelques clics</div>
+      <!-- Espace commun -->
+      <div class="info-card" id="info-espace">
+        <div class="info-card-header">
+          <span class="info-icon">🏢</span>
+          <span class="info-card-title">Espace commun</span>
+          <span class="info-chevron">▼</span>
         </div>
-        <div class="tile-arrow">→</div>
-      </a>
-
-      <a class="tile" href="https://g.page/r/CU4ouN9TY1R8EBM/review" target="_blank">
-        <div class="tile-icon" style="background:#fef9c3;color:#854d0e;">⭐</div>
-        <div class="tile-content">
-          <div class="tile-title">Laisser un avis</div>
-          <div class="tile-desc">Partagez votre expérience sur Google</div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#" target="_blank">🗓️ Réservation</a>
+          <a class="info-item" href="#" target="_blank">📋 Règles d'utilisation</a>
+          <a class="info-item" href="#" target="_blank">⚠️ Signaler un problème</a>
         </div>
-        <div class="tile-arrow">→</div>
-      </a>
+      </div>
 
     </div>
-
-    <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
   </section>
 
 </main>
@@ -108,7 +112,7 @@
   <p>Hiptown Bordeaux &copy; <span id="year"></span></p>
 </footer>
 
-<script src="config.js"></script>
-<script src="app.js"></script>
+<script src="portail_config.js"></script>
+<script src="portail_app.js"></script>
 </body>
 </html>
