@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — app.js
+//  PORTAIL HIPTOWN — app.js v2
 // ═══════════════════════════════════════════════════════
 
 (function () {
@@ -7,13 +7,16 @@
 
   const stepPin       = document.getElementById("step-pin");
   const stepDashboard = document.getElementById("step-dashboard");
+  const stepInfo      = document.getElementById("step-info");
   const pinDots       = document.getElementById("pin-dots").querySelectorAll("span");
   const pinError      = document.getElementById("pin-error");
   const pinKeys       = document.querySelectorAll(".pin-key");
   const welcomeTitle  = document.getElementById("welcome-title");
   const companyBadge  = document.getElementById("company-badge");
   const logoutBtn     = document.getElementById("logout-btn");
-  const tileIncident  = document.getElementById("tile-incident");
+  const tilesGrid     = document.getElementById("tiles-grid");
+  const backFromInfo  = document.getElementById("back-from-info");
+  const directHiptown = document.getElementById("direct-hiptown");
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -30,9 +33,72 @@
     }, 300);
   }, 2500);
 
-  // Lien incident
-  tileIncident.href = PORTAIL.incidentUrl;
+  // ── Définition des tuiles ──────────────────────────
+  const ALL_TILES = [
+    {
+      id:    "accueil",
+      title: "Accueil visiteurs",
+      desc:  "Prévenez-nous de votre arrivée",
+      icon:  "🔔",
+      bg:    "#e8faf7",
+      color: "#085041",
+      url:   "https://cosme75-85.github.io/Hiptown-Accueil-1/",
+      wide:  false,
+    },
+    {
+      id:    "marcel",
+      title: "Marcel BY Hiptown",
+      desc:  "Accédez à vos services",
+      icon:  "📱",
+      bg:    "#fef3c7",
+      color: "#92400e",
+      url:   "https://marcel.hiptown.co/auth/login",
+      wide:  false,
+    },
+    {
+      id:    "factures",
+      title: "Mes factures",
+      desc:  "Consultez vos factures",
+      icon:  "📄",
+      bg:    "#e0f2fe",
+      color: "#0369a1",
+      url:   "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM",
+      wide:  false,
+    },
+    {
+      id:    "incident",
+      title: "Signaler un incident",
+      desc:  "Signalez un dysfonctionnement",
+      icon:  "⚠️",
+      bg:    "#fee2e2",
+      color: "#dc2626",
+      url:   "https://bit.ly/hiptown-incident",
+      wide:  false,
+    },
+    {
+      id:    "info",
+      title: "Informations",
+      desc:  "Guides pratiques & équipements",
+      icon:  "ℹ️",
+      bg:    "#f0f0ff",
+      color: "#4338ca",
+      url:   null,
+      action:"info",
+      wide:  false,
+    },
+    {
+      id:    "avis",
+      title: "⭐ Laisser un avis Google",
+      desc:  "Partagez votre expérience — cela nous aide beaucoup !",
+      icon:  "⭐",
+      bg:    "#fef9c3",
+      color: "#854d0e",
+      url:   "https://g.page/r/CU4ouN9TY1R8EBM/review",
+      wide:  true,
+    },
+  ];
 
+  // ── PIN ───────────────────────────────────────────────
   let pinCurrent = "";
 
   function updatePinDots() {
@@ -42,25 +108,18 @@
   }
 
   function showDashboard(client) {
-    // Badge entreprise
-    companyBadge.style.background  = client.color;
-    companyBadge.style.color       = client.textColor;
-    companyBadge.textContent       = client.initials;
-    welcomeTitle.textContent       = client.name;
-
+    companyBadge.style.background = client.color;
+    companyBadge.style.color      = client.textColor;
+    companyBadge.textContent      = client.initials;
+    welcomeTitle.textContent      = client.name;
+    buildTiles(client.id);
     stepPin.hidden       = true;
     stepDashboard.hidden = false;
+    stepInfo.hidden      = true;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function checkPin() {
-    // Hiptown — pas de PIN
-    const hiptown = PORTAIL.clients.find(c => !c.pin);
-    if (hiptown && pinCurrent === "0000") {
-      showDashboard(hiptown);
-      return;
-    }
-
     const match = PORTAIL.clients.find(c => c.pin === pinCurrent);
     if (match) {
       pinError.hidden = true;
@@ -78,27 +137,18 @@
   pinKeys.forEach(function (btn) {
     btn.addEventListener("click", function () {
       const val = this.getAttribute("data-val");
-
-      if (val === "back") {
-        pinCurrent = pinCurrent.slice(0, -1);
-        pinError.hidden = true;
-        updatePinDots();
-        return;
-      }
-
-      if (val === "clear") {
-        pinCurrent = "";
-        pinError.hidden = true;
-        updatePinDots();
-        return;
-      }
-
+      if (val === "back")  { pinCurrent = pinCurrent.slice(0, -1); pinError.hidden = true; updatePinDots(); return; }
+      if (val === "clear") { pinCurrent = ""; pinError.hidden = true; updatePinDots(); return; }
       if (pinCurrent.length >= 4) return;
       pinCurrent += val;
       updatePinDots();
-
       if (pinCurrent.length === 4) checkPin();
     });
+  });
+
+  directHiptown.addEventListener("click", function () {
+    const hiptown = PORTAIL.clients.find(c => !c.pin);
+    if (hiptown) showDashboard(hiptown);
   });
 
   logoutBtn.addEventListener("click", function () {
@@ -106,21 +156,74 @@
     updatePinDots();
     pinError.hidden = true;
     stepDashboard.hidden = true;
+    stepInfo.hidden      = true;
     stepPin.hidden       = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // Hiptown accès direct sans PIN
-  const hiptownClient = PORTAIL.clients.find(c => !c.pin);
-  if (hiptownClient) {
-    // Ajouter bouton accès direct Hiptown
-    const directBtn = document.createElement("button");
-    directBtn.className = "direct-btn";
-    directBtn.textContent = "Accès Hiptown (équipe)";
-    directBtn.addEventListener("click", function () {
-      showDashboard(hiptownClient);
-    });
-    document.querySelector(".pin-box").appendChild(directBtn);
+  // ── Tuiles ────────────────────────────────────────────
+  function getSavedOrder(clientId) {
+    try {
+      const saved = localStorage.getItem("tiles_" + clientId);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return ALL_TILES.map(t => t.id);
   }
+
+  function buildTiles(clientId) {
+    tilesGrid.innerHTML = "";
+    const order = getSavedOrder(clientId);
+
+    // Trier les tuiles selon l'ordre sauvegardé
+    const sorted = order
+      .map(id => ALL_TILES.find(t => t.id === id))
+      .filter(Boolean);
+
+    // Ajouter les tuiles manquantes à la fin
+    ALL_TILES.forEach(t => {
+      if (!sorted.find(s => s.id === t.id)) sorted.push(t);
+    });
+
+    sorted.forEach(function (tile) {
+      const el = document.createElement("a");
+      el.className = "tile" + (tile.wide ? " tile-wide" : "");
+      el.href = tile.url || "#";
+      if (tile.url) el.target = "_blank";
+
+      el.innerHTML =
+        '<div class="tile-icon" style="background:' + tile.bg + ';color:' + tile.color + ';">' + tile.icon + '</div>' +
+        '<div class="tile-title">' + tile.title + '</div>' +
+        '<div class="tile-desc">' + tile.desc + '</div>';
+
+      if (tile.action === "info") {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          stepDashboard.hidden = true;
+          stepInfo.hidden      = false;
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
+
+      tilesGrid.appendChild(el);
+    });
+  }
+
+  // ── Page Informations ─────────────────────────────────
+  backFromInfo.addEventListener("click", function () {
+    stepInfo.hidden      = true;
+    stepDashboard.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // Accordéon
+  document.querySelectorAll(".info-card-header").forEach(function (header) {
+    header.addEventListener("click", function () {
+      const body    = this.parentElement.querySelector(".info-card-body");
+      const chevron = this.querySelector(".info-chevron");
+      const isOpen  = !body.hidden;
+      body.hidden   = isOpen;
+      chevron.textContent = isOpen ? "▼" : "▲";
+    });
+  });
 
 })();
