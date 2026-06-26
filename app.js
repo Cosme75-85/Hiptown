@@ -49,7 +49,7 @@
       id:    "marcel",
       title: "Marcel BY Hiptown",
       desc:  "Accédez à vos services",
-      icon:  "H.png",
+      icon:  "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>",
       bg:    "#fef3c7",
       color: "#92400e",
       url:   "https://marcel.hiptown.co/auth/login",
