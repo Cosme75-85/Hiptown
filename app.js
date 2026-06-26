@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — app.js v2
+//  PORTAIL HIPTOWN — app.js v3
 // ═══════════════════════════════════════════════════════
 
 (function () {
@@ -8,6 +8,8 @@
   const stepPin       = document.getElementById("step-pin");
   const stepDashboard = document.getElementById("step-dashboard");
   const stepInfo      = document.getElementById("step-info");
+  const stepServices  = document.getElementById("step-services");
+  const stepComplem   = document.getElementById("step-complem");
   const pinDots       = document.getElementById("pin-dots").querySelectorAll("span");
   const pinError      = document.getElementById("pin-error");
   const pinKeys       = document.querySelectorAll(".pin-key");
@@ -16,6 +18,8 @@
   const logoutBtn     = document.getElementById("logout-btn");
   const tilesGrid     = document.getElementById("tiles-grid");
   const backFromInfo  = document.getElementById("back-from-info");
+  const backFromServ  = document.getElementById("back-from-services");
+  const backFromComp  = document.getElementById("back-from-complem");
   const directHiptown = document.getElementById("direct-hiptown");
 
   document.getElementById("year").textContent = new Date().getFullYear();
@@ -87,15 +91,37 @@
       wide:  false,
     },
     {
-  id:    "adresses",
-  title: "Les bonnes adresses",
-  desc:  "Restaurants, cafés, services...",
-  icon:  "📍",
-  bg:    "#fce7f3",
-  color: "#be185d",
-  url:   "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing",
-  wide:  false,
-},
+      id:    "services",
+      title: "Les services",
+      desc:  "Tout ce qui est inclus",
+      icon:  "✨",
+      bg:    "#f0fdf4",
+      color: "#166534",
+      url:   null,
+      action:"services",
+      wide:  false,
+    },
+    {
+      id:    "complem",
+      title: "Services complémentaires",
+      desc:  "Parking, espace commun...",
+      icon:  "➕",
+      bg:    "#fff7ed",
+      color: "#c2410c",
+      url:   null,
+      action:"complem",
+      wide:  false,
+    },
+    {
+      id:    "adresses",
+      title: "Les bonnes adresses",
+      desc:  "Restaurants, cafés, services...",
+      icon:  "📍",
+      bg:    "#fce7f3",
+      color: "#be185d",
+      url:   "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing",
+      wide:  false,
+    },
     {
       id:    "avis",
       title: "⭐ Laisser un avis Google",
@@ -117,15 +143,22 @@
     });
   }
 
+  function hideAll() {
+    stepPin.hidden       = true;
+    stepDashboard.hidden = true;
+    stepInfo.hidden      = true;
+    stepServices.hidden  = true;
+    stepComplem.hidden   = true;
+  }
+
   function showDashboard(client) {
     companyBadge.style.background = client.color;
     companyBadge.style.color      = client.textColor;
     companyBadge.textContent      = client.initials;
     welcomeTitle.textContent      = client.name;
     buildTiles(client.id);
-    stepPin.hidden       = true;
+    hideAll();
     stepDashboard.hidden = false;
-    stepInfo.hidden      = true;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -165,9 +198,8 @@
     pinCurrent = "";
     updatePinDots();
     pinError.hidden = true;
-    stepDashboard.hidden = true;
-    stepInfo.hidden      = true;
-    stepPin.hidden       = false;
+    hideAll();
+    stepPin.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -183,16 +215,8 @@
   function buildTiles(clientId) {
     tilesGrid.innerHTML = "";
     const order = getSavedOrder(clientId);
-
-    // Trier les tuiles selon l'ordre sauvegardé
-    const sorted = order
-      .map(id => ALL_TILES.find(t => t.id === id))
-      .filter(Boolean);
-
-    // Ajouter les tuiles manquantes à la fin
-    ALL_TILES.forEach(t => {
-      if (!sorted.find(s => s.id === t.id)) sorted.push(t);
-    });
+    const sorted = order.map(id => ALL_TILES.find(t => t.id === id)).filter(Boolean);
+    ALL_TILES.forEach(t => { if (!sorted.find(s => s.id === t.id)) sorted.push(t); });
 
     sorted.forEach(function (tile) {
       const el = document.createElement("a");
@@ -205,11 +229,13 @@
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
 
-      if (tile.action === "info") {
+      if (tile.action) {
         el.addEventListener("click", function (e) {
           e.preventDefault();
-          stepDashboard.hidden = true;
-          stepInfo.hidden      = false;
+          hideAll();
+          if (tile.action === "info")     stepInfo.hidden     = false;
+          if (tile.action === "services") stepServices.hidden = false;
+          if (tile.action === "complem")  stepComplem.hidden  = false;
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
       }
@@ -218,14 +244,16 @@
     });
   }
 
-  // ── Page Informations ─────────────────────────────────
-  backFromInfo.addEventListener("click", function () {
-    stepInfo.hidden      = true;
-    stepDashboard.hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  // ── Retours ───────────────────────────────────────────
+  [backFromInfo, backFromServ, backFromComp].forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      hideAll();
+      stepDashboard.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   });
 
-  // Accordéon
+  // ── Accordéons ────────────────────────────────────────
   document.querySelectorAll(".info-card-header").forEach(function (header) {
     header.addEventListener("click", function () {
       const body    = this.parentElement.querySelector(".info-card-body");
