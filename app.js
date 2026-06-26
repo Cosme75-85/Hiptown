@@ -87,6 +87,16 @@
       wide:  false,
     },
     {
+  id:    "adresses",
+  title: "Les bonnes adresses",
+  desc:  "Restaurants, cafés, services...",
+  icon:  "📍",
+  bg:    "#fce7f3",
+  color: "#be185d",
+  url:   "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing",
+  wide:  false,
+},
+    {
       id:    "avis",
       title: "⭐ Laisser un avis Google",
       desc:  "Partagez votre expérience — cela nous aide beaucoup !",
