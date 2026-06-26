@@ -76,7 +76,7 @@
       icon:  "⚠️",
       bg:    "#fee2e2",
       color: "#dc2626",
-      url:   "https://bit.ly/hiptown-incident",
+      url:   "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5",
       wide:  false,
     },
     {
