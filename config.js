@@ -10,19 +10,19 @@ const PORTAIL = {
   // Ajoutez/modifiez les événements ici
   // image: nom du fichier uploadé sur GitHub
   // Si pas d'événement, laissez le tableau vide : events: []
-  events: [
-    {
-      image: "event1.jpg",
-      title: "Petit déjeuner networking.png",
-      date:  "15 juillet 2026",
-      desc:  "Rejoignez-nous pour un moment de partage autour d'un café ☕",
-    },
-    {
-      image: "event2.jpg",
-      title: "Afterwork Hiptown.png",
-      date:  "22 juillet 2026",
-      desc:  "Venez décompresser et rencontrer la communauté Hiptown 🎉",
-    },
+events: [
+  {
+    image: "Petit%20d%C3%A9jeuner%20networking.png",
+    title: "Petit déjeuner networking",
+    date:  "15 juillet 2026",
+    desc:  "Rejoignez-nous pour un moment de partage autour d'un café ☕",
+  },
+  {
+    image: "Afterwork%20Hiptown.png",
+    title: "Afterwork Hiptown",
+    date:  "22 juillet 2026",
+    desc:  "Venez décompresser et rencontrer la communauté Hiptown 🎉",
+  },
   ],
 
   clients: [
