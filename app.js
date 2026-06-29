@@ -24,6 +24,75 @@
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
+  // ── Événements ────────────────────────────────────────
+  function buildEvents() {
+    if (!PORTAIL.events || PORTAIL.events.length === 0) return;
+    const banner = document.getElementById("events-banner");
+    const track  = document.getElementById("events-track");
+    const dotsEl = document.getElementById("events-dots");
+    banner.hidden = false;
+    let current = 0;
+
+    // Wrapper pour le carousel
+    track.style.display = "flex";
+    track.style.overflow = "hidden";
+
+    PORTAIL.events.forEach(function (ev, i) {
+      const card = document.createElement("div");
+      card.className = "event-card";
+      var imgHtml = ev.image
+        ? '<img src="' + ev.image + '" alt="' + ev.title + '"/>'
+        : '<div class="event-card-no-img">\uD83D\uDCC5</div>';
+      card.innerHTML = imgHtml +
+        '<div class="event-info">' +
+        '<div class="event-date">' + ev.date + '</div>' +
+        '<div class="event-title">' + ev.title + '</div>' +
+        '<div class="event-desc">' + ev.desc + '</div>' +
+        '</div>';
+      track.appendChild(card);
+
+      var dot = document.createElement("div");
+      dot.className = "events-dot" + (i === 0 ? " active" : "");
+      dot.addEventListener("click", function() { goTo(i); });
+      dotsEl.appendChild(dot);
+    });
+
+    function goTo(idx) {
+      current = idx;
+      var cards = track.querySelectorAll(".event-card");
+      cards.forEach(function(c, i) {
+        c.style.transform = "translateX(" + ((i - idx) * 100) + "%)";
+        c.style.transition = "transform 0.4s ease";
+        c.style.position = i === 0 ? "relative" : "absolute";
+        c.style.left = "0";
+        c.style.top = "0";
+        c.style.width = "100%";
+      });
+      dotsEl.querySelectorAll(".events-dot").forEach(function(d, i) {
+        d.classList.toggle("active", i === idx);
+      });
+    }
+
+    // Init positions
+    var cards = track.querySelectorAll(".event-card");
+    track.style.position = "relative";
+    cards.forEach(function(c, i) {
+      c.style.position = i === 0 ? "relative" : "absolute";
+      c.style.left = "0";
+      c.style.top = "0";
+      c.style.width = "100%";
+      c.style.transform = "translateX(" + (i * 100) + "%)";
+    });
+
+    if (PORTAIL.events.length > 1) {
+      setInterval(function() {
+        goTo((current + 1) % PORTAIL.events.length);
+      }, 4000);
+    }
+  }
+
+  buildEvents();
+
   const taglines = ["Votre espace client", "Vos services en un clic", "Bienvenue chez Hiptown"];
   let taglineIndex = 0;
   const taglineEl = document.getElementById("header-tagline");
