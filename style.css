@@ -534,8 +534,9 @@ footer {
 /* ── ÉVÉNEMENTS ── */
 #events-banner {
   width: 100%;
-  background: var(--navy);
-  padding: 12px 16px 0;
+  background: var(--white);
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--yellow);
 }
 
 .events-header {
