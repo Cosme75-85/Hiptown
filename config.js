@@ -13,7 +13,7 @@ const PORTAIL = {
   events: [
     {
       image: "event1.jpg",
-      title: "Petit déjeuner networking",
+      title: "Petit déjeuner networking.png",
       date:  "15 juillet 2026",
       desc:  "Rejoignez-nous pour un moment de partage autour d'un café ☕",
     },
