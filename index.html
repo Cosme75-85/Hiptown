@@ -9,9 +9,18 @@
 <body>
 
 <header>
-  <img src="Logo Hiptown site.png" alt="Hiptown" class="logo"/>
+  <img src="Logo%20Hiptown%20site.png" alt="Hiptown" class="logo"/>
   <p id="header-tagline">Votre espace client</p>
 </header>
+
+<!-- BANNIÈRE ÉVÉNEMENTS -->
+<div id="events-banner" hidden>
+  <div class="events-header">
+    <span class="events-label">📅 Prochains événements</span>
+    <div class="events-dots" id="events-dots"></div>
+  </div>
+  <div class="events-track" id="events-track"></div>
+</div>
 
 <main class="container">
 
@@ -67,9 +76,9 @@
           <span class="info-chevron">▼</span>
         </div>
         <div class="info-card-body" hidden>
-           <a class="info-item" href="Nettoyage machine.png"_blank">🔧 Entretien</a>
-          <a class="info-item" href="Changement de filtre.jpg" target="_blank">🔄 Changement de filtre</a>
-          <a class="info-item" href="Détartrage 1.1.pdf" target="_blank">💧 Détartrage</a>
+          <a class="info-item" href="#">🔧 Entretien</a>
+          <a class="info-item" href="#">🔄 Changement de filtre</a>
+          <a class="info-item" href="#">💧 Détartrage</a>
           <a class="info-item" href="#">☕ Grains</a>
           <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
         </div>
@@ -84,7 +93,7 @@
         <div class="info-card-body" hidden>
           <a class="info-item" href="#">🔧 Entretien</a>
           <a class="info-item" href="#">🧴 Produit</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un problème</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
         </div>
       </div>
 
@@ -97,7 +106,7 @@
         <div class="info-card-body" hidden>
           <a class="info-item" href="#">🗓️ Réservation</a>
           <a class="info-item" href="#">📋 Règles d'utilisation</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un problème</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
         </div>
       </div>
 
@@ -109,7 +118,7 @@
         </div>
         <div class="info-card-body" hidden>
           <a class="info-item" href="#">🔧 Entretien</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un problème</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
         </div>
       </div>
 
@@ -123,7 +132,7 @@
           <a class="info-item" href="#">🔧 Entretien</a>
           <a class="info-item" href="#">🖨️ Changer les cartouches</a>
           <a class="info-item" href="#">📄 Ajouter du papier</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un problème</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
         </div>
       </div>
 
@@ -133,26 +142,40 @@
   <!-- PAGE LES SERVICES -->
   <section id="step-services" hidden>
     <button class="back-btn" id="back-from-services">← Retour</button>
-    <h2 class="step-title">Les services inclus</h2>
-    <div class="services-list">
-      <div class="service-item"><span class="service-icon">☕</span><span>Café / Thés</span></div>
-      <div class="service-item"><span class="service-icon">🍽️</span><span>Vaisselle</span></div>
-      <div class="service-item"><span class="service-icon">🚲</span><span>Local vélo</span></div>
-      <div class="service-item"><span class="service-icon">🖨️</span><span>Imprimante</span></div>
-      <div class="service-item"><span class="service-icon">💧</span><span>Fontaine à eau</span></div>
-      <div class="service-item"><span class="service-icon">🌐</span><span>Internet Haut débit</span></div>
-      <div class="service-item"><span class="service-icon">🚿</span><span>Douches</span></div>
-      <div class="service-item"><span class="service-icon">🏢</span><span>Espace commun</span></div>
+    <h2 class="step-title">✨ Services inclus</h2>
+    <div class="services-grid">
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">☕</div><div class="service-card-title">Café / Thés</div><div class="service-card-desc">Café, thés et infusions en libre service toute la journée.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🍽️</div><div class="service-card-title">Vaisselle</div><div class="service-card-desc">Accès à la vaisselle et au lave-vaisselle pour vos repas.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚲</div><div class="service-card-title">Local vélo</div><div class="service-card-desc">Local sécurisé pour vos vélos et trottinettes.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🖨️</div><div class="service-card-title">Imprimante</div><div class="service-card-desc">Imprimante couleur et noir/blanc disponible.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">💧</div><div class="service-card-title">Fontaine à eau</div><div class="service-card-desc">Eau fraîche et pétillante en libre service.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🌐</div><div class="service-card-title">Internet Haut débit</div><div class="service-card-desc">Fibre 1Gb/s et Wi-Fi dernière génération.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚿</div><div class="service-card-title">Douches</div><div class="service-card-desc">Douches disponibles pour les sportifs.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🏢</div><div class="service-card-title">Espace commun</div><div class="service-card-desc">Grand espace de convivialité et de détente.</div></div>
     </div>
   </section>
 
   <!-- PAGE SERVICES COMPLEMENTAIRES -->
   <section id="step-complem" hidden>
     <button class="back-btn" id="back-from-complem">← Retour</button>
-    <h2 class="step-title">Services complémentaires</h2>
-    <div class="services-list">
-      <div class="service-item"><span class="service-icon">🅿️</span><span>Location Parking</span></div>
-      <div class="service-item"><span class="service-icon">🏢</span><span>Location Espace Commun</span></div>
+    <h2 class="step-title">➕ Services complémentaires</h2>
+    <div class="complem-grid">
+      <div class="complem-card" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🅿️</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Location Parking</div>
+          <div class="complem-card-desc">Place de parking sécurisée en sous-sol. Contactez-nous pour les tarifs.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
+      <div class="complem-card" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🏢</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Location Espace Commun</div>
+          <div class="complem-card-desc">Réservez l'espace pour vos événements et réunions. Tarifs sur demande.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
     </div>
   </section>
 
