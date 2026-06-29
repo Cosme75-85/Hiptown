@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — app.js v4 avec drag & drop
+//  PORTAIL HIPTOWN — app.js v5 — long press mobile
 // ═══════════════════════════════════════════════════════
 
 (function () {
@@ -24,20 +24,15 @@
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
-  // Animation header
   const taglines = ["Votre espace client", "Vos services en un clic", "Bienvenue chez Hiptown"];
   let taglineIndex = 0;
   const taglineEl = document.getElementById("header-tagline");
   setInterval(function () {
     taglineIndex = (taglineIndex + 1) % taglines.length;
     taglineEl.style.opacity = "0";
-    setTimeout(function () {
-      taglineEl.textContent = taglines[taglineIndex];
-      taglineEl.style.opacity = "1";
-    }, 300);
+    setTimeout(function () { taglineEl.textContent = taglines[taglineIndex]; taglineEl.style.opacity = "1"; }, 300);
   }, 2500);
 
-  // ── Tuiles ────────────────────────────────────────────
   const ALL_TILES = [
     { id: "accueil",  title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",    icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/", wide: false },
     { id: "marcel",   title: "Marcel BY Hiptown",         desc: "Accédez à vos services",            icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login", wide: false },
@@ -50,12 +45,10 @@
     { id: "avis",     title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",       icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
   ];
 
-  // ── État ──────────────────────────────────────────────
-  let pinCurrent  = "";
+  let pinCurrent = "";
   let currentClientId = null;
-  let dragSrc     = null;
+  let dragSrc = null;
 
-  // ── Helpers ───────────────────────────────────────────
   function hideAll() {
     stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = true;
   }
@@ -64,7 +57,6 @@
     pinDots.forEach(function (dot, i) { dot.classList.toggle("filled", i < pinCurrent.length); });
   }
 
-  // ── PIN ───────────────────────────────────────────────
   function showDashboard(client) {
     currentClientId = client.id;
     companyBadge.style.background = client.color;
@@ -111,7 +103,6 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // ── Ordre des tuiles ──────────────────────────────────
   function getSavedOrder(clientId) {
     try {
       const saved = localStorage.getItem("tiles_" + clientId);
@@ -126,7 +117,6 @@
     localStorage.setItem("tiles_" + clientId, JSON.stringify(order));
   }
 
-  // ── Construction des tuiles ───────────────────────────
   function buildTiles(clientId) {
     tilesGrid.innerHTML = "";
     const order  = getSavedOrder(clientId);
@@ -135,10 +125,10 @@
 
     sorted.forEach(function (tile) {
       const el = document.createElement("a");
-      el.className   = "tile" + (tile.wide ? " tile-wide" : "");
-      el.href        = tile.url || "#";
+      el.className = "tile" + (tile.wide ? " tile-wide" : "");
+      el.href      = tile.url || "#";
       el.setAttribute("data-id", tile.id);
-      el.draggable   = true;
+      el.draggable = true;
       if (tile.url) el.target = "_blank";
 
       el.innerHTML =
@@ -147,7 +137,6 @@
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
 
-      // Action interne
       if (tile.action) {
         el.addEventListener("click", function (e) {
           e.preventDefault();
@@ -159,7 +148,7 @@
         });
       }
 
-      // ── Drag & Drop ──────────────────────────────────
+      // ── Drag & Drop desktop ───────────────────────────
       el.addEventListener("dragstart", function (e) {
         dragSrc = this;
         this.classList.add("dragging");
@@ -174,7 +163,6 @@
 
       el.addEventListener("dragover", function (e) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
         if (this !== dragSrc) {
           tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
           this.classList.add("drag-over");
@@ -184,68 +172,73 @@
       el.addEventListener("drop", function (e) {
         e.preventDefault();
         if (this !== dragSrc) {
-          const allCards = Array.from(tilesGrid.querySelectorAll(".tile"));
-          const srcIdx   = allCards.indexOf(dragSrc);
-          const tgtIdx   = allCards.indexOf(this);
-          if (srcIdx < tgtIdx) {
-            tilesGrid.insertBefore(dragSrc, this.nextSibling);
-          } else {
-            tilesGrid.insertBefore(dragSrc, this);
-          }
+          const all = Array.from(tilesGrid.querySelectorAll(".tile"));
+          if (all.indexOf(dragSrc) < all.indexOf(this)) tilesGrid.insertBefore(dragSrc, this.nextSibling);
+          else tilesGrid.insertBefore(dragSrc, this);
         }
       });
 
-      // ── Touch drag (mobile) ───────────────────────────
-      let touchStartX, touchStartY, clone;
+      // ── Touch drag mobile — appui prolongé 500ms ──────
+      let longPressTimer, clone, isDragging = false;
 
       el.addEventListener("touchstart", function (e) {
         if (e.touches.length !== 1) return;
-        dragSrc = this;
         const t = e.touches[0];
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-        clone = this.cloneNode(true);
-        clone.style.cssText = "position:fixed;opacity:0.7;pointer-events:none;z-index:9999;width:" + this.offsetWidth + "px;";
-        document.body.appendChild(clone);
-        this.classList.add("dragging");
+        const self = this;
+
+        longPressTimer = setTimeout(function () {
+          isDragging = true;
+          dragSrc = self;
+          clone = self.cloneNode(true);
+          clone.style.cssText = "position:fixed;opacity:0.7;pointer-events:none;z-index:9999;width:" + self.offsetWidth + "px;left:" + (t.clientX - self.offsetWidth/2) + "px;top:" + (t.clientY - self.offsetHeight/2) + "px;border-radius:14px;";
+          document.body.appendChild(clone);
+          self.classList.add("dragging");
+          if (navigator.vibrate) navigator.vibrate(50);
+        }, 500);
       }, { passive: true });
 
       el.addEventListener("touchmove", function (e) {
-        if (!clone) return;
+        if (!isDragging) { clearTimeout(longPressTimer); return; }
         e.preventDefault();
         const t = e.touches[0];
         clone.style.left = (t.clientX - dragSrc.offsetWidth / 2) + "px";
         clone.style.top  = (t.clientY - dragSrc.offsetHeight / 2) + "px";
-
-        const el2 = document.elementFromPoint(t.clientX, t.clientY);
-        const target = el2 ? el2.closest(".tile") : null;
+        const target = document.elementFromPoint(t.clientX, t.clientY);
+        const tileTarget = target ? target.closest(".tile") : null;
         tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
-        if (target && target !== dragSrc) target.classList.add("drag-over");
+        if (tileTarget && tileTarget !== dragSrc) tileTarget.classList.add("drag-over");
       }, { passive: false });
 
       el.addEventListener("touchend", function (e) {
-        if (!clone) return;
+        clearTimeout(longPressTimer);
+        if (!isDragging) return;
         const t = e.changedTouches[0];
-        const el2 = document.elementFromPoint(t.clientX, t.clientY);
-        const target = el2 ? el2.closest(".tile") : null;
-        if (target && target !== dragSrc) {
-          const allCards = Array.from(tilesGrid.querySelectorAll(".tile"));
-          const srcIdx   = allCards.indexOf(dragSrc);
-          const tgtIdx   = allCards.indexOf(target);
-          if (srcIdx < tgtIdx) tilesGrid.insertBefore(dragSrc, target.nextSibling);
-          else                  tilesGrid.insertBefore(dragSrc, target);
+        const target = document.elementFromPoint(t.clientX, t.clientY);
+        const tileTarget = target ? target.closest(".tile") : null;
+        if (tileTarget && tileTarget !== dragSrc) {
+          const all = Array.from(tilesGrid.querySelectorAll(".tile"));
+          if (all.indexOf(dragSrc) < all.indexOf(tileTarget)) tilesGrid.insertBefore(dragSrc, tileTarget.nextSibling);
+          else tilesGrid.insertBefore(dragSrc, tileTarget);
         }
-        clone.remove(); clone = null;
+        if (clone) { clone.remove(); clone = null; }
         dragSrc.classList.remove("dragging");
         tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
         saveOrder(currentClientId);
+        isDragging = false;
+      }, { passive: true });
+
+      el.addEventListener("touchcancel", function () {
+        clearTimeout(longPressTimer);
+        if (clone) { clone.remove(); clone = null; }
+        if (dragSrc) dragSrc.classList.remove("dragging");
+        tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
+        isDragging = false;
       }, { passive: true });
 
       tilesGrid.appendChild(el);
     });
   }
 
-  // ── Retours ───────────────────────────────────────────
   [backFromInfo, backFromServ, backFromComp].forEach(function (btn) {
     btn.addEventListener("click", function () {
       hideAll(); stepDashboard.hidden = false;
@@ -253,12 +246,11 @@
     });
   });
 
-  // ── Accordéons ────────────────────────────────────────
   document.querySelectorAll(".info-card-header").forEach(function (header) {
     header.addEventListener("click", function () {
-      const body   = this.parentElement.querySelector(".info-card-body");
-      const chev   = this.querySelector(".info-chevron");
-      body.hidden  = !body.hidden;
+      const body = this.parentElement.querySelector(".info-card-body");
+      const chev = this.querySelector(".info-chevron");
+      body.hidden = !body.hidden;
       chev.textContent = body.hidden ? "▼" : "▲";
     });
   });
