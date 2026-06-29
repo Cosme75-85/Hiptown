@@ -19,7 +19,7 @@ const PORTAIL = {
     },
     {
       image: "event2.jpg",
-      title: "Afterwork Hiptown",
+      title: "Afterwork Hiptown.png",
       date:  "22 juillet 2026",
       desc:  "Venez décompresser et rencontrer la communauté Hiptown 🎉",
     },
