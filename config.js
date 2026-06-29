@@ -12,13 +12,13 @@ const PORTAIL = {
   // Si pas d'événement, laissez le tableau vide : events: []
 events: [
   {
-    image: "Petit%20d%C3%A9jeuner%20networking.png",
+    image: "Couverture Facebook - Afterwork Hiptown Bordeaux Celebration.png",
     title: "Petit déjeuner networking",
     date:  "15 juillet 2026",
     desc:  "Rejoignez-nous pour un moment de partage autour d'un café ☕",
   },
   {
-    image: "Afterwork%20Hiptown.png",
+    image: "Couverture Facebook - Petit déjeuner networking.png",
     title: "Afterwork Hiptown",
     date:  "22 juillet 2026",
     desc:  "Venez décompresser et rencontrer la communauté Hiptown 🎉",
