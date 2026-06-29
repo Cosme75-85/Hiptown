@@ -397,3 +397,136 @@ footer {
   text-align: center;
   flex-shrink: 0;
 }
+
+/* ── SERVICES V2 ── */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.service-card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  text-align: center;
+}
+
+.service-card:hover {
+  border-color: var(--yellow);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(30,24,71,0.10);
+}
+
+.service-card-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.service-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+
+.service-card-desc {
+  font-size: 11px;
+  color: var(--text-soft);
+  line-height: 1.4;
+  display: none;
+}
+
+.service-card.open .service-card-desc {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.service-card.open {
+  border-color: var(--teal);
+}
+
+/* Complem cards pleine largeur */
+.complem-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.complem-card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.complem-card:hover {
+  border-color: var(--yellow);
+  box-shadow: 0 4px 16px rgba(30,24,71,0.10);
+}
+
+.complem-card-icon { font-size: 28px; flex-shrink: 0; }
+
+.complem-card-body { flex: 1; }
+
+.complem-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.complem-card-desc {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 4px;
+  line-height: 1.4;
+  display: none;
+}
+
+.complem-card.open .complem-card-desc { display: block; }
+.complem-card.open { border-color: var(--teal); }
+
+.complem-chevron {
+  font-size: 12px;
+  color: var(--text-pale);
+  flex-shrink: 0;
+}
+
+/* ── DRAG & DROP ── */
+.tile { position: relative; }
+
+.tile-drag-hint {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 14px;
+  color: var(--text-pale);
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: grab;
+  user-select: none;
+}
+
+.tile:hover .tile-drag-hint { opacity: 1; }
+
+.tile.dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+  border-color: var(--teal) !important;
+}
+
+.tile.drag-over {
+  border-color: var(--yellow) !important;
+  border-style: dashed !important;
+  transform: scale(1.02);
+}
