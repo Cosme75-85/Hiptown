@@ -647,3 +647,15 @@ footer {
   font-size: 20px;
   color: var(--text-pale);
 }
+
+/* ── BANNIÈRE CHOIX SALLE ── */
+.choice-banner {
+  background: var(--navy);
+  color: var(--yellow);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  margin-top: -4px;
+}
