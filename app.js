@@ -109,7 +109,7 @@
 
   // Tuiles visibles selon l'espace
   const SPACE_TILES = {
-    salle:     ["accueil", "adresses", "services", "complem", "avis"],
+    salle:     ["accueil", "marcel", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
   };
