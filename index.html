@@ -24,10 +24,46 @@
 
 <main class="container">
 
-  <!-- ÉTAPE 0 : PIN -->
-  <section id="step-pin">
+  <!-- ÉTAPE -1 : CHOIX DE L'ESPACE -->
+  <section id="step-choice">
+    <p class="step-title">Quel espace souhaitez-vous rejoindre ?</p>
+    <div class="choice-grid">
+
+      <div class="choice-card" id="choice-salle">
+        <div class="choice-icon" style="background:#e0f2fe;color:#0369a1;">🗓️</div>
+        <div class="choice-content">
+          <div class="choice-title">Client salle de réunion</div>
+          <div class="choice-desc">Accès libre, sans code</div>
+        </div>
+        <div class="choice-arrow">→</div>
+      </div>
+
+      <div class="choice-card" id="choice-coworking">
+        <div class="choice-icon" style="background:#fef3c7;color:#92400e;">💼</div>
+        <div class="choice-content">
+          <div class="choice-title">Client Coworking</div>
+          <div class="choice-desc">Accès protégé par code</div>
+        </div>
+        <div class="choice-arrow">→</div>
+      </div>
+
+      <div class="choice-card" id="choice-hiptown">
+        <div class="choice-icon" style="background:#1e1847;color:#ffe700;">🏢</div>
+        <div class="choice-content">
+          <div class="choice-title">Hiptown</div>
+          <div class="choice-desc">Accès équipe, protégé par code</div>
+        </div>
+        <div class="choice-arrow">→</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ÉTAPE 0 : PIN (coworking ou hiptown) -->
+  <section id="step-pin" hidden>
+    <button class="back-btn" id="back-from-pin">← Retour</button>
     <div class="pin-box">
-      <p class="pin-title">Entrez votre code d'accès</p>
+      <p class="pin-title" id="pin-title-text">Entrez votre code d'accès</p>
       <div class="pin-dots" id="pin-dots">
         <span></span><span></span><span></span><span></span>
       </div>
@@ -46,7 +82,6 @@
         <button class="pin-key" data-val="0">0</button>
         <button class="pin-key pin-clear" data-val="clear">C</button>
       </div>
-      <button class="direct-btn" id="direct-hiptown">Accès Hiptown (équipe)</button>
     </div>
   </section>
 
@@ -76,9 +111,10 @@
           <span class="info-chevron">▼</span>
         </div>
         <div class="info-card-body" hidden>
-          <a class="info-item" href="Nettoyage machine.png">🔧 Entretien</a>
-          <a class="info-item" href="Changement de filtre.jpg">🔄 Changement de filtre</a>
-          <a class="info-item" href="Détartrage 1.1.pdf">💧 Détartrage</a>
+          <a class="info-item" href="Nettoyage%20machine.png" target="_blank">🔧 Entretien — Nettoyage machine</a>
+          <a class="info-item" href="Vider%20le%20bac.png" target="_blank">🔧 Entretien — Vider le bac</a>
+          <a class="info-item" href="Changement%20de%20filtre.jpg" target="_blank">🔄 Changement de filtre</a>
+          <a class="info-item" href="D%C3%A9tartrage%201.1.pdf" target="_blank">💧 Détartrage</a>
           <a class="info-item" href="#">☕ Grains</a>
           <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
         </div>
