@@ -659,3 +659,24 @@ footer {
   border-radius: var(--radius-md);
   margin-top: -4px;
 }
+
+/* ── LIENS DANS LISTE SERVICES ── */
+.service-item-link {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-dark);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.service-item-link:hover {
+  border-color: var(--yellow);
+  background: var(--bg);
+}
