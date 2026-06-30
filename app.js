@@ -11,6 +11,8 @@
   const stepInfo       = document.getElementById("step-info");
   const stepServices   = document.getElementById("step-services");
   const stepComplem    = document.getElementById("step-complem");
+  const stepSalleInfo  = document.getElementById("step-salle-info");
+  const backFromSalleInfo = document.getElementById("back-from-salle-info");
 
   const pinDots        = document.getElementById("pin-dots").querySelectorAll("span");
   const pinError        = document.getElementById("pin-error");
@@ -101,6 +103,7 @@
     factures: { title: "Mes factures",              desc: "Consultez vos factures",            icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     incident: { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",     icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
     info:     { title: "Informations",              desc: "Guides pratiques & équipements",    icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
+    salleinfo:{ title: "Utilisation des salles",    desc: "Internet, écran, sortie...",        icon: "🗓️", bg: "#e0f2fe", color: "#0369a1", url: null, action: "salleinfo" },
     services: { title: "Les services",              desc: "Tout ce qui est inclus",            icon: "✨", bg: "#f0fdf4", color: "#166534", url: null, action: "services" },
     complem:  { title: "Services complémentaires",  desc: "Parking, espace commun...",         icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
     adresses: { title: "Les bonnes adresses",       desc: "Restaurants, cafés, services...",   icon: "📍", bg: "#fce7f3", color: "#be185d", url: "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing" },
@@ -109,7 +112,7 @@
 
   // Tuiles visibles selon l'espace
   const SPACE_TILES = {
-    salle:     ["accueil", "marcel", "adresses", "services", "complem", "avis"],
+    salle:     ["accueil", "marcel", "salleinfo", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
   };
@@ -121,7 +124,7 @@
   let dragSrc          = null;
 
   function hideAll() {
-    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = true;
+    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = stepSalleInfo.hidden = true;
   }
 
   function updatePinDots() {
@@ -270,6 +273,7 @@
           if (tile.action === "info")     stepInfo.hidden     = false;
           if (tile.action === "services") stepServices.hidden = false;
           if (tile.action === "complem")  stepComplem.hidden  = false;
+          if (tile.action === "salleinfo") stepSalleInfo.hidden = false;
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
       }
@@ -342,7 +346,7 @@
   }
 
   // ── Retours pages internes ────────────────────────────
-  [backFromInfo, backFromServ, backFromComp].forEach(function (btn) {
+  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo].forEach(function (btn) {
     btn.addEventListener("click", function () {
       hideAll(); stepDashboard.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
