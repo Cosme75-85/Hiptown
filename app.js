@@ -11,8 +11,12 @@
   const stepInfo       = document.getElementById("step-info");
   const stepServices   = document.getElementById("step-services");
   const stepComplem    = document.getElementById("step-complem");
-  const stepSalleInfo  = document.getElementById("step-salle-info");
-  const backFromSalleInfo = document.getElementById("back-from-salle-info");
+  const stepSalleInfo      = document.getElementById("step-salle-info");
+  const backFromSalleInfo  = document.getElementById("back-from-salle-info");
+  const stepHiptownOutils  = document.getElementById("step-hiptown-outils");
+  const backFromHipOutils  = document.getElementById("back-from-hiptown-outils");
+  const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
+  const backFromHipEspaces = document.getElementById("back-from-hiptown-espaces");
 
   const pinDots        = document.getElementById("pin-dots").querySelectorAll("span");
   const pinError        = document.getElementById("pin-error");
@@ -108,13 +112,15 @@
     complem:  { title: "Services complémentaires",  desc: "Parking, espace commun...",         icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
     adresses: { title: "Les bonnes adresses",       desc: "Restaurants, cafés, services...",   icon: "📍", bg: "#fce7f3", color: "#be185d", url: "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing" },
     avis:     { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",       icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
+    hiptools: { title: "Outils Hiptown",             desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
+    hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                    icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
   };
 
   // Tuiles visibles selon l'espace
   const SPACE_TILES = {
     salle:     ["accueil", "marcel", "salleinfo", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
-    hiptown:   ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
+    hiptown:   ["hiptools", "hipespaces", "accueil", "incident"],
   };
 
   // ── État ──────────────────────────────────────────────
@@ -124,7 +130,7 @@
   let dragSrc          = null;
 
   function hideAll() {
-    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = stepSalleInfo.hidden = true;
+    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = stepSalleInfo.hidden = stepHiptownOutils.hidden = stepHiptownEspaces.hidden = true;
   }
 
   function updatePinDots() {
@@ -273,7 +279,9 @@
           if (tile.action === "info")     stepInfo.hidden     = false;
           if (tile.action === "services") stepServices.hidden = false;
           if (tile.action === "complem")  stepComplem.hidden  = false;
-          if (tile.action === "salleinfo") stepSalleInfo.hidden = false;
+          if (tile.action === "salleinfo")   stepSalleInfo.hidden      = false;
+          if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
+          if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
       }
@@ -346,7 +354,7 @@
   }
 
   // ── Retours pages internes ────────────────────────────
-  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo].forEach(function (btn) {
+  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces].forEach(function (btn) {
     btn.addEventListener("click", function () {
       hideAll(); stepDashboard.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
