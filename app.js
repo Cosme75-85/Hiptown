@@ -1,44 +1,46 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — app.js v6 — espace salle / coworking / hiptown
+//  PORTAIL HIPTOWN — app.js v7 — avec saisie clavier
 // ═══════════════════════════════════════════════════════
 
 (function () {
   "use strict";
 
-  const stepChoice    = document.getElementById("step-choice");
-  const stepPin        = document.getElementById("step-pin");
-  const stepDashboard  = document.getElementById("step-dashboard");
-  const stepInfo       = document.getElementById("step-info");
-  const stepServices   = document.getElementById("step-services");
-  const stepComplem    = document.getElementById("step-complem");
+  // ── DOM ───────────────────────────────────────────────
+  const stepChoice         = document.getElementById("step-choice");
+  const stepPin            = document.getElementById("step-pin");
+  const stepDashboard      = document.getElementById("step-dashboard");
+  const stepInfo           = document.getElementById("step-info");
+  const stepServices       = document.getElementById("step-services");
+  const stepComplem        = document.getElementById("step-complem");
   const stepSalleInfo      = document.getElementById("step-salle-info");
-  const backFromSalleInfo  = document.getElementById("back-from-salle-info");
   const stepHiptownOutils  = document.getElementById("step-hiptown-outils");
-  const backFromHipOutils  = document.getElementById("back-from-hiptown-outils");
   const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
-  const backFromHipEspaces = document.getElementById("back-from-hiptown-espaces");
   const stepSiteDetail     = document.getElementById("step-site-detail");
-  const backFromSiteDetail = document.getElementById("back-from-site-detail");
-  const siteDetailTitle    = document.getElementById("site-detail-title");
-  const siteDetailTools    = document.getElementById("site-detail-tools");
 
   const pinDots        = document.getElementById("pin-dots").querySelectorAll("span");
-  const pinError        = document.getElementById("pin-error");
-  const pinKeys         = document.querySelectorAll(".pin-key");
-  const pinTitleText    = document.getElementById("pin-title-text");
-  const backFromPin     = document.getElementById("back-from-pin");
+  const pinError       = document.getElementById("pin-error");
+  const pinKeys        = document.querySelectorAll(".pin-key");
+  const pinTitleText   = document.getElementById("pin-title-text");
+  const backFromPin    = document.getElementById("back-from-pin");
 
-  const welcomeTitle    = document.getElementById("welcome-title");
-  const companyBadge    = document.getElementById("company-badge");
-  const logoutBtn        = document.getElementById("logout-btn");
-  const tilesGrid        = document.getElementById("tiles-grid");
-  const backFromInfo     = document.getElementById("back-from-info");
-  const backFromServ      = document.getElementById("back-from-services");
-  const backFromComp      = document.getElementById("back-from-complem");
+  const welcomeTitle   = document.getElementById("welcome-title");
+  const companyBadge   = document.getElementById("company-badge");
+  const logoutBtn      = document.getElementById("logout-btn");
+  const tilesGrid      = document.getElementById("tiles-grid");
 
-  const choiceSalle      = document.getElementById("choice-salle");
-  const choiceCoworking  = document.getElementById("choice-coworking");
-  const choiceHiptown    = document.getElementById("choice-hiptown");
+  const backFromInfo        = document.getElementById("back-from-info");
+  const backFromServ        = document.getElementById("back-from-services");
+  const backFromComp        = document.getElementById("back-from-complem");
+  const backFromSalleInfo   = document.getElementById("back-from-salle-info");
+  const backFromHipOutils   = document.getElementById("back-from-hiptown-outils");
+  const backFromHipEspaces  = document.getElementById("back-from-hiptown-espaces");
+  const backFromSiteDetail  = document.getElementById("back-from-site-detail");
+  const siteDetailTitle     = document.getElementById("site-detail-title");
+  const siteDetailTools     = document.getElementById("site-detail-tools");
+
+  const choiceSalle     = document.getElementById("choice-salle");
+  const choiceCoworking = document.getElementById("choice-coworking");
+  const choiceHiptown   = document.getElementById("choice-hiptown");
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -73,8 +75,7 @@
 
     function goTo(idx) {
       current = idx;
-      var cards = track.querySelectorAll(".event-card");
-      cards.forEach(function(c, i) {
+      track.querySelectorAll(".event-card").forEach(function(c, i) {
         c.style.transform = "translateX(" + ((i - idx) * 100) + "%)";
       });
       dotsEl.querySelectorAll(".events-dot").forEach(function(d, i) {
@@ -82,8 +83,7 @@
       });
     }
 
-    var cards = track.querySelectorAll(".event-card");
-    cards.forEach(function(c, i) {
+    track.querySelectorAll(".event-card").forEach(function(c, i) {
       c.style.transform = "translateX(" + (i * 100) + "%)";
     });
 
@@ -94,7 +94,7 @@
 
   buildEvents();
 
-  // Animation header
+  // ── Animation header ──────────────────────────────────
   const taglines = ["Votre espace client", "Vos services en un clic", "Bienvenue chez Hiptown"];
   let taglineIndex = 0;
   const taglineEl = document.getElementById("header-tagline");
@@ -104,38 +104,27 @@
     setTimeout(function () { taglineEl.textContent = taglines[taglineIndex]; taglineEl.style.opacity = "1"; }, 300);
   }, 2500);
 
-  // ── Définition des tuiles par espace ──────────────────
+  // ── Tuiles ────────────────────────────────────────────
   const TILE_DEFS = {
-    accueil:  { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",    icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
-    marcel:   { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",            icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
-    factures: { title: "Mes factures",              desc: "Consultez vos factures",            icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
-    incident: { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",     icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
-    info:     { title: "Informations",              desc: "Guides pratiques & équipements",    icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
-    salleinfo:{ title: "Utilisation des salles",    desc: "Internet, écran, sortie...",        icon: "🗓️", bg: "#e0f2fe", color: "#0369a1", url: null, action: "salleinfo" },
-    services: { title: "Les services",              desc: "Tout ce qui est inclus",            icon: "✨", bg: "#f0fdf4", color: "#166534", url: null, action: "services" },
-    complem:  { title: "Services complémentaires",  desc: "Parking, espace commun...",         icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
-    adresses: { title: "Les bonnes adresses",       desc: "Restaurants, cafés, services...",   icon: "📍", bg: "#fce7f3", color: "#be185d", url: "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing" },
-    avis:     { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",       icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
-    hiptools: { title: "Outils Hiptown",             desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
-    hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                    icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
+    accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
+    marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
+    factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
+    incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
+    info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
+    salleinfo: { title: "Utilisation des salles",    desc: "Internet, écran, sortie...",             icon: "🗓️", bg: "#e0f2fe", color: "#0369a1", url: null, action: "salleinfo" },
+    services:  { title: "Les services",              desc: "Tout ce qui est inclus",                 icon: "✨", bg: "#f0fdf4", color: "#166534", url: null, action: "services" },
+    complem:   { title: "Services complémentaires",  desc: "Parking, espace commun...",              icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
+    adresses:  { title: "Les bonnes adresses",       desc: "Restaurants, cafés, services...",        icon: "📍", bg: "#fce7f3", color: "#be185d", url: "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing" },
+    avis:      { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",            icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
+    hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
+    hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
   };
 
-  // Tuiles visibles selon l'espace
   const SPACE_TILES = {
     salle:     ["accueil", "marcel", "salleinfo", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "accueil", "incident"],
   };
-
-  // ── État ──────────────────────────────────────────────
-  let pinCurrent       = "";
-  let currentSpace     = null;   // "salle" | "coworking" | "hiptown"
-  let currentClientId  = null;
-  let dragSrc          = null;
-
-  function hideAll() {
-    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = stepSalleInfo.hidden = stepHiptownOutils.hidden = stepHiptownEspaces.hidden = stepSiteDetail.hidden = true;
-  }
 
   // ── Données des sites ─────────────────────────────────
   const SITES = {
@@ -147,13 +136,13 @@
       name: "NABO06 — Émergence",
       tools: [
         { cat: "🏗️ Gestion du site", items: [
-          { label: "SOONE",        url: "https://gestion.soone.io/#/site/13255/mode/0/bat/17640" },
-          { label: "Equans",       url: "https://axicontact.equans.fr/fr" },
-          { label: "Ticketing",    url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
+          { label: "SOONE",     url: "https://gestion.soone.io/#/site/13255/mode/0/bat/17640" },
+          { label: "Equans",    url: "https://axicontact.equans.fr/fr" },
+          { label: "Ticketing", url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
         ]},
         { cat: "🪪 Badges", items: [
-          { label: "Scaleway",     url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
-          { label: "Coworking",    url: "https://docs.google.com/spreadsheets/d/1inKYBGIAUy2B8HWuBZgRIKz1u8CtEYzasQExHmBgyJE/edit?gid=0#gid=0" },
+          { label: "Scaleway",  url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
+          { label: "Coworking", url: "https://docs.google.com/spreadsheets/d/1inKYBGIAUy2B8HWuBZgRIKz1u8CtEYzasQExHmBgyJE/edit?gid=0#gid=0" },
         ]},
         { cat: "💰 Commercial", items: [
           { label: "Créer un devis", url: "https://docs.google.com/spreadsheets/d/18w1TEuTH3PgPQiS93DUVZ3j-67dOGzMOC3cKp0fzgGI/edit?gid=382742302#gid=382742302" },
@@ -162,35 +151,61 @@
           { label: "Compte",        url: "https://docs.google.com/spreadsheets/d/1XKVAcpBn54BIh2q-jH8ApQXHPIKWx0Vlhz-yf4Xvr3Y/edit?gid=0#gid=0" },
         ]},
         { cat: "☕ Services", items: [
-          { label: "Café et thé",  url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+          { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
         ]},
       ]
     },
-    nabo07: { name: "NABO07 — Tourny",  tools: [] },
-    nabo08: { name: "NABO08 — Madéra",  tools: [] },
+    nabo07: { name: "NABO07 — Tourny", tools: [] },
+    nabo08: { name: "NABO08 — Madéra", tools: [] },
   };
 
+  // ── État ──────────────────────────────────────────────
+  let pinCurrent      = "";
+  let currentSpace    = null;
+  let currentClientId = null;
+  let dragSrc         = null;
 
+  // ── Helpers ───────────────────────────────────────────
+  function hideAll() {
+    [stepChoice, stepPin, stepDashboard, stepInfo, stepServices, stepComplem,
+     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail]
+    .forEach(function(s) { s.hidden = true; });
+  }
 
   function updatePinDots() {
     pinDots.forEach(function (dot, i) { dot.classList.toggle("filled", i < pinCurrent.length); });
   }
 
-  // ── Choix de l'espace ──────────────────────────────────
+  // ── Saisie clavier (ordinateur) ───────────────────────
+  document.addEventListener("keydown", function (e) {
+    if (stepPin.hidden) return;
+    if (e.key >= "0" && e.key <= "9") {
+      if (pinCurrent.length >= 4) return;
+      pinCurrent += e.key;
+      updatePinDots();
+      if (pinCurrent.length === 4) checkPin();
+    } else if (e.key === "Backspace") {
+      pinCurrent = pinCurrent.slice(0, -1);
+      pinError.hidden = true;
+      updatePinDots();
+    } else if (e.key === "Escape") {
+      pinCurrent = "";
+      pinError.hidden = true;
+      updatePinDots();
+    }
+  });
+
+  // ── Choix de l'espace ─────────────────────────────────
   choiceSalle.addEventListener("click", function () {
     currentSpace = "salle";
-    showDashboard({
-      id: "salle-reunion", name: "Salle de réunion",
-      color: "#0369a1", textColor: "#ffffff", initials: "SR",
-    });
+    showDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR" });
   });
 
   choiceCoworking.addEventListener("click", function () {
     currentSpace = "coworking";
     pinTitleText.textContent = "Entrez le code de votre entreprise";
     pinCurrent = ""; updatePinDots(); pinError.hidden = true;
-    hideAll();
-    stepPin.hidden = false;
+    hideAll(); stepPin.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -198,18 +213,16 @@
     currentSpace = "hiptown-pin";
     pinTitleText.textContent = "Entrez le code Hiptown";
     pinCurrent = ""; updatePinDots(); pinError.hidden = true;
-    hideAll();
-    stepPin.hidden = false;
+    hideAll(); stepPin.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   backFromPin.addEventListener("click", function () {
-    hideAll();
-    stepChoice.hidden = false;
+    hideAll(); stepChoice.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // ── Vérification PIN ───────────────────────────────────
+  // ── Vérification PIN ──────────────────────────────────
   function checkPin() {
     if (currentSpace === "hiptown-pin") {
       if (pinCurrent === "2019") {
@@ -218,20 +231,14 @@
           currentSpace = "hiptown";
           showDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT" });
         }, 200);
-      } else {
-        pinFail();
-      }
+      } else { pinFail(); }
       return;
     }
-
-    // Coworking : vérifie parmi les clients
-    const match = PORTAIL.clients.find(c => c.pin === pinCurrent);
+    const match = PORTAIL.clients.find(function(c) { return c.pin === pinCurrent; });
     if (match) {
       pinError.hidden = true;
       setTimeout(function () { showDashboard(match); }, 200);
-    } else {
-      pinFail();
-    }
+    } else { pinFail(); }
   }
 
   function pinFail() {
@@ -251,7 +258,7 @@
     });
   });
 
-  // ── Dashboard ──────────────────────────────────────────
+  // ── Dashboard ─────────────────────────────────────────
   function showDashboard(client) {
     currentClientId = client.id;
     companyBadge.style.background = client.color;
@@ -259,20 +266,18 @@
     companyBadge.textContent      = client.initials;
     welcomeTitle.textContent      = client.name;
     buildTiles(currentSpace, client.id);
-    hideAll();
-    stepDashboard.hidden = false;
+    hideAll(); stepDashboard.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   logoutBtn.addEventListener("click", function () {
     pinCurrent = ""; updatePinDots(); pinError.hidden = true;
     currentSpace = null; currentClientId = null;
-    hideAll();
-    stepChoice.hidden = false;
+    hideAll(); stepChoice.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // ── Ordre des tuiles (drag & drop) ────────────────────
+  // ── Tuiles ────────────────────────────────────────────
   function getSavedOrder(clientId, tileIds) {
     try {
       const saved = localStorage.getItem("tiles_" + clientId);
@@ -282,8 +287,7 @@
   }
 
   function saveOrder(clientId) {
-    const cards = tilesGrid.querySelectorAll(".tile");
-    const order = Array.from(cards).map(c => c.getAttribute("data-id"));
+    const order = Array.from(tilesGrid.querySelectorAll(".tile")).map(function(c) { return c.getAttribute("data-id"); });
     localStorage.setItem("tiles_" + clientId, JSON.stringify(order));
   }
 
@@ -291,8 +295,8 @@
     tilesGrid.innerHTML = "";
     const tileIds = SPACE_TILES[space === "hiptown-pin" ? "hiptown" : space] || [];
     const order   = getSavedOrder(clientId, tileIds);
-    const sorted  = order.map(id => tileIds.includes(id) ? id : null).filter(Boolean);
-    tileIds.forEach(id => { if (!sorted.includes(id)) sorted.push(id); });
+    const sorted  = order.filter(function(id) { return tileIds.includes(id); });
+    tileIds.forEach(function(id) { if (!sorted.includes(id)) sorted.push(id); });
 
     sorted.forEach(function (id) {
       const tile = TILE_DEFS[id];
@@ -315,21 +319,21 @@
         el.addEventListener("click", function (e) {
           e.preventDefault();
           hideAll();
-          if (tile.action === "info")     stepInfo.hidden     = false;
-          if (tile.action === "services") stepServices.hidden = false;
-          if (tile.action === "complem")  stepComplem.hidden  = false;
-          if (tile.action === "salleinfo")   stepSalleInfo.hidden      = false;
+          if (tile.action === "info")       stepInfo.hidden           = false;
+          if (tile.action === "services")   stepServices.hidden       = false;
+          if (tile.action === "complem")    stepComplem.hidden        = false;
+          if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
           if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
           if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
       }
 
-      // Drag & Drop desktop
+      // Desktop drag
       el.addEventListener("dragstart", function (e) { dragSrc = this; this.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
-      el.addEventListener("dragend", function () { this.classList.remove("dragging"); tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over")); saveOrder(currentClientId); });
-      el.addEventListener("dragover", function (e) { e.preventDefault(); if (this !== dragSrc) { tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over")); this.classList.add("drag-over"); } });
-      el.addEventListener("drop", function (e) {
+      el.addEventListener("dragend",   function ()  { this.classList.remove("dragging"); tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); }); saveOrder(currentClientId); });
+      el.addEventListener("dragover",  function (e) { e.preventDefault(); if (this !== dragSrc) { tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); }); this.classList.add("drag-over"); } });
+      el.addEventListener("drop",      function (e) {
         e.preventDefault();
         if (this !== dragSrc) {
           const all = Array.from(tilesGrid.querySelectorAll(".tile"));
@@ -338,11 +342,11 @@
         }
       });
 
-      // Touch drag mobile — long press 500ms
-      let longPressTimer, clone, isDragging = false;
+      // Mobile long press
+      var longPressTimer, clone, isDragging = false;
       el.addEventListener("touchstart", function (e) {
         if (e.touches.length !== 1) return;
-        const t = e.touches[0]; const self = this;
+        var t = e.touches[0]; var self = this;
         longPressTimer = setTimeout(function () {
           isDragging = true; dragSrc = self;
           clone = self.cloneNode(true);
@@ -355,28 +359,28 @@
       el.addEventListener("touchmove", function (e) {
         if (!isDragging) { clearTimeout(longPressTimer); return; }
         e.preventDefault();
-        const t = e.touches[0];
-        clone.style.left = (t.clientX - dragSrc.offsetWidth / 2) + "px";
-        clone.style.top  = (t.clientY - dragSrc.offsetHeight / 2) + "px";
-        const target = document.elementFromPoint(t.clientX, t.clientY);
-        const tileTarget = target ? target.closest(".tile") : null;
-        tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
-        if (tileTarget && tileTarget !== dragSrc) tileTarget.classList.add("drag-over");
+        var t = e.touches[0];
+        clone.style.left = (t.clientX - dragSrc.offsetWidth/2) + "px";
+        clone.style.top  = (t.clientY - dragSrc.offsetHeight/2) + "px";
+        var tgt = document.elementFromPoint(t.clientX, t.clientY);
+        var tileTgt = tgt ? tgt.closest(".tile") : null;
+        tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); });
+        if (tileTgt && tileTgt !== dragSrc) tileTgt.classList.add("drag-over");
       }, { passive: false });
       el.addEventListener("touchend", function (e) {
         clearTimeout(longPressTimer);
         if (!isDragging) return;
-        const t = e.changedTouches[0];
-        const target = document.elementFromPoint(t.clientX, t.clientY);
-        const tileTarget = target ? target.closest(".tile") : null;
-        if (tileTarget && tileTarget !== dragSrc) {
-          const all = Array.from(tilesGrid.querySelectorAll(".tile"));
-          if (all.indexOf(dragSrc) < all.indexOf(tileTarget)) tilesGrid.insertBefore(dragSrc, tileTarget.nextSibling);
-          else tilesGrid.insertBefore(dragSrc, tileTarget);
+        var t = e.changedTouches[0];
+        var tgt = document.elementFromPoint(t.clientX, t.clientY);
+        var tileTgt = tgt ? tgt.closest(".tile") : null;
+        if (tileTgt && tileTgt !== dragSrc) {
+          var all = Array.from(tilesGrid.querySelectorAll(".tile"));
+          if (all.indexOf(dragSrc) < all.indexOf(tileTgt)) tilesGrid.insertBefore(dragSrc, tileTgt.nextSibling);
+          else tilesGrid.insertBefore(dragSrc, tileTgt);
         }
         if (clone) { clone.remove(); clone = null; }
         dragSrc.classList.remove("dragging");
-        tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
+        tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); });
         saveOrder(currentClientId);
         isDragging = false;
       }, { passive: true });
@@ -384,7 +388,7 @@
         clearTimeout(longPressTimer);
         if (clone) { clone.remove(); clone = null; }
         if (dragSrc) dragSrc.classList.remove("dragging");
-        tilesGrid.querySelectorAll(".tile").forEach(c => c.classList.remove("drag-over"));
+        tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); });
         isDragging = false;
       }, { passive: true });
 
@@ -392,12 +396,9 @@
     });
   }
 
-  // ── Retours pages internes ────────────────────────────
+  // ── Retours ───────────────────────────────────────────
   [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces].forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      hideAll(); stepDashboard.hidden = false;
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+    btn.addEventListener("click", function () { hideAll(); stepDashboard.hidden = false; window.scrollTo({ top: 0, behavior: "smooth" }); });
   });
 
   backFromSiteDetail.addEventListener("click", function () {
@@ -405,11 +406,11 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // Clic sur une case site
+  // ── Sites ─────────────────────────────────────────────
   document.querySelectorAll(".site-card").forEach(function (card) {
     card.addEventListener("click", function () {
-      const siteId = this.getAttribute("data-site");
-      const site   = SITES[siteId];
+      var siteId = this.getAttribute("data-site");
+      var site   = SITES[siteId];
       if (!site) return;
       siteDetailTitle.textContent = site.name;
       siteDetailTools.innerHTML   = "";
@@ -418,32 +419,37 @@
         siteDetailTools.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Outils à venir...</p>';
       } else {
         site.tools.forEach(function (cat) {
-          const card = document.createElement("div");
-          card.className = "info-card";
+          var div = document.createElement("div");
+          div.className = "info-card";
           var bodyHtml = cat.items.map(function (item) {
             return '<a class="info-item" href="' + item.url + '" target="_blank">🔗 ' + item.label + '</a>';
           }).join("");
-          card.innerHTML =
-            '<div class="info-card-header" onclick="var b=this.nextElementSibling;b.hidden=!b.hidden;this.querySelector('.info-chevron').textContent=b.hidden?'▼':'▲';">' +
+          div.innerHTML =
+            '<div class="info-card-header">' +
             '<span class="info-card-title">' + cat.cat + '</span>' +
             '<span class="info-chevron">▼</span>' +
             '</div>' +
             '<div class="info-card-body" hidden>' + bodyHtml + '</div>';
-          siteDetailTools.appendChild(card);
+          div.querySelector(".info-card-header").addEventListener("click", function() {
+            var body = this.nextElementSibling;
+            var chev = this.querySelector(".info-chevron");
+            body.hidden = !body.hidden;
+            chev.textContent = body.hidden ? "▼" : "▲";
+          });
+          siteDetailTools.appendChild(div);
         });
       }
 
-      hideAll();
-      stepSiteDetail.hidden = false;
+      hideAll(); stepSiteDetail.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
 
-  // ── Accordéons ────────────────────────────────────────
+  // ── Accordéons statiques ──────────────────────────────
   document.querySelectorAll(".info-card-header").forEach(function (header) {
     header.addEventListener("click", function () {
-      const body = this.parentElement.querySelector(".info-card-body");
-      const chev = this.querySelector(".info-chevron");
+      var body = this.parentElement.querySelector(".info-card-body");
+      var chev = this.querySelector(".info-chevron");
       body.hidden = !body.hidden;
       chev.textContent = body.hidden ? "▼" : "▲";
     });
