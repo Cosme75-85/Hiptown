@@ -169,6 +169,24 @@
     stepChoice.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
+  // ── Saisie clavier ────────────────────────────────────
+  document.addEventListener("keydown", function (e) {
+    if (stepPin.hidden) return;
+    if (e.key >= "0" && e.key <= "9") {
+      if (pinCurrent.length >= 4) return;
+      pinCurrent += e.key;
+      updatePinDots();
+      if (pinCurrent.length === 4) checkPin();
+    } else if (e.key === "Backspace") {
+      pinCurrent = pinCurrent.slice(0, -1);
+      pinError.hidden = true;
+      updatePinDots();
+    } else if (e.key === "Escape") {
+      pinCurrent = "";
+      pinError.hidden = true;
+      updatePinDots();
+    }
+  });
 
   // ── Vérification PIN ───────────────────────────────────
   function checkPin() {
