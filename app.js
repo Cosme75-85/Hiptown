@@ -17,6 +17,10 @@
   const backFromHipOutils  = document.getElementById("back-from-hiptown-outils");
   const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
   const backFromHipEspaces = document.getElementById("back-from-hiptown-espaces");
+  const stepSiteDetail     = document.getElementById("step-site-detail");
+  const backFromSiteDetail = document.getElementById("back-from-site-detail");
+  const siteDetailTitle    = document.getElementById("site-detail-title");
+  const siteDetailTools    = document.getElementById("site-detail-tools");
 
   const pinDots        = document.getElementById("pin-dots").querySelectorAll("span");
   const pinError        = document.getElementById("pin-error");
@@ -130,8 +134,43 @@
   let dragSrc          = null;
 
   function hideAll() {
-    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = stepSalleInfo.hidden = stepHiptownOutils.hidden = stepHiptownEspaces.hidden = true;
+    stepChoice.hidden = stepPin.hidden = stepDashboard.hidden = stepInfo.hidden = stepServices.hidden = stepComplem.hidden = stepSalleInfo.hidden = stepHiptownOutils.hidden = stepHiptownEspaces.hidden = stepSiteDetail.hidden = true;
   }
+
+  // ── Données des sites ─────────────────────────────────
+  const SITES = {
+    nabo02: { name: "NABO02 — Place de la Bourse CCI Tetris", tools: [] },
+    nabo03: { name: "NABO03 — Ferrere",                       tools: [] },
+    nabo04: { name: "NABO04 — Chartrons",                     tools: [] },
+    nabo05: { name: "NABO05 — Place de la Bourse CCI KBRW",   tools: [] },
+    nabo06: {
+      name: "NABO06 — Émergence",
+      tools: [
+        { cat: "🏗️ Gestion du site", items: [
+          { label: "SOONE",        url: "https://gestion.soone.io/#/site/13255/mode/0/bat/17640" },
+          { label: "Equans",       url: "https://axicontact.equans.fr/fr" },
+          { label: "Ticketing",    url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
+        ]},
+        { cat: "🪪 Badges", items: [
+          { label: "Scaleway",     url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
+          { label: "Coworking",    url: "https://docs.google.com/spreadsheets/d/1inKYBGIAUy2B8HWuBZgRIKz1u8CtEYzasQExHmBgyJE/edit?gid=0#gid=0" },
+        ]},
+        { cat: "💰 Commercial", items: [
+          { label: "Créer un devis", url: "https://docs.google.com/spreadsheets/d/18w1TEuTH3PgPQiS93DUVZ3j-67dOGzMOC3cKp0fzgGI/edit?gid=382742302#gid=382742302" },
+          { label: "Facture DG",    url: "https://docs.google.com/spreadsheets/d/1cGdu68qtmZLC0ez3a56RKh0sq2GtytA896TcALCeopg/edit?gid=11173933#gid=11173933" },
+          { label: "CRM",           url: "https://hiptown.nocrm.io/login" },
+          { label: "Compte",        url: "https://docs.google.com/spreadsheets/d/1XKVAcpBn54BIh2q-jH8ApQXHPIKWx0Vlhz-yf4Xvr3Y/edit?gid=0#gid=0" },
+        ]},
+        { cat: "☕ Services", items: [
+          { label: "Café et thé",  url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+        ]},
+      ]
+    },
+    nabo07: { name: "NABO07 — Tourny",  tools: [] },
+    nabo08: { name: "NABO08 — Madéra",  tools: [] },
+  };
+
+
 
   function updatePinDots() {
     pinDots.forEach(function (dot, i) { dot.classList.toggle("filled", i < pinCurrent.length); });
@@ -169,23 +208,7 @@
     stepChoice.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
-    // ── Saisie clavier ────────────────────────────────────
-  document.addEventListener("keydown", function (e) {
-    if (stepPin.hidden) return;
-    if (e.key >= "0" && e.key <= "9") {
-      if (pinCurrent.length >= 4) return;
-      pinCurrent += e.key;
-      updatePinDots();
-      if (pinCurrent.length === 4) checkPin();
-    } else if (e.key === "Backspace") {
-      pinCurrent = pinCurrent.slice(0, -1);
-      pinError.hidden = true;
-      updatePinDots();
-    } else if (e.key === "Escape") {
-      pinCurrent = "";
-      pinError.hidden = true;
-      updatePinDots();
-    }
+
   // ── Vérification PIN ───────────────────────────────────
   function checkPin() {
     if (currentSpace === "hiptown-pin") {
@@ -373,6 +396,45 @@
   [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces].forEach(function (btn) {
     btn.addEventListener("click", function () {
       hideAll(); stepDashboard.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  backFromSiteDetail.addEventListener("click", function () {
+    hideAll(); stepHiptownEspaces.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // Clic sur une case site
+  document.querySelectorAll(".site-card").forEach(function (card) {
+    card.addEventListener("click", function () {
+      const siteId = this.getAttribute("data-site");
+      const site   = SITES[siteId];
+      if (!site) return;
+      siteDetailTitle.textContent = site.name;
+      siteDetailTools.innerHTML   = "";
+
+      if (site.tools.length === 0) {
+        siteDetailTools.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Outils à venir...</p>';
+      } else {
+        site.tools.forEach(function (cat) {
+          const card = document.createElement("div");
+          card.className = "info-card";
+          var bodyHtml = cat.items.map(function (item) {
+            return '<a class="info-item" href="' + item.url + '" target="_blank">🔗 ' + item.label + '</a>';
+          }).join("");
+          card.innerHTML =
+            '<div class="info-card-header" onclick="var b=this.nextElementSibling;b.hidden=!b.hidden;this.querySelector('.info-chevron').textContent=b.hidden?'▼':'▲';">' +
+            '<span class="info-card-title">' + cat.cat + '</span>' +
+            '<span class="info-chevron">▼</span>' +
+            '</div>' +
+            '<div class="info-card-body" hidden>' + bodyHtml + '</div>';
+          siteDetailTools.appendChild(card);
+        });
+      }
+
+      hideAll();
+      stepSiteDetail.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
