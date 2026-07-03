@@ -169,7 +169,7 @@
     stepChoice.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
-  // ── Saisie clavier ────────────────────────────────────
+    // ── Saisie clavier ────────────────────────────────────
   document.addEventListener("keydown", function (e) {
     if (stepPin.hidden) return;
     if (e.key >= "0" && e.key <= "9") {
@@ -186,8 +186,6 @@
       pinError.hidden = true;
       updatePinDots();
     }
-  });
-
   // ── Vérification PIN ───────────────────────────────────
   function checkPin() {
     if (currentSpace === "hiptown-pin") {
