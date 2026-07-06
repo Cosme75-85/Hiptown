@@ -463,6 +463,23 @@
     });
   }
 
+  // ── Recherche outils Hiptown ──────────────────────────
+  var outilsSearch = document.getElementById("outils-search");
+  if (outilsSearch) {
+    outilsSearch.addEventListener("input", function () {
+      var q = this.value.trim().toLowerCase();
+      var cards = document.querySelectorAll(".outil-card");
+      cards.forEach(function (card) {
+        var name = card.getAttribute("data-name") || "";
+        card.style.display = (!q || name.includes(q)) ? "" : "none";
+      });
+      document.querySelectorAll(".outils-category").forEach(function (cat) {
+        var visible = Array.from(cat.querySelectorAll(".outil-card")).some(function(c) { return c.style.display !== "none"; });
+        cat.style.display = visible ? "" : "none";
+      });
+    });
+  }
+
   // ── Accordéons statiques ──────────────────────────────
   document.querySelectorAll(".info-card-header").forEach(function (header) {
     header.addEventListener("click", function () {
