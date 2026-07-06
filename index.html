@@ -1,271 +1,359 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hiptown — Portail client</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
 
-:root {
-  --navy:      #1e1847;
-  --navy-dark: #150f33;
-  --yellow:    #ffe700;
-  --teal:      #67dfcb;
-  --bg:        #f5f4ff;
-  --white:     #ffffff;
-  --border:    #e2e8f0;
-  --text-dark: #1e1847;
-  --text-soft: #64748b;
-  --text-pale: #94a3b8;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-}
+<header>
+  <img src="Logo%20Hiptown%20site.png" alt="Hiptown" class="logo"/>
+  <p id="header-tagline">Votre espace client</p>
+</header>
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: var(--text-dark);
-}
+<!-- BANNIÈRE ÉVÉNEMENTS -->
+<div id="events-banner" hidden>
+  <div class="events-header">
+    <span class="events-label">📅 Prochains événements</span>
+    <div class="events-dots" id="events-dots"></div>
+  </div>
+  <div class="events-track" id="events-track"></div>
+</div>
 
-/* ── HEADER ── */
-header {
-  width: 100%;
-  background: var(--navy);
-  padding: 14px 24px;
-  text-align: center;
-}
+<main class="container">
 
-header img.logo {
-  height: 52px;
-  object-fit: contain;
-  display: block;
-  margin: 0 auto 6px;
-  filter: brightness(10);
-}
+  <!-- ÉTAPE -1 : CHOIX DE L'ESPACE -->
+  <section id="step-choice">
+    <p class="step-title">Quel espace souhaitez-vous rejoindre ?</p>
+    <div class="choice-grid">
 
-header p {
-  color: rgba(255,255,255,0.7);
-  font-size: 13px;
-  transition: opacity 0.3s;
-}
+      <div class="choice-card" id="choice-salle">
+        <div class="choice-icon" style="background:#e0f2fe;color:#0369a1;">🗓️</div>
+        <div class="choice-content">
+          <div class="choice-title">Client salle de réunion</div>
+          <div class="choice-desc">Accès libre, sans code</div>
+        </div>
+        <div class="choice-arrow">→</div>
+      </div>
 
-/* ── CONTAINER ── */
-.container {
-  width: 100%;
-  max-width: 520px;
-  padding: 28px 16px 48px;
-  flex: 1;
-}
+      <div class="choice-card" id="choice-coworking">
+        <div class="choice-icon" style="background:#fef3c7;color:#92400e;">💼</div>
+        <div class="choice-content">
+          <div class="choice-title">Client Coworking</div>
+          <div class="choice-desc">Accès protégé par code</div>
+        </div>
+        <div class="choice-arrow">→</div>
+      </div>
 
-/* ── PIN ── */
-.pin-box {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 32px 24px;
-  text-align: center;
-  box-shadow: 0 4px 24px rgba(30,24,71,0.10);
-  max-width: 320px;
-  margin: 0 auto;
-}
+      <div class="choice-card" id="choice-hiptown">
+        <div class="choice-icon" style="background:#1e1847;color:#ffe700;">🏢</div>
+        <div class="choice-content">
+          <div class="choice-title">Hiptown</div>
+          <div class="choice-desc">Accès équipe, protégé par code</div>
+        </div>
+        <div class="choice-arrow">→</div>
+      </div>
 
-.pin-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text-dark);
-  margin-bottom: 22px;
-}
+    </div>
+  </section>
 
-.pin-dots {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 10px;
-}
+  <!-- ÉTAPE 0 : PIN (coworking ou hiptown) -->
+  <section id="step-pin" hidden>
+    <button class="back-btn" id="back-from-pin">← Retour</button>
+    <div class="pin-box">
+      <p class="pin-title" id="pin-title-text">Entrez votre code d'accès</p>
+      <div class="pin-dots" id="pin-dots">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pin-error" id="pin-error">Code incorrect, réessayez.</div>
+      <div class="pin-keypad">
+        <button class="pin-key" data-val="1">1</button>
+        <button class="pin-key" data-val="2">2</button>
+        <button class="pin-key" data-val="3">3</button>
+        <button class="pin-key" data-val="4">4</button>
+        <button class="pin-key" data-val="5">5</button>
+        <button class="pin-key" data-val="6">6</button>
+        <button class="pin-key" data-val="7">7</button>
+        <button class="pin-key" data-val="8">8</button>
+        <button class="pin-key" data-val="9">9</button>
+        <button class="pin-key pin-back" data-val="back">⌫</button>
+        <button class="pin-key" data-val="0">0</button>
+        <button class="pin-key pin-clear" data-val="clear">C</button>
+      </div>
+    </div>
+  </section>
 
-.pin-dots span {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--navy);
-  background: transparent;
-  transition: background 0.15s;
-}
+  <!-- TABLEAU DE BORD -->
+  <section id="step-dashboard" hidden>
+    <div class="dashboard-header">
+      <div class="company-badge" id="company-badge"></div>
+      <div>
+        <h1 class="welcome-title" id="welcome-title"></h1>
+        <p class="welcome-sub">Bienvenue sur votre espace Hiptown</p>
+      </div>
+    </div>
+    <div class="tiles-grid" id="tiles-grid"></div>
+    <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
+  </section>
 
-.pin-dots span.filled { background: var(--navy); }
+  <!-- PAGE INFORMATIONS -->
+  <section id="step-info" hidden>
+    <button class="back-btn" id="back-from-info">← Retour</button>
+    <h2 class="step-title">Informations pratiques</h2>
+    <div class="info-grid">
 
-.pin-error {
-  color: #ef4444;
-  font-size: 13px;
-  margin-bottom: 10px;
-  min-height: 20px;
-}
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="info-icon">☕</span>
+          <span class="info-card-title">Machine à café</span>
+          <span class="info-chevron">▼</span>
+        </div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="Nettoyage%20machine.png" target="_blank">🔧 Entretien — Nettoyage machine</a>
+          <a class="info-item" href="Vider%20le%20bac.png" target="_blank">🔧 Entretien — Vider le bac</a>
+          <a class="info-item" href="Changement%20de%20filtre.jpg" target="_blank">🔄 Changement de filtre</a>
+          <a class="info-item" href="D%C3%A9tartrage%201.1.pdf" target="_blank">💧 Détartrage</a>
+          <a class="info-item" href="#">☕ Grains</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
+        </div>
+      </div>
 
-.pin-error[hidden] { display: none; }
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="info-icon">🍽️</span>
+          <span class="info-card-title">Lave-vaisselle</span>
+          <span class="info-chevron">▼</span>
+        </div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#">🔧 Entretien</a>
+          <a class="info-item" href="#">🧴 Produit</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
+        </div>
+      </div>
 
-.pin-keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 18px;
-}
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="info-icon">🏢</span>
+          <span class="info-card-title">Espace commun</span>
+          <span class="info-chevron">▼</span>
+        </div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#">🗓️ Réservation</a>
+          <a class="info-item" href="#">📋 Règles d'utilisation</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
+        </div>
+      </div>
 
-.pin-key {
-  padding: 16px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--white);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--navy);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, transform 0.1s;
-}
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="info-icon">🪟</span>
+          <span class="info-card-title">Fenêtre</span>
+          <span class="info-chevron">▼</span>
+        </div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#">🔧 Entretien</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
+        </div>
+      </div>
 
-.pin-key:hover  { background: var(--yellow); border-color: var(--yellow); }
-.pin-key:active { transform: scale(0.95); }
-.pin-back       { font-size: 18px; color: var(--text-soft); }
-.pin-clear      { font-size: 15px; color: #ef4444; border-color: #fecaca; }
-.pin-clear:hover { background: #fee2e2; border-color: #ef4444; }
+      <div class="info-card">
+        <div class="info-card-header">
+          <span class="info-icon">🖨️</span>
+          <span class="info-card-title">Imprimante</span>
+          <span class="info-chevron">▼</span>
+        </div>
+        <div class="info-card-body" hidden>
+          <a class="info-item" href="#">🔧 Entretien</a>
+          <a class="info-item" href="#">🖨️ Changer les cartouches</a>
+          <a class="info-item" href="#">📄 Ajouter du papier</a>
+          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
+        </div>
+      </div>
 
-.direct-btn {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: none;
-  border: 1.5px solid var(--navy);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  color: var(--navy);
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.15s;
-  width: 100%;
-}
+    </div>
+  </section>
 
-.direct-btn:hover { background: var(--bg); }
+  <!-- PAGE LES SERVICES -->
+  <section id="step-services" hidden>
+    <button class="back-btn" id="back-from-services">← Retour</button>
+    <h2 class="step-title">✨ Services inclus</h2>
+    <div class="services-grid">
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">☕</div><div class="service-card-title">Café / Thés</div><div class="service-card-desc">Café, thés et infusions en libre service toute la journée.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🍽️</div><div class="service-card-title">Vaisselle</div><div class="service-card-desc">Accès à la vaisselle et au lave-vaisselle pour vos repas.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚲</div><div class="service-card-title">Local vélo</div><div class="service-card-desc">Local sécurisé pour vos vélos et trottinettes.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🖨️</div><div class="service-card-title">Imprimante</div><div class="service-card-desc">Imprimante couleur et noir/blanc disponible.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">💧</div><div class="service-card-title">Fontaine à eau</div><div class="service-card-desc">Eau fraîche et pétillante en libre service.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🌐</div><div class="service-card-title">Internet Haut débit</div><div class="service-card-desc">Fibre 1Gb/s et Wi-Fi dernière génération.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚿</div><div class="service-card-title">Douches</div><div class="service-card-desc">Douches disponibles pour les sportifs.</div></div>
+      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🏢</div><div class="service-card-title">Espace commun</div><div class="service-card-desc">Grand espace de convivialité et de détente.</div></div>
+    </div>
+  </section>
 
-/* ── DASHBOARD ── */
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px rgba(30,24,71,0.07);
-}
+  <!-- PAGE SERVICES COMPLEMENTAIRES -->
+  <section id="step-complem" hidden>
+    <button class="back-btn" id="back-from-complem">← Retour</button>
+    <h2 class="step-title">➕ Services complémentaires</h2>
+    <div class="complem-grid">
+      <div class="complem-card" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🅿️</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Location Parking</div>
+          <div class="complem-card-desc">Place de parking sécurisée en sous-sol. Contactez-nous pour les tarifs.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
+      <div class="complem-card" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🏢</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Location Espace Commun</div>
+          <div class="complem-card-desc">Réservez l'espace pour vos événements et réunions. Tarifs sur demande.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
+      <div class="complem-card" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🥐</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Petit déjeuner</div>
+          <div class="complem-card-desc">Faites livrer des viennoiseries et boissons chaudes pour votre réunion. Contactez-nous pour commander.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
+      <div class="complem-card" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🍱</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Déjeuner</div>
+          <div class="complem-card-desc">Plateaux repas et traiteur disponibles pour vos journées de réunion. Contactez-nous pour commander.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
+    </div>
+  </section>
 
-.company-badge {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
+  <!-- PAGE UTILISATION DES SALLES -->
+  <section id="step-salle-info" hidden>
+    <button class="back-btn" id="back-from-salle-info">← Retour</button>
+    <h2 class="step-title">🗓️ Utilisation de nos salles de réunion</h2>
+    <div class="services-list">
+      <a class="service-item-link" href="#" target="_blank">
+        <span class="service-icon">🌐</span>
+        <span>Connexion internet</span>
+      </a>
+      <a class="service-item-link" href="#" target="_blank">
+        <span class="service-icon">🚪</span>
+        <span>Quitter la salle de réunion</span>
+      </a>
+      <a class="service-item-link" href="#" target="_blank">
+        <span class="service-icon">🖥️</span>
+        <span>Connexion écran</span>
+      </a>
+    </div>
+  </section>
 
-.welcome-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
+  <!-- PAGE HIPTOWN OUTILS -->
+  <section id="step-hiptown-outils" hidden>
+    <button class="back-btn" id="back-from-hiptown-outils">← Retour</button>
+    <h2 class="step-title">🛠️ Outils Hiptown</h2>
 
-.welcome-sub {
-  font-size: 13px;
-  color: var(--text-soft);
-  margin-top: 2px;
-}
+    <div class="search-wrap">
+      <input type="text" id="outils-search" placeholder="🔍 Rechercher un outil…" autocomplete="off"/>
+    </div>
 
-/* ── TUILES ── */
-.tiles-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+    <div id="outils-container">
 
-.tile {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--white);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 18px 16px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
-}
+      <div class="outils-category">
+        <div class="outils-category-title">💰 Facturation</div>
+        <div class="outils-grid">
+          <a class="outil-card" href="https://eu1.getyooz.com/#/workspace/-2" target="_blank" data-name="yooz facturation">
+            <div class="outil-logo" id="logo-yooz">🧾</div>
+            <div class="outil-name">Yooz</div>
+          </a>
+          <a class="outil-card" href="https://marcel.hiptown.co/" target="_blank" data-name="marcel facturation">
+            <div class="outil-logo"><img src="H.png" style="width:32px;height:32px;object-fit:contain;"/></div>
+            <div class="outil-name">Marcel</div>
+          </a>
+          <a class="outil-card" href="https://app.leanpay.fr/login" target="_blank" data-name="leanpay facturation">
+            <div class="outil-logo">💳</div>
+            <div class="outil-name">Leanpay</div>
+          </a>
+        </div>
+      </div>
 
-.tile:hover {
-  border-color: var(--yellow);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(30,24,71,0.10);
-}
+      <div class="outils-category">
+        <div class="outils-category-title">🏠 État des lieux</div>
+        <div class="outils-grid">
+          <a class="outil-card" href="https://app.nockee.fr/login?redirectUri=%2Finspection-report" target="_blank" data-name="nockee état des lieux">
+            <div class="outil-logo">📋</div>
+            <div class="outil-name">Nockee</div>
+          </a>
+        </div>
+      </div>
 
-.tile:active { transform: scale(0.98); }
+      <div class="outils-category">
+        <div class="outils-category-title">📋 Organisation</div>
+        <div class="outils-grid">
+          <a class="outil-card" href="https://www.notion.so" target="_blank" data-name="notion organisation">
+            <div class="outil-logo">📝</div>
+            <div class="outil-name">Notion</div>
+          </a>
+        </div>
+      </div>
 
-.tile-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
-}
+      <div class="outils-category">
+        <div class="outils-category-title">💻 Plateformes digitales</div>
+        <div class="outils-grid">
+          <a class="outil-card" href="https://www.kactus.com/fr-be/managers/catalogs" target="_blank" data-name="kactus plateformes digitales">
+            <div class="outil-logo">🌵</div>
+            <div class="outil-name">Kactus</div>
+          </a>
+          <a class="outil-card" href="https://www.ubiq.fr" target="_blank" data-name="ubiq plateformes digitales">
+            <div class="outil-logo">📡</div>
+            <div class="outil-name">Ubiq</div>
+          </a>
+          <a class="outil-card" href="https://www.coworkingcafe.com" target="_blank" data-name="coworking café plateformes digitales">
+            <div class="outil-logo">☕</div>
+            <div class="outil-name">Coworking café</div>
+          </a>
+          <a class="outil-card" href="https://www.hub-grade.com" target="_blank" data-name="hub-grade plateformes digitales">
+            <div class="outil-logo">🏢</div>
+            <div class="outil-name">Hub-grade</div>
+          </a>
+        </div>
+      </div>
 
-.tile-content { flex: 1; }
+    </div>
+  </section>
 
-.tile-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-dark);
-}
+  <!-- PAGE HIPTOWN SITES -->
+  <section id="step-hiptown-espaces" hidden>
+    <button class="back-btn" id="back-from-hiptown-espaces">← Retour</button>
+    <h2 class="step-title">📍 Sites</h2>
+    <div class="sites-grid">
+      <div class="site-card" data-site="nabo02"><div class="site-code">NABO02</div><div class="site-name">Place de la Bourse CCI Tetris</div></div>
+      <div class="site-card" data-site="nabo03"><div class="site-code">NABO03</div><div class="site-name">Ferrere</div></div>
+      <div class="site-card" data-site="nabo04"><div class="site-code">NABO04</div><div class="site-name">Chartrons</div></div>
+      <div class="site-card" data-site="nabo05"><div class="site-code">NABO05</div><div class="site-name">Place de la Bourse CCI KBRW</div></div>
+      <div class="site-card" data-site="nabo06"><div class="site-code">NABO06</div><div class="site-name">Émergence</div></div>
+      <div class="site-card" data-site="nabo07"><div class="site-code">NABO07</div><div class="site-name">Tourny</div></div>
+      <div class="site-card" data-site="nabo08"><div class="site-code">NABO08</div><div class="site-name">Madéra</div></div>
+    </div>
+  </section>
 
-.tile-desc {
-  font-size: 12px;
-  color: var(--text-soft);
-  margin-top: 3px;
-  line-height: 1.4;
-}
+  <!-- PAGE DÉTAIL SITE -->
+  <section id="step-site-detail" hidden>
+    <button class="back-btn" id="back-from-site-detail">← Retour aux sites</button>
+    <h2 class="step-title" id="site-detail-title"></h2>
+    <div class="info-grid" id="site-detail-tools"></div>
+  </section>
 
-.tile-arrow {
-  font-size: 18px;
-  color: var(--text-pale);
-  flex-shrink: 0;
-}
+</main>
 
-/* ── LOGOUT ── */
-.logout-btn {
-  margin-top: 24px;
-  padding: 12px 24px;
-  background: none;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  color: var(--text-soft);
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.15s;
-}
+<footer>
+  <p>Hiptown Bordeaux &copy; <span id="year"></span></p>
+</footer>
 
-.logout-btn:hover { background: #f8fafc; }
-
-/* ── FOOTER ── */
-footer {
-  width: 100%;
-  text-align: center;
-  padding: 16px;
-  font-size: 12px;
-  color: var(--text-pale);
-  border-top: 1px solid var(--border);
-  background: var(--white);
-}
-
-/* ── RESPONSIVE ── */
-@media (max-width: 400px) {
-  .pin-key { padding: 13px; font-size: 18px; }
-  .tile { padding: 14px 12px; }
-}
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
