@@ -253,77 +253,75 @@
 
   <!-- PAGE HIPTOWN OUTILS -->
   <section id="step-hiptown-outils" hidden>
-    <button class="back-btn" id="back-from-hiptown-outils">← Retour</button>
-    <h2 class="step-title">🛠️ Outils Hiptown</h2>
+  <button class="back-btn" id="back-from-hiptown-outils">← Retour</button>
+  <h2 class="step-title">🛠️ Outils Hiptown</h2>
+  <div class="search-wrap">
+    <input type="text" id="outils-search" placeholder="🔍 Rechercher un outil…" autocomplete="off"/>
+  </div>
+  <div id="outils-container">
 
-    <div class="search-wrap">
-      <input type="text" id="outils-search" placeholder="🔍 Rechercher un outil…" autocomplete="off"/>
+    <div class="outils-category">
+      <div class="outils-category-title">💰 Facturation</div>
+      <div class="outils-grid">
+        <a class="outil-card" href="https://eu1.getyooz.com/#/workspace/-2" target="_blank" data-name="yooz facturation">
+          <div class="outil-logo">🧾</div>
+          <div class="outil-name">Yooz</div>
+        </a>
+        <a class="outil-card" href="https://marcel.hiptown.co/" target="_blank" data-name="marcel facturation">
+          <div class="outil-logo"><img src="H.png" style="width:32px;height:32px;object-fit:contain;"/></div>
+          <div class="outil-name">Marcel</div>
+        </a>
+        <a class="outil-card" href="https://app.leanpay.fr/login" target="_blank" data-name="leanpay facturation">
+          <div class="outil-logo">💳</div>
+          <div class="outil-name">Leanpay</div>
+        </a>
+      </div>
     </div>
 
-    <div id="outils-container">
-
-      <div class="outils-category">
-        <div class="outils-category-title">💰 Facturation</div>
-        <div class="outils-grid">
-          <a class="outil-card" href="https://eu1.getyooz.com/#/workspace/-2" target="_blank" data-name="yooz facturation">
-            <div class="outil-logo" id="logo-yooz">🧾</div>
-            <div class="outil-name">Yooz</div>
-          </a>
-          <a class="outil-card" href="https://marcel.hiptown.co/" target="_blank" data-name="marcel facturation">
-            <div class="outil-logo"><img src="H.png" style="width:32px;height:32px;object-fit:contain;"/></div>
-            <div class="outil-name">Marcel</div>
-          </a>
-          <a class="outil-card" href="https://app.leanpay.fr/login" target="_blank" data-name="leanpay facturation">
-            <div class="outil-logo">💳</div>
-            <div class="outil-name">Leanpay</div>
-          </a>
-        </div>
+    <div class="outils-category">
+      <div class="outils-category-title">🏠 État des lieux</div>
+      <div class="outils-grid">
+        <a class="outil-card" href="https://app.nockee.fr/login?redirectUri=%2Finspection-report" target="_blank" data-name="nockee état des lieux">
+          <div class="outil-logo">📋</div>
+          <div class="outil-name">Nockee</div>
+        </a>
       </div>
-
-      <div class="outils-category">
-        <div class="outils-category-title">🏠 État des lieux</div>
-        <div class="outils-grid">
-          <a class="outil-card" href="https://app.nockee.fr/login?redirectUri=%2Finspection-report" target="_blank" data-name="nockee état des lieux">
-            <div class="outil-logo">📋</div>
-            <div class="outil-name">Nockee</div>
-          </a>
-        </div>
-      </div>
-
-      <div class="outils-category">
-        <div class="outils-category-title">📋 Organisation</div>
-        <div class="outils-grid">
-          <a class="outil-card" href="https://www.notion.so" target="_blank" data-name="notion organisation">
-            <div class="outil-logo">📝</div>
-            <div class="outil-name">Notion</div>
-          </a>
-        </div>
-      </div>
-
-      <div class="outils-category">
-        <div class="outils-category-title">💻 Plateformes digitales</div>
-        <div class="outils-grid">
-          <a class="outil-card" href="https://www.kactus.com/fr-be/managers/catalogs" target="_blank" data-name="kactus plateformes digitales">
-            <div class="outil-logo">🌵</div>
-            <div class="outil-name">Kactus</div>
-          </a>
-          <a class="outil-card" href="https://www.ubiq.fr" target="_blank" data-name="ubiq plateformes digitales">
-            <div class="outil-logo">📡</div>
-            <div class="outil-name">Ubiq</div>
-          </a>
-          <a class="outil-card" href="https://www.coworkingcafe.com" target="_blank" data-name="coworking café plateformes digitales">
-            <div class="outil-logo">☕</div>
-            <div class="outil-name">Coworking café</div>
-          </a>
-          <a class="outil-card" href="https://www.hub-grade.com" target="_blank" data-name="hub-grade plateformes digitales">
-            <div class="outil-logo">🏢</div>
-            <div class="outil-name">Hub-grade</div>
-          </a>
-        </div>
-      </div>
-
     </div>
-  </section>
+
+    <div class="outils-category">
+      <div class="outils-category-title">📋 Organisation</div>
+      <div class="outils-grid">
+        <a class="outil-card" href="https://www.notion.so" target="_blank" data-name="notion organisation">
+          <div class="outil-logo">📝</div>
+          <div class="outil-name">Notion</div>
+        </a>
+      </div>
+    </div>
+
+    <div class="outils-category">
+      <div class="outils-category-title">💻 Plateformes digitales</div>
+      <div class="outils-grid">
+        <a class="outil-card" href="https://www.kactus.com/fr-be/managers/catalogs" target="_blank" data-name="kactus plateformes">
+          <div class="outil-logo">🌵</div>
+          <div class="outil-name">Kactus</div>
+        </a>
+        <a class="outil-card" href="https://www.ubiq.fr" target="_blank" data-name="ubiq plateformes">
+          <div class="outil-logo">📡</div>
+          <div class="outil-name">Ubiq</div>
+        </a>
+        <a class="outil-card" href="https://www.coworkingcafe.com" target="_blank" data-name="coworking café plateformes">
+          <div class="outil-logo">☕</div>
+          <div class="outil-name">Coworking café</div>
+        </a>
+        <a class="outil-card" href="https://www.hub-grade.com" target="_blank" data-name="hub-grade plateformes">
+          <div class="outil-logo">🏢</div>
+          <div class="outil-name">Hub-grade</div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
 
   <!-- PAGE HIPTOWN SITES -->
   <section id="step-hiptown-espaces" hidden>
