@@ -138,7 +138,8 @@
         { cat: "🏗️ Gestion du site", items: [
           { label: "SOONE",     url: "https://gestion.soone.io/#/site/13255/mode/0/bat/17640" },
           { label: "Equans",    url: "https://axicontact.equans.fr/fr" },
-          { label: "Ticketing", url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
+        { label: "Ticketing Mail", url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
+        { label: "Ticketing",      url: "https://app.notion.com/p/2c3924b0918981b3b238f0caae907739?v=380924b0918980cc9ff1000c09a3e59e" },
         ]},
         { cat: "🪪 Badges", items: [
           { label: "Scaleway",  url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
