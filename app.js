@@ -118,12 +118,14 @@
     avis:      { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",            icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
     hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
+    gestion: { title: "Gestion des comptes", desc: "Valider les accès", icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
   };
 
   const SPACE_TILES = {
     salle:     ["accueil", "marcel", "salleinfo", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "accueil", "incident"],
+    hiptown: ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
   };
 
   // ── Données des sites ─────────────────────────────────
@@ -197,25 +199,9 @@
   });
 
   // ── Choix de l'espace ─────────────────────────────────
-  choiceSalle.addEventListener("click", function () {
-    currentSpace = "salle";
-    showDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR" });
-  });
-
-  choiceCoworking.addEventListener("click", function () {
-    currentSpace = "coworking";
-    pinTitleText.textContent = "Entrez le code de votre entreprise";
-    pinCurrent = ""; updatePinDots(); pinError.hidden = true;
-    hideAll(); stepPin.hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-
-  choiceHiptown.addEventListener("click", function () {
-    currentSpace = "hiptown-pin";
-    pinTitleText.textContent = "Entrez le code Hiptown";
-    pinCurrent = ""; updatePinDots(); pinError.hidden = true;
-    hideAll(); stepPin.hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  choiceSalle.addEventListener("click", function () { window.openAuthScreen("salle"); });
+choiceCoworking.addEventListener("click", function () { window.openAuthScreen("coworking"); });
+choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
   });
 
   backFromPin.addEventListener("click", function () {
@@ -316,19 +302,16 @@
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
 
-      if (tile.action) {
-        el.addEventListener("click", function (e) {
-          e.preventDefault();
-          hideAll();
-          if (tile.action === "info")       stepInfo.hidden           = false;
-          if (tile.action === "services")   stepServices.hidden       = false;
-          if (tile.action === "complem")    stepComplem.hidden        = false;
-          if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
-          if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
-          if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        });
-      }
+if (tile.action) {
+  el.addEventListener("click", function (e) {
+    e.preventDefault();
+    hideAll();
+    if (tile.action === "info")       stepInfo.hidden           = false;
+    ...
+    document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
 
       // Desktop drag
       el.addEventListener("dragstart", function (e) { dragSrc = this; this.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
@@ -490,5 +473,9 @@
       chev.textContent = body.hidden ? "▼" : "▲";
     });
   });
-
+window.hideAll = hideAll;
+window.showDashboardFromAuth = function (client, space) {
+  currentSpace = space;
+  showDashboard(client);
+};
 })();
