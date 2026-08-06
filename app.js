@@ -124,8 +124,7 @@
   const SPACE_TILES = {
     salle:     ["accueil", "marcel", "salleinfo", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
-    hiptown:   ["hiptools", "hipespaces", "accueil", "incident"],
-    hiptown: ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
+    hiptown:   ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
   };
 
   // ── Données des sites ─────────────────────────────────
@@ -200,9 +199,8 @@
 
   // ── Choix de l'espace ─────────────────────────────────
   choiceSalle.addEventListener("click", function () { window.openAuthScreen("salle"); });
-choiceCoworking.addEventListener("click", function () { window.openAuthScreen("coworking"); });
-choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
-  });
+  choiceCoworking.addEventListener("click", function () { window.openAuthScreen("coworking"); });
+  choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
 
   backFromPin.addEventListener("click", function () {
     hideAll(); stepChoice.hidden = false;
@@ -302,16 +300,21 @@ choiceHiptown.addEventListener("click", function () { window.openAuthScreen("adm
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
 
-if (tile.action) {
-  el.addEventListener("click", function (e) {
-    e.preventDefault();
-    hideAll();
-    if (tile.action === "info")       stepInfo.hidden           = false;
-    
-    document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-}
+      if (tile.action) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          hideAll();
+          if (tile.action === "info")            stepInfo.hidden           = false;
+          else if (tile.action === "services")   stepServices.hidden       = false;
+          else if (tile.action === "complem")    stepComplem.hidden        = false;
+          else if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
+          else if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
+          else if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
+
+          document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
 
       // Desktop drag
       el.addEventListener("dragstart", function (e) { dragSrc = this; this.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
@@ -447,23 +450,6 @@ if (tile.action) {
     });
   }
 
-  // ── Recherche outils Hiptown ──────────────────────────
-  var outilsSearch = document.getElementById("outils-search");
-  if (outilsSearch) {
-    outilsSearch.addEventListener("input", function () {
-      var q = this.value.trim().toLowerCase();
-      var cards = document.querySelectorAll(".outil-card");
-      cards.forEach(function (card) {
-        var name = card.getAttribute("data-name") || "";
-        card.style.display = (!q || name.includes(q)) ? "" : "none";
-      });
-      document.querySelectorAll(".outils-category").forEach(function (cat) {
-        var visible = Array.from(cat.querySelectorAll(".outil-card")).some(function(c) { return c.style.display !== "none"; });
-        cat.style.display = visible ? "" : "none";
-      });
-    });
-  }
-
   // ── Accordéons statiques ──────────────────────────────
   document.querySelectorAll(".info-card-header").forEach(function (header) {
     header.addEventListener("click", function () {
@@ -473,9 +459,10 @@ if (tile.action) {
       chev.textContent = body.hidden ? "▼" : "▲";
     });
   });
-window.hideAll = hideAll;
-window.showDashboardFromAuth = function (client, space) {
-  currentSpace = space;
-  showDashboard(client);
-};
+
+  window.hideAll = hideAll;
+  window.showDashboardFromAuth = function (client, space) {
+    currentSpace = space;
+    showDashboard(client);
+  };
 })();
