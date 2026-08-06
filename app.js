@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — app.js v7 — avec saisie clavier
+//  PORTAIL HIPTOWN — app.js v8 — avec comptes utilisateurs
 // ═══════════════════════════════════════════════════════
 
 (function () {
@@ -118,7 +118,7 @@
     avis:      { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",            icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
     hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
-    gestion: { title: "Gestion des comptes", desc: "Valider les accès", icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
+    gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
   };
 
   const SPACE_TILES = {
@@ -304,13 +304,12 @@
         el.addEventListener("click", function (e) {
           e.preventDefault();
           hideAll();
-          if (tile.action === "info")            stepInfo.hidden           = false;
-          else if (tile.action === "services")   stepServices.hidden       = false;
-          else if (tile.action === "complem")    stepComplem.hidden        = false;
-          else if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
-          else if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
-          else if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
-
+          if (tile.action === "info")       stepInfo.hidden           = false;
+          if (tile.action === "services")   stepServices.hidden       = false;
+          if (tile.action === "complem")    stepComplem.hidden        = false;
+          if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
+          if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
+          if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
           document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
@@ -442,7 +441,6 @@
         var name = card.getAttribute("data-name") || "";
         card.style.display = (!q || name.includes(q)) ? "" : "none";
       });
-      // Cacher les catégories vides
       document.querySelectorAll(".outils-category").forEach(function (cat) {
         var visible = Array.from(cat.querySelectorAll(".outil-card")).some(function(c) { return c.style.display !== "none"; });
         cat.style.display = visible ? "" : "none";
@@ -460,9 +458,11 @@
     });
   });
 
+  // ── Pont vers app-auth.js ──────────────────────────────
   window.hideAll = hideAll;
   window.showDashboardFromAuth = function (client, space) {
     currentSpace = space;
     showDashboard(client);
   };
+
 })();
