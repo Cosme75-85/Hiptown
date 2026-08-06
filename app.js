@@ -307,7 +307,7 @@ if (tile.action) {
     e.preventDefault();
     hideAll();
     if (tile.action === "info")       stepInfo.hidden           = false;
-    ...
+    
     document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
