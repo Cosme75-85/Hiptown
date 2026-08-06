@@ -60,30 +60,103 @@
   </section>
 
   <!-- ÉTAPE 0 : PIN (coworking ou hiptown) -->
-  <section id="step-pin" hidden>
-    <button class="back-btn" id="back-from-pin">← Retour</button>
-    <div class="pin-box">
-      <p class="pin-title" id="pin-title-text">Entrez votre code d'accès</p>
-      <div class="pin-dots" id="pin-dots">
-        <span></span><span></span><span></span><span></span>
-      </div>
-      <div class="pin-error" id="pin-error">Code incorrect, réessayez.</div>
-      <div class="pin-keypad">
-        <button class="pin-key" data-val="1">1</button>
-        <button class="pin-key" data-val="2">2</button>
-        <button class="pin-key" data-val="3">3</button>
-        <button class="pin-key" data-val="4">4</button>
-        <button class="pin-key" data-val="5">5</button>
-        <button class="pin-key" data-val="6">6</button>
-        <button class="pin-key" data-val="7">7</button>
-        <button class="pin-key" data-val="8">8</button>
-        <button class="pin-key" data-val="9">9</button>
-        <button class="pin-key pin-back" data-val="back">⌫</button>
-        <button class="pin-key" data-val="0">0</button>
-        <button class="pin-key pin-clear" data-val="clear">C</button>
-      </div>
+ <!--
+  ═══════════════════════════════════════════════════════
+  À INSÉRER dans index.html, JUSTE APRÈS <section id="step-pin">...</section>
+  (tu peux garder step-pin en dessous si tu veux le conserver pour d'autres usages,
+  mais il n'est normalement plus utilisé par le nouveau flux)
+  ═══════════════════════════════════════════════════════
+-->
+
+<!-- ÉTAPE : CONNEXION / INSCRIPTION -->
+<section id="step-auth" hidden>
+  <button class="back-btn" id="back-from-auth">← Retour</button>
+  <div class="pin-box" style="max-width:360px;">
+
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="direct-btn auth-tab active" data-tab="login" style="margin-top:0;">Se connecter</button>
+      <button class="direct-btn auth-tab" data-tab="signup" style="margin-top:0;">Créer un compte</button>
     </div>
-  </section>
+
+    <div id="auth-error" class="pin-error" hidden></div>
+
+    <!-- Connexion -->
+    <form id="login-form" class="auth-panel">
+      <input type="email" id="login-email" placeholder="Email" required
+             style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <input type="password" id="login-password" placeholder="Mot de passe" required
+             style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Se connecter</button>
+      <button type="button" id="forgot-password" class="direct-btn" style="border:none;font-size:12px;">Mot de passe oublié ?</button>
+    </form>
+
+    <!-- Inscription -->
+    <form id="signup-form" class="auth-panel" hidden>
+      <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
+        Quel type d'accès souhaitez-vous ?
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <label style="flex:1;">
+          <input type="radio" name="signup-role" value="salle" checked/> Salle de réunion
+        </label>
+        <label style="flex:1;">
+          <input type="radio" name="signup-role" value="coworking"/> Coworking
+        </label>
+      </div>
+      <input type="email" id="signup-email" placeholder="Email" required
+             style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)" required minlength="6"
+             style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <input type="text" id="signup-company" placeholder="Nom de votre entreprise (si coworking)"
+             style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
+      <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
+        Votre compte sera activé après validation par l'équipe Hiptown.
+      </p>
+    </form>
+
+  </div>
+</section>
+
+<!-- ÉTAPE : COMPTE EN ATTENTE DE VALIDATION -->
+<section id="step-pending" hidden>
+  <div class="pin-box">
+    <div style="font-size:40px;margin-bottom:12px;">⏳</div>
+    <p class="pin-title">Compte en attente de validation</p>
+    <p style="font-size:13px;color:var(--text-soft);margin-bottom:20px;">
+      Votre demande a bien été reçue. L'équipe Hiptown va valider votre accès sous peu.
+    </p>
+    <button class="direct-btn" id="pending-logout">Se déconnecter</button>
+  </div>
+</section>
+
+<!-- ÉTAPE : PANNEAU ADMINISTRATEUR -->
+<section id="step-admin" hidden>
+  <button class="back-btn" id="back-from-admin">← Retour</button>
+  <h2 class="step-title">🔑 Gestion des comptes</h2>
+
+  <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">Demandes en attente</h3>
+  <div class="info-grid" id="admin-pending-list"></div>
+
+  <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Créer un compte administrateur</h3>
+  <div class="pin-box" style="max-width:100%;text-align:left;">
+    <input type="email" id="new-admin-email" placeholder="Email"
+           style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+    <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire"
+           style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+    <button class="direct-btn" id="create-admin-btn" style="background:var(--navy);color:#fff;">Créer le compte admin</button>
+  </div>
+
+  <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Tous les comptes</h3>
+  <div class="info-grid" id="admin-all-list"></div>
+</section>
+
+<!--
+  Ajouter une tuile admin dans TILE_DEFS (app.js) pour accéder au panneau :
+  gestion: { title: "Gestion des comptes", desc: "Valider les accès",
+             icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" }
+  et l'ajouter à SPACE_TILES.hiptown
+-->
 
   <!-- TABLEAU DE BORD -->
   <section id="step-dashboard" hidden>
@@ -353,5 +426,6 @@
 
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script type="module" src="app-auth.js"></script>
 </body>
 </html>
