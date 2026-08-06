@@ -9,12 +9,12 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "COLLE_ICI_TA_CLE_API",
-  authDomain: "TON-PROJET.firebaseapp.com",
-  projectId: "TON-PROJET",
-  storageBucket: "TON-PROJET.appspot.com",
-  messagingSenderId: "COLLE_ICI",
-  appId: "COLLE_ICI"
+  apiKey: "AIzaSyAxHXtIFK5xJGIni9pDVdTZ19cryCM7IJw",
+  authDomain: "erp-hiptown.firebaseapp.com",
+  projectId: "erp-hiptown",
+  storageBucket: "erp-hiptown.firebasestorage.app",
+  messagingSenderId: "614182429640",
+  appId: "1:614182429640:web:fcffc87ba6fe234e3e96fd"
 };
 
 export const app  = initializeApp(firebaseConfig);
