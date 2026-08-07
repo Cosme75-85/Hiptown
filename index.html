@@ -24,8 +24,18 @@
 
 <main class="container">
 
+  <!-- ÉTAPE 0 : ACCUEIL / CONNEXION -->
+  <section id="step-welcome">
+    <div class="pin-box" style="text-align:center;">
+      <img src="Logo%20Hiptown%20site.png" alt="Hiptown" style="height:64px;object-fit:contain;margin:0 auto 24px;display:block;"/>
+      <p style="font-size:14px;color:var(--text-soft);margin-bottom:24px;">Bienvenue sur votre espace client</p>
+      <button class="direct-btn" id="welcome-connexion-btn" style="background:var(--navy);color:#fff;margin-top:0;">Connexion</button>
+    </div>
+  </section>
+
   <!-- ÉTAPE -1 : CHOIX DE L'ESPACE -->
-  <section id="step-choice">
+  <section id="step-choice" hidden>
+    <button class="back-btn" id="back-from-choice">← Retour</button>
     <p class="step-title">Quel espace souhaitez-vous rejoindre ?</p>
     <div class="choice-grid">
 
