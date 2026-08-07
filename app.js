@@ -6,6 +6,7 @@
   "use strict";
 
   // ── DOM ───────────────────────────────────────────────
+  const eventsBanner       = document.getElementById("events-banner");
   const stepWelcome        = document.getElementById("step-welcome");
   const welcomeConnexionBtn = document.getElementById("welcome-connexion-btn");
   const backFromChoice     = document.getElementById("back-from-choice");
@@ -46,7 +47,6 @@
     const banner = document.getElementById("events-banner");
     const track  = document.getElementById("events-track");
     const dotsEl = document.getElementById("events-dots");
-    banner.hidden = false;
     let current = 0;
 
     PORTAIL.events.forEach(function (ev, i) {
@@ -167,6 +167,7 @@
     [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
      stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail]
     .forEach(function(s) { s.hidden = true; });
+    eventsBanner.hidden = true;
   }
 
   // ── Accueil ⇄ Choix de l'espace ────────────────────────
@@ -194,6 +195,7 @@
     welcomeTitle.textContent      = client.name;
     buildTiles(currentSpace, client.id);
     hideAll(); stepDashboard.hidden = false;
+    if (PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
