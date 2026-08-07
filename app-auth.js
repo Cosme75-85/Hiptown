@@ -115,7 +115,12 @@ function friendlyError(err) {
   return "Une erreur est survenue. Réessayez.";
 }
 
-document.getElementById("pending-logout")?.addEventListener("click", () => logOut());
+document.getElementById("pending-logout")?.addEventListener("click", async () => {
+  await logOut();
+  hideAllAuth();
+  const stepWelcome = document.getElementById("step-welcome");
+  if (stepWelcome) stepWelcome.hidden = false;
+});
 
 // ── Routage automatique selon l'état de connexion ──
 watchAuthState(async (user, profile) => {
@@ -149,8 +154,8 @@ watchAuthState(async (user, profile) => {
 });
 
 function routeToDashboard(client, space) {
-  // Réutilise les fonctions existantes de app.js
-  window.currentSpaceOverride = space; // voir modification buildTiles() ci-dessous
+  // Ferme explicitement l'écran de connexion avant d'afficher le dashboard
+  hideAllAuth();
   if (window.showDashboardFromAuth) {
     window.showDashboardFromAuth(client, space);
   }
