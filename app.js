@@ -6,6 +6,9 @@
   "use strict";
 
   // ── DOM ───────────────────────────────────────────────
+  const stepWelcome        = document.getElementById("step-welcome");
+  const welcomeConnexionBtn = document.getElementById("welcome-connexion-btn");
+  const backFromChoice     = document.getElementById("back-from-choice");
   const stepChoice         = document.getElementById("step-choice");
   const stepDashboard      = document.getElementById("step-dashboard");
   const stepInfo           = document.getElementById("step-info");
@@ -161,10 +164,21 @@
 
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
-    [stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
+    [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
      stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail]
     .forEach(function(s) { s.hidden = true; });
   }
+
+  // ── Accueil ⇄ Choix de l'espace ────────────────────────
+  welcomeConnexionBtn.addEventListener("click", function () {
+    hideAll(); stepChoice.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  backFromChoice.addEventListener("click", function () {
+    hideAll(); stepWelcome.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
   // ── Choix de l'espace ─────────────────────────────────
   choiceSalle.addEventListener("click", function () { window.openAuthScreen("salle"); });
@@ -185,7 +199,7 @@
 
   logoutBtn.addEventListener("click", function () {
     currentSpace = null; currentClientId = null;
-    hideAll(); stepChoice.hidden = false;
+    hideAll(); stepWelcome.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
