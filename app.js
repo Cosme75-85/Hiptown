@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — app.js v8 — avec comptes utilisateurs
+//  PORTAIL HIPTOWN — app.js v9 — comptes Firebase (PIN supprimé)
 // ═══════════════════════════════════════════════════════
 
 (function () {
@@ -7,7 +7,6 @@
 
   // ── DOM ───────────────────────────────────────────────
   const stepChoice         = document.getElementById("step-choice");
-  const stepPin            = document.getElementById("step-pin");
   const stepDashboard      = document.getElementById("step-dashboard");
   const stepInfo           = document.getElementById("step-info");
   const stepServices       = document.getElementById("step-services");
@@ -16,12 +15,6 @@
   const stepHiptownOutils  = document.getElementById("step-hiptown-outils");
   const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
   const stepSiteDetail     = document.getElementById("step-site-detail");
-
-  const pinDots        = document.getElementById("pin-dots").querySelectorAll("span");
-  const pinError       = document.getElementById("pin-error");
-  const pinKeys        = document.querySelectorAll(".pin-key");
-  const pinTitleText   = document.getElementById("pin-title-text");
-  const backFromPin    = document.getElementById("back-from-pin");
 
   const welcomeTitle   = document.getElementById("welcome-title");
   const companyBadge   = document.getElementById("company-badge");
@@ -162,86 +155,21 @@
   };
 
   // ── État ──────────────────────────────────────────────
-  let pinCurrent      = "";
   let currentSpace    = null;
   let currentClientId = null;
   let dragSrc         = null;
 
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
-    [stepChoice, stepPin, stepDashboard, stepInfo, stepServices, stepComplem,
+    [stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
      stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail]
     .forEach(function(s) { s.hidden = true; });
   }
-
-  function updatePinDots() {
-    pinDots.forEach(function (dot, i) { dot.classList.toggle("filled", i < pinCurrent.length); });
-  }
-
-  // ── Saisie clavier (ordinateur) ───────────────────────
-  document.addEventListener("keydown", function (e) {
-    if (stepPin.hidden) return;
-    if (e.key >= "0" && e.key <= "9") {
-      if (pinCurrent.length >= 4) return;
-      pinCurrent += e.key;
-      updatePinDots();
-      if (pinCurrent.length === 4) checkPin();
-    } else if (e.key === "Backspace") {
-      pinCurrent = pinCurrent.slice(0, -1);
-      pinError.hidden = true;
-      updatePinDots();
-    } else if (e.key === "Escape") {
-      pinCurrent = "";
-      pinError.hidden = true;
-      updatePinDots();
-    }
-  });
 
   // ── Choix de l'espace ─────────────────────────────────
   choiceSalle.addEventListener("click", function () { window.openAuthScreen("salle"); });
   choiceCoworking.addEventListener("click", function () { window.openAuthScreen("coworking"); });
   choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
-
-  backFromPin.addEventListener("click", function () {
-    hideAll(); stepChoice.hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-
-  // ── Vérification PIN ──────────────────────────────────
-  function checkPin() {
-    if (currentSpace === "hiptown-pin") {
-      if (pinCurrent === "2019") {
-        pinError.hidden = true;
-        setTimeout(function () {
-          currentSpace = "hiptown";
-          showDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT" });
-        }, 200);
-      } else { pinFail(); }
-      return;
-    }
-    const match = PORTAIL.clients.find(function(c) { return c.pin === pinCurrent; });
-    if (match) {
-      pinError.hidden = true;
-      setTimeout(function () { showDashboard(match); }, 200);
-    } else { pinFail(); }
-  }
-
-  function pinFail() {
-    pinError.hidden = false;
-    setTimeout(function () { pinCurrent = ""; pinError.hidden = true; updatePinDots(); }, 1000);
-  }
-
-  pinKeys.forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      const val = this.getAttribute("data-val");
-      if (val === "back")  { pinCurrent = pinCurrent.slice(0, -1); pinError.hidden = true; updatePinDots(); return; }
-      if (val === "clear") { pinCurrent = ""; pinError.hidden = true; updatePinDots(); return; }
-      if (pinCurrent.length >= 4) return;
-      pinCurrent += val;
-      updatePinDots();
-      if (pinCurrent.length === 4) checkPin();
-    });
-  });
 
   // ── Dashboard ─────────────────────────────────────────
   function showDashboard(client) {
@@ -256,7 +184,6 @@
   }
 
   logoutBtn.addEventListener("click", function () {
-    pinCurrent = ""; updatePinDots(); pinError.hidden = true;
     currentSpace = null; currentClientId = null;
     hideAll(); stepChoice.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -278,7 +205,7 @@
 
   function buildTiles(space, clientId) {
     tilesGrid.innerHTML = "";
-    const tileIds = SPACE_TILES[space === "hiptown-pin" ? "hiptown" : space] || [];
+    const tileIds = SPACE_TILES[space] || [];
     const order   = getSavedOrder(clientId, tileIds);
     const sorted  = order.filter(function(id) { return tileIds.includes(id); });
     tileIds.forEach(function(id) { if (!sorted.includes(id)) sorted.push(id); });
