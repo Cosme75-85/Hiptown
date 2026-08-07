@@ -159,19 +159,61 @@ function routeToDashboard(client, space) {
   if (window.showDashboardFromAuth) {
     window.showDashboardFromAuth(client, space);
   }
+  if (notifBellWrap) {
+    const isAdmin = space === "hiptown";
+    notifBellWrap.hidden = !isAdmin;
+    if (isAdmin) refreshNotifBadge();
+  }
 }
 
 // ── Bouton "Changer d'espace" -> déconnexion propre ──
 document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(); });
 
 // ═══════════════════════════════════════════════════════
-//  PANNEAU ADMIN
+//  PANNEAU ADMIN + NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
 document.getElementById("back-from-admin")?.addEventListener("click", () => {
   hideAllAuth();
   document.getElementById("step-dashboard").hidden = false;
 });
+
+// Carte de demande en attente, réutilisée dans le panneau admin ET la cloche de notifications
+function createPendingCard(u, companies, onDone) {
+  const card = document.createElement("div");
+  card.className = "info-card";
+  card.innerHTML = `
+    <div style="padding:14px 16px;">
+      <p style="font-weight:600;font-size:13px;">${u.email}</p>
+      <p style="font-size:12px;color:#64748b;">
+        Demandé : ${u.requestedRole === "coworking" ? "Coworking" : "Salle de réunion"}
+        ${u.companyNameHint ? " — " + u.companyNameHint : ""}
+      </p>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <select class="approve-role" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
+          <option value="salle" ${u.requestedRole === "salle" ? "selected" : ""}>Salle de réunion</option>
+          <option value="coworking" ${u.requestedRole === "coworking" ? "selected" : ""}>Coworking</option>
+        </select>
+        <select class="approve-company" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
+          <option value="">— Entreprise —</option>
+          ${companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
+        </select>
+        <button class="direct-btn approve-btn" style="margin-top:0;width:auto;padding:6px 12px;background:#166534;color:#fff;border:none;font-size:12px;">Valider</button>
+        <button class="direct-btn reject-btn" style="margin-top:0;width:auto;padding:6px 12px;border-color:#dc2626;color:#dc2626;font-size:12px;">Refuser</button>
+      </div>
+    </div>`;
+  card.querySelector(".approve-btn").addEventListener("click", async () => {
+    const role = card.querySelector(".approve-role").value;
+    const companyId = card.querySelector(".approve-company").value || null;
+    await approveUser(u.uid, role, role === "coworking" ? companyId : null);
+    onDone();
+  });
+  card.querySelector(".reject-btn").addEventListener("click", async () => {
+    await rejectUser(u.uid);
+    onDone();
+  });
+  return card;
+}
 
 export async function renderAdminPanel() {
   const pendingList = document.getElementById("admin-pending-list");
@@ -184,39 +226,10 @@ export async function renderAdminPanel() {
     : '<p style="color:#94a3b8;padding:12px;">Aucune demande en attente.</p>';
 
   pending.forEach(u => {
-    const card = document.createElement("div");
-    card.className = "info-card";
-    card.innerHTML = `
-      <div style="padding:16px 18px;">
-        <p style="font-weight:600;">${u.email}</p>
-        <p style="font-size:12px;color:#64748b;">
-          Demandé : ${u.requestedRole === "coworking" ? "Coworking" : "Salle de réunion"}
-          ${u.companyNameHint ? " — " + u.companyNameHint : ""}
-        </p>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-          <select class="approve-role" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;">
-            <option value="salle" ${u.requestedRole === "salle" ? "selected" : ""}>Salle de réunion</option>
-            <option value="coworking" ${u.requestedRole === "coworking" ? "selected" : ""}>Coworking</option>
-          </select>
-          <select class="approve-company" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;">
-            <option value="">— Entreprise —</option>
-            ${companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
-          </select>
-          <button class="direct-btn approve-btn" style="margin-top:0;width:auto;padding:6px 14px;background:#166534;color:#fff;border:none;">Valider</button>
-          <button class="direct-btn reject-btn" style="margin-top:0;width:auto;padding:6px 14px;border-color:#dc2626;color:#dc2626;">Refuser</button>
-        </div>
-      </div>`;
-    card.querySelector(".approve-btn").addEventListener("click", async () => {
-      const role = card.querySelector(".approve-role").value;
-      const companyId = card.querySelector(".approve-company").value || null;
-      await approveUser(u.uid, role, role === "coworking" ? companyId : null);
+    pendingList.appendChild(createPendingCard(u, companies, () => {
       renderAdminPanel();
-    });
-    card.querySelector(".reject-btn").addEventListener("click", async () => {
-      await rejectUser(u.uid);
-      renderAdminPanel();
-    });
-    pendingList.appendChild(card);
+      refreshNotifBadge();
+    }));
   });
 
   const all = await listAllUsers();
@@ -229,6 +242,54 @@ export async function renderAdminPanel() {
     allList.appendChild(row);
   });
 }
+
+// ── Cloche de notifications ────────────────────────────
+const notifBellWrap = document.getElementById("notif-bell-wrap");
+const notifBellBtn  = document.getElementById("notif-bell-btn");
+const notifBadge    = document.getElementById("notif-badge");
+const notifDropdown = document.getElementById("notif-dropdown");
+
+async function refreshNotifBadge() {
+  if (!notifBadge) return;
+  const pending = await listPendingUsers();
+  if (pending.length > 0) {
+    notifBadge.textContent = pending.length;
+    notifBadge.style.display = "block";
+  } else {
+    notifBadge.style.display = "none";
+  }
+}
+
+async function renderNotifDropdown() {
+  const companies = await listCompanies();
+  const pending = await listPendingUsers();
+  notifDropdown.innerHTML = "";
+  if (pending.length === 0) {
+    notifDropdown.innerHTML = '<p style="padding:12px;font-size:13px;color:#94a3b8;">Aucune demande en attente.</p>';
+    return;
+  }
+  pending.forEach(u => {
+    notifDropdown.appendChild(createPendingCard(u, companies, async () => {
+      await refreshNotifBadge();
+      await renderNotifDropdown();
+      const stepAdminEl = document.getElementById("step-admin");
+      if (stepAdminEl && !stepAdminEl.hidden) renderAdminPanel();
+    }));
+  });
+}
+
+notifBellBtn?.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  const isOpen = notifDropdown.style.display === "block";
+  notifDropdown.style.display = isOpen ? "none" : "block";
+  if (!isOpen) await renderNotifDropdown();
+});
+
+document.addEventListener("click", (e) => {
+  if (notifDropdown && notifBellWrap && notifDropdown.style.display === "block" && !notifBellWrap.contains(e.target)) {
+    notifDropdown.style.display = "none";
+  }
+});
 
 // Déclenché par app.js via : document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }))
 document.addEventListener("hiptown-tile-action", (e) => {
