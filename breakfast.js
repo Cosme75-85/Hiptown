@@ -10,7 +10,7 @@ const PRICE_PER_PERSON = 7;
 // ⚠️ Colle ici l'URL de déploiement de ton Google Apps Script (voir guide fourni).
 // Tant que ce n'est pas rempli, la commande est bien enregistrée mais n'apparaît pas
 // automatiquement dans le calendrier.
-const CALENDAR_WEBHOOK_URL = "";
+const CALENDAR_WEBHOOK_URL = "c_90aa942de493a461c8c0a5ca74f62aa2af614ef58b012875e3a6b00f6ddbad4f@group.calendar.google.com";
 
 const dateInput    = document.getElementById("breakfast-date");
 const peopleInput  = document.getElementById("breakfast-people");
