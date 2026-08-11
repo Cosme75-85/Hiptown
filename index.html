@@ -301,13 +301,34 @@
         </div>
         <div class="complem-chevron">▼</div>
       </div>
-      <div class="complem-card" onclick="this.classList.toggle('open')">
-        <div class="complem-card-icon">🥐</div>
-        <div class="complem-card-body">
-          <div class="complem-card-title">Petit déjeuner</div>
-          <div class="complem-card-desc">Faites livrer des viennoiseries et boissons chaudes pour votre réunion. Contactez-nous pour commander.</div>
+      <div class="info-card" id="breakfast-order-card">
+        <div class="info-card-header">
+          <span class="info-icon">🥐</span>
+          <span class="info-card-title">Commander un petit déjeuner</span>
+          <span class="info-chevron">▼</span>
         </div>
-        <div class="complem-chevron">▼</div>
+        <div class="info-card-body" hidden style="padding:16px 18px;">
+          <form id="breakfast-order-form">
+            <label style="display:block;font-size:12px;color:var(--text-soft);margin-bottom:4px;">Date du petit-déjeuner</label>
+            <input type="date" id="breakfast-date" required
+                   style="width:100%;padding:10px;margin-bottom:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+
+            <label style="display:block;font-size:12px;color:var(--text-soft);margin-bottom:4px;">Nombre de personnes</label>
+            <input type="number" id="breakfast-people" min="1" value="1" required
+                   style="width:100%;padding:10px;margin-bottom:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+
+            <p style="font-size:15px;font-weight:700;color:var(--text-dark);margin-bottom:14px;">
+              Total : <span id="breakfast-price">7 €</span>
+              <span style="font-weight:400;font-size:11px;color:var(--text-soft);">(7 €/personne)</span>
+            </p>
+
+            <div id="breakfast-order-error" class="pin-error" hidden></div>
+            <p id="breakfast-order-success" style="display:none;color:#166534;font-size:13px;margin-bottom:10px;">✅ Commande envoyée !</p>
+
+            <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Commander</button>
+            <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">Commande à passer avant 17h la veille du petit-déjeuner.</p>
+          </form>
+        </div>
       </div>
       <div class="complem-card" onclick="this.classList.toggle('open')">
         <div class="complem-card-icon">🥡</div>
@@ -451,5 +472,6 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script type="module" src="app-auth.js"></script>
+<script type="module" src="breakfast.js"></script>
 </body>
 </html>
