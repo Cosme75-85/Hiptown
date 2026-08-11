@@ -23,14 +23,20 @@ import {
  * @param {string} password
  * @param {"salle"|"coworking"} requestedRole
  * @param {string} [companyNameHint] - nom d'entreprise indiqué par le client (aide l'admin à valider, pas encore officiel)
+ * @param {string} firstName
+ * @param {string} lastName
+ * @param {string} birthDate - format YYYY-MM-DD (issu d'un <input type="date">)
  */
-export async function signUp(email, password, requestedRole, companyNameHint = "") {
+export async function signUp(email, password, requestedRole, companyNameHint = "", firstName = "", lastName = "", birthDate = "") {
   if (requestedRole !== "salle" && requestedRole !== "coworking") {
     throw new Error("Rôle d'inscription invalide.");
   }
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await setDoc(doc(db, "users", cred.user.uid), {
     email,
+    firstName,
+    lastName,
+    birthDate,
     requestedRole,          // ce que le client a demandé
     role: null,             // rôle réel, attribué par l'admin à la validation
     status: "pending",      // pending | approved | rejected
