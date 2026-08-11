@@ -74,13 +74,15 @@ export async function deleteUserDoc(uid) {
  * Utilise une seconde instance Firebase "jetable" pour ne pas déconnecter
  * l'admin en cours de session (limitation connue du SDK client Firebase).
  */
-export async function adminCreateAccount(email, password, role, companyId = null) {
+export async function adminCreateAccount(email, password, role, companyId = null, firstName = "", lastName = "") {
   const tempApp = initializeApp(app.options, "temp-" + Date.now());
   const tempAuth = getAuth(tempApp);
   try {
     const cred = await createUserWithEmailAndPassword(tempAuth, email, password);
     await setDoc(doc(db, "users", cred.user.uid), {
       email,
+      firstName,
+      lastName,
       requestedRole: role,
       role,
       companyId,
