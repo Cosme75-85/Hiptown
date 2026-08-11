@@ -92,9 +92,12 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
   const email     = document.getElementById("signup-email").value.trim();
   const password  = document.getElementById("signup-password").value;
   const company   = document.getElementById("signup-company").value.trim();
+  const firstName = document.getElementById("signup-firstname").value.trim();
+  const lastName  = document.getElementById("signup-lastname").value.trim();
+  const birthDate = document.getElementById("signup-birthdate").value;
   const role      = document.querySelector('input[name="signup-role"]:checked').value;
   try {
-    await signUp(email, password, role, company);
+    await signUp(email, password, role, company, firstName, lastName, birthDate);
     // Le routage vers l'écran "en attente" se fait automatiquement
   } catch (err) {
     showAuthError(friendlyError(err));
@@ -139,17 +142,19 @@ watchAuthState(async (user, profile) => {
   }
 
   // status === "approved"
+  const personName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+
   if (profile.role === "admin") {
-    routeToDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT" }, "hiptown");
+    routeToDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT", personName }, "hiptown");
   } else if (profile.role === "coworking") {
     const companies = await listCompanies();
     const company = companies.find(c => c.id === profile.companyId) || {
       id: profile.companyId || "inconnu", name: profile.companyNameHint || "Votre entreprise",
       color: "#e0f2fe", textColor: "#0369a1", initials: "CW"
     };
-    routeToDashboard(company, "coworking");
+    routeToDashboard({ ...company, personName }, "coworking");
   } else if (profile.role === "salle") {
-    routeToDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR" }, "salle");
+    routeToDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR", personName }, "salle");
   }
 });
 
@@ -184,7 +189,8 @@ function createPendingCard(u, companies, onDone) {
   card.className = "info-card";
   card.innerHTML = `
     <div style="padding:14px 16px;">
-      <p style="font-weight:600;font-size:13px;">${u.email}</p>
+      <p style="font-weight:600;font-size:13px;">${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email}</p>
+      <p style="font-size:11px;color:#94a3b8;">${u.email}</p>
       <p style="font-size:12px;color:#64748b;">
         Demandé : ${u.requestedRole === "coworking" ? "Coworking" : "Salle de réunion"}
         ${u.companyNameHint ? " — " + u.companyNameHint : ""}
@@ -303,9 +309,13 @@ document.addEventListener("hiptown-tile-action", (e) => {
 document.getElementById("create-admin-btn")?.addEventListener("click", async () => {
   const email = document.getElementById("new-admin-email").value.trim();
   const password = document.getElementById("new-admin-password").value;
+  const firstName = document.getElementById("new-admin-firstname").value.trim();
+  const lastName = document.getElementById("new-admin-lastname").value.trim();
   if (!email || password.length < 6) { alert("Email + mot de passe (6 car. min.) requis."); return; }
-  await adminCreateAccount(email, password, "admin");
+  await adminCreateAccount(email, password, "admin", null, firstName, lastName);
   document.getElementById("new-admin-email").value = "";
   document.getElementById("new-admin-password").value = "";
+  document.getElementById("new-admin-firstname").value = "";
+  document.getElementById("new-admin-lastname").value = "";
   renderAdminPanel();
 });
