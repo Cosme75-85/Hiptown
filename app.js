@@ -21,6 +21,7 @@
   const stepSiteDetail     = document.getElementById("step-site-detail");
 
   const welcomeTitle   = document.getElementById("welcome-title");
+  const welcomeSub     = document.getElementById("welcome-sub");
   const companyBadge   = document.getElementById("company-badge");
   const logoutBtn      = document.getElementById("logout-btn");
   const tilesGrid      = document.getElementById("tiles-grid");
@@ -193,6 +194,7 @@
     companyBadge.style.color      = client.textColor;
     companyBadge.textContent      = client.initials;
     welcomeTitle.textContent      = client.name;
+    welcomeSub.textContent        = client.personName || "Bienvenue sur votre espace Hiptown";
     buildTiles(currentSpace, client.id);
     hideAll(); stepDashboard.hidden = false;
     if (PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
