@@ -104,6 +104,15 @@
             <input type="radio" name="signup-role" value="coworking"/> Coworking
           </label>
         </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="signup-firstname" placeholder="Prénom" required
+                 style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+          <input type="text" id="signup-lastname" placeholder="Nom" required
+                 style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+        </div>
+        <label style="display:block;font-size:12px;color:var(--text-soft);margin-bottom:4px;text-align:left;">Date de naissance</label>
+        <input type="date" id="signup-birthdate" required
+               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <input type="email" id="signup-email" placeholder="Email" required
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)" required minlength="6"
@@ -141,6 +150,12 @@
 
     <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Créer un compte administrateur</h3>
     <div class="pin-box" style="max-width:100%;text-align:left;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input type="text" id="new-admin-firstname" placeholder="Prénom"
+               style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+        <input type="text" id="new-admin-lastname" placeholder="Nom"
+               style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      </div>
       <input type="email" id="new-admin-email" placeholder="Email"
              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
       <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire"
@@ -158,7 +173,7 @@
       <div class="company-badge" id="company-badge"></div>
       <div style="flex:1;">
         <h1 class="welcome-title" id="welcome-title"></h1>
-        <p class="welcome-sub">Bienvenue sur votre espace Hiptown</p>
+        <p class="welcome-sub" id="welcome-sub">Bienvenue sur votre espace Hiptown</p>
       </div>
       <div id="notif-bell-wrap" style="position:relative;" hidden>
         <button id="notif-bell-btn" style="background:none;border:none;font-size:22px;cursor:pointer;position:relative;padding:4px;">
