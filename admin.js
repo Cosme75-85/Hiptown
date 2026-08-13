@@ -97,6 +97,22 @@ export async function adminCreateAccount(email, password, role, companyId = null
 }
 
 /**
+ * Liste les commandes de petit-déjeuner pas encore vues par un admin.
+ * Triées par date de création, les plus récentes en premier.
+ */
+export async function listUnseenBreakfastOrders() {
+  const q = query(collection(db, "breakfastOrders"), where("seen", "==", false));
+  const snap = await getDocs(q);
+  const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  orders.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  return orders;
+}
+
+export async function markBreakfastOrderSeen(orderId) {
+  await updateDoc(doc(db, "breakfastOrders", orderId), { seen: true });
+}
+
+/**
  * Liste les entreprises (remplace PORTAIL.clients codé en dur).
  */
 export async function listCompanies() {
