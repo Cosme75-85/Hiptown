@@ -138,6 +138,7 @@
           { label: "Equans",    url: "https://axicontact.equans.fr/fr" },
         { label: "Ticketing Mail", url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
         { label: "Ticketing",      url: "https://app.notion.com/p/2c3924b0918981b3b238f0caae907739?v=380924b0918980cc9ff1000c09a3e59e" },
+        { label: "Gestion des tickets clients", url: "https://app.notion.com/p/2c3924b0918981b3b238f0caae907739?v=380924b0918980cc9ff1000c09a3e59e&pvs=28" },
         ]},
         { cat: "🪪 Badges", items: [
           { label: "Scaleway",  url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
@@ -155,7 +156,14 @@
       ]
     },
     nabo07: { name: "NABO07 — Tourny", tools: [] },
-    nabo08: { name: "NABO08 — Madéra", tools: [] },
+    nabo08: {
+      name: "NABO08 — Madéra",
+      tools: [
+        { cat: "🏗️ Gestion du site", items: [
+          { label: "Gestion des tickets clients", url: "https://app.notion.com/p/2c3924b0918981ee8c48fa270b982535?v=2c3924b09189817f9084000c3192e0f3" },
+        ]},
+      ]
+    },
   };
 
   // ── État ──────────────────────────────────────────────
