@@ -7,7 +7,8 @@
 import { signUp, logIn, logOut, resetPassword, watchAuthState } from "./auth.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
-  updateUserAccess, adminCreateAccount, listCompanies
+  updateUserAccess, adminCreateAccount, listCompanies,
+  listUnseenBreakfastOrders, markBreakfastOrderSeen
 } from "./admin.js";
 
 const stepAuth    = document.getElementById("step-auth");
@@ -258,8 +259,10 @@ const notifDropdown = document.getElementById("notif-dropdown");
 async function refreshNotifBadge() {
   if (!notifBadge) return;
   const pending = await listPendingUsers();
-  if (pending.length > 0) {
-    notifBadge.textContent = pending.length;
+  const orders  = await listUnseenBreakfastOrders();
+  const total = pending.length + orders.length;
+  if (total > 0) {
+    notifBadge.textContent = total;
     notifBadge.style.display = "block";
   } else {
     notifBadge.style.display = "none";
@@ -269,19 +272,51 @@ async function refreshNotifBadge() {
 async function renderNotifDropdown() {
   const companies = await listCompanies();
   const pending = await listPendingUsers();
+  const orders  = await listUnseenBreakfastOrders();
   notifDropdown.innerHTML = "";
-  if (pending.length === 0) {
-    notifDropdown.innerHTML = '<p style="padding:12px;font-size:13px;color:#94a3b8;">Aucune demande en attente.</p>';
+
+  if (pending.length === 0 && orders.length === 0) {
+    notifDropdown.innerHTML = '<p style="padding:12px;font-size:13px;color:#94a3b8;">Aucune notification.</p>';
     return;
   }
-  pending.forEach(u => {
-    notifDropdown.appendChild(createPendingCard(u, companies, async () => {
-      await refreshNotifBadge();
-      await renderNotifDropdown();
-      const stepAdminEl = document.getElementById("step-admin");
-      if (stepAdminEl && !stepAdminEl.hidden) renderAdminPanel();
-    }));
-  });
+
+  if (pending.length > 0) {
+    const header = document.createElement("p");
+    header.textContent = "🔑 Comptes en attente";
+    header.style.cssText = "font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;padding:6px 8px 4px;";
+    notifDropdown.appendChild(header);
+    pending.forEach(u => {
+      notifDropdown.appendChild(createPendingCard(u, companies, async () => {
+        await refreshNotifBadge();
+        await renderNotifDropdown();
+        const stepAdminEl = document.getElementById("step-admin");
+        if (stepAdminEl && !stepAdminEl.hidden) renderAdminPanel();
+      }));
+    });
+  }
+
+  if (orders.length > 0) {
+    const header = document.createElement("p");
+    header.textContent = "🥐 Commandes petit-déjeuner";
+    header.style.cssText = "font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;padding:10px 8px 4px;";
+    notifDropdown.appendChild(header);
+    orders.forEach(o => {
+      const card = document.createElement("div");
+      card.className = "info-card";
+      const dateFmt = o.date
+        ? new Date(o.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })
+        : "";
+      card.innerHTML = `
+        <div style="padding:10px 14px;">
+          <p style="font-weight:600;font-size:13px;">${o.name || o.email}${o.companyName ? " — " + o.companyName : ""}</p>
+          <p style="font-size:12px;color:#64748b;">${dateFmt} · ${o.people} pers. · ${o.price} €</p>
+        </div>`;
+      notifDropdown.appendChild(card);
+    });
+    // Marque ces commandes comme vues dès qu'elles s'affichent dans la cloche
+    await Promise.all(orders.map(o => markBreakfastOrderSeen(o.id)));
+    refreshNotifBadge();
+  }
 }
 
 notifBellBtn?.addEventListener("click", async (e) => {
