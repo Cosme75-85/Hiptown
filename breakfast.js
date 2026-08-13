@@ -10,7 +10,8 @@ const PRICE_PER_PERSON = 7;
 // ⚠️ Colle ici l'URL de déploiement de ton Google Apps Script (voir guide fourni).
 // Tant que ce n'est pas rempli, la commande est bien enregistrée mais n'apparaît pas
 // automatiquement dans le calendrier.
-const CALENDAR_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwzojeBOgHnGBJZnecUr_FFrO0WD995_-sLKoKIrrGX9mt6vfuO7qN4fR6ViQF5ay4M/exec";
+const CALENDAR_WEBHOOK_URL = "";
+
 const dateInput    = document.getElementById("breakfast-date");
 const peopleInput  = document.getElementById("breakfast-people");
 const priceLabel   = document.getElementById("breakfast-price");
@@ -85,6 +86,7 @@ form?.addEventListener("submit", async (e) => {
       date: dateStr,
       people,
       price,
+      seen: false,
       createdAt: serverTimestamp()
     });
 
