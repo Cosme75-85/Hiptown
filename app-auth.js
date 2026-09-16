@@ -144,18 +144,22 @@ watchAuthState(async (user, profile) => {
 
   // status === "approved"
   const personName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+  const tilePrefs  = {
+    extraTiles:  Array.isArray(profile.extraTiles)  ? profile.extraTiles  : [],
+    hiddenTiles: Array.isArray(profile.hiddenTiles) ? profile.hiddenTiles : []
+  };
 
   if (profile.role === "admin") {
-    routeToDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT", personName }, "hiptown");
+    routeToDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT", personName, ...tilePrefs }, "hiptown");
   } else if (profile.role === "coworking") {
     const companies = await listCompanies();
     const company = companies.find(c => c.id === profile.companyId) || {
       id: profile.companyId || "inconnu", name: profile.companyNameHint || "Votre entreprise",
       color: "#e0f2fe", textColor: "#0369a1", initials: "CW"
     };
-    routeToDashboard({ ...company, personName }, "coworking");
+    routeToDashboard({ ...company, personName, ...tilePrefs }, "coworking");
   } else if (profile.role === "salle") {
-    routeToDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR", personName }, "salle");
+    routeToDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR", personName, ...tilePrefs }, "salle");
   }
 });
 
