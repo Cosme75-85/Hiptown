@@ -105,6 +105,7 @@
   const TILE_DEFS = {
     accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
     marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
+    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/a/macros/hiptown.com/s/AKfycbyzOcNXu5guOpmuUn-aKpwdMwUFrd7pGgCF9eCoEqh32ik9xQ-VHpE_Vzd4uaxMd4BNaQ/exec" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
     info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
@@ -119,7 +120,7 @@
   };
 
   const SPACE_TILES = {
-    salle:     ["accueil", "marcel", "salleinfo", "adresses", "services", "complem", "avis"],
+    salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "complem", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
   };
@@ -167,9 +168,11 @@
   };
 
   // ── État ──────────────────────────────────────────────
-  let currentSpace    = null;
-  let currentClientId = null;
-  let dragSrc         = null;
+  let currentSpace       = null;
+  let currentClientId    = null;
+  let currentExtraTiles  = [];
+  let currentHiddenTiles = [];
+  let dragSrc            = null;
 
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
@@ -231,7 +234,16 @@
 
   function buildTiles(space, clientId) {
     tilesGrid.innerHTML = "";
-    const tileIds = SPACE_TILES[space] || [];
+    const baseIds = SPACE_TILES[space] || [];
+
+    // Personnalisation par utilisateur (définie dans sa fiche Firestore)
+    const extra  = currentExtraTiles  || [];
+    const hidden = currentHiddenTiles || [];
+
+    let tileIds = baseIds.slice();
+    extra.forEach(function(id) { if (!tileIds.includes(id)) tileIds.push(id); });
+    tileIds = tileIds.filter(function(id) { return !hidden.includes(id); });
+
     const order   = getSavedOrder(clientId, tileIds);
     const sorted  = order.filter(function(id) { return tileIds.includes(id); });
     tileIds.forEach(function(id) { if (!sorted.includes(id)) sorted.push(id); });
@@ -414,7 +426,9 @@
   // ── Pont vers app-auth.js ──────────────────────────────
   window.hideAll = hideAll;
   window.showDashboardFromAuth = function (client, space) {
-    currentSpace = space;
+    currentSpace       = space;
+    currentExtraTiles  = client.extraTiles  || [];
+    currentHiddenTiles = client.hiddenTiles || [];
     showDashboard(client);
   };
 
