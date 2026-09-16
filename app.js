@@ -117,6 +117,7 @@
     hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
     gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
+    suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
   };
 
   const SPACE_TILES = {
