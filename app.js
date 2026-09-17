@@ -105,7 +105,7 @@
   const TILE_DEFS = {
     accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
     marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
-    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/a/macros/hiptown.com/s/AKfycbyzOcNXu5guOpmuUn-aKpwdMwUFrd7pGgCF9eCoEqh32ik9xQ-VHpE_Vzd4uaxMd4BNaQ/exec" },
+    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/a/macros/hiptown.com/s/AKfycbw-MjoI7nMtyQOgZMWQEt9Zp8ZYL6EJqKAf9mD2aTa9xF5aP_sw9dD6yFk8D_jdVLx2iw/exec" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
     info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
@@ -118,20 +118,38 @@
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
     gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
     suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
+    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", url: "https://github.com/Cosme75-85/Hiptown/blob/main/Tarifs%20salles%20de%20r%C3%A9union" },
+    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", url: "https://github.com/Cosme75-85/Hiptown/blob/main/Tarifs%20Coworking" },
   };
 
   const SPACE_TILES = {
-    salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "complem", "avis"],
+    salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "complem", "tarifssalle", "tarifscoworking", "avis"],
     coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
   };
 
   // ── Données des sites ─────────────────────────────────
   const SITES = {
-    nabo02: { name: "NABO02 — Place de la Bourse CCI Tetris", tools: [] },
-    nabo03: { name: "NABO03 — Ferrere",                       tools: [] },
-    nabo04: { name: "NABO04 — Chartrons",                     tools: [] },
-    nabo05: { name: "NABO05 — Place de la Bourse CCI KBRW",   tools: [] },
+    nabo02: { name: "NABO02 — Place de la Bourse CCI Tetris", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo03: { name: "NABO03 — Ferrere", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo04: { name: "NABO04 — Chartrons", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo05: { name: "NABO05 — Place de la Bourse CCI KBRW", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
     nabo06: {
       name: "NABO06 — Émergence",
       tools: [
@@ -157,12 +175,19 @@
         ]},
       ]
     },
-    nabo07: { name: "NABO07 — Tourny", tools: [] },
+    nabo07: { name: "NABO07 — Tourny", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
     nabo08: {
       name: "NABO08 — Madéra",
       tools: [
         { cat: "🏗️ Gestion du site", items: [
           { label: "Gestion des tickets clients", url: "https://app.notion.com/p/2c3924b0918981ee8c48fa270b982535?v=2c3924b09189817f9084000c3192e0f3" },
+        ]},
+        { cat: "☕ Services", items: [
+          { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
         ]},
       ]
     },
