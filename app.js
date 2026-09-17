@@ -1,513 +1,461 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Hiptown — Portail client</title>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-<body>
+// ═══════════════════════════════════════════════════════
+//  PORTAIL HIPTOWN — app.js v9 — comptes Firebase (PIN supprimé)
+// ═══════════════════════════════════════════════════════
 
-<header>
-  <img src="Logo%20Hiptown%20site.png" alt="Hiptown" class="logo"/>
-  <p id="header-tagline">Votre espace client</p>
-</header>
+(function () {
+  "use strict";
 
-<!-- BANNIÈRE ÉVÉNEMENTS -->
-<div id="events-banner" hidden>
-  <div class="events-header">
-    <span class="events-label">📅 Prochains événements</span>
-    <div class="events-dots" id="events-dots"></div>
-  </div>
-  <div class="events-track" id="events-track"></div>
-</div>
+  // ── DOM ───────────────────────────────────────────────
+  const eventsBanner       = document.getElementById("events-banner");
+  const stepWelcome        = document.getElementById("step-welcome");
+  const welcomeConnexionBtn = document.getElementById("welcome-connexion-btn");
+  const backFromChoice     = document.getElementById("back-from-choice");
+  const stepChoice         = document.getElementById("step-choice");
+  const stepDashboard      = document.getElementById("step-dashboard");
+  const stepInfo           = document.getElementById("step-info");
+  const stepServices       = document.getElementById("step-services");
+  const stepComplem        = document.getElementById("step-complem");
+  const stepSalleInfo      = document.getElementById("step-salle-info");
+  const stepHiptownOutils  = document.getElementById("step-hiptown-outils");
+  const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
+  const stepSiteDetail     = document.getElementById("step-site-detail");
 
-<main class="container">
+  const welcomeTitle   = document.getElementById("welcome-title");
+  const welcomeSub     = document.getElementById("welcome-sub");
+  const companyBadge   = document.getElementById("company-badge");
+  const logoutBtn      = document.getElementById("logout-btn");
+  const tilesGrid      = document.getElementById("tiles-grid");
 
-  <!-- ÉTAPE 0 : ACCUEIL / CONNEXION -->
-  <section id="step-welcome">
-    <div class="pin-box" style="text-align:center;">
-      <img src="Logo%20Hiptown%20site.png" alt="Hiptown" style="height:64px;object-fit:contain;margin:0 auto 24px;display:block;"/>
-      <p style="font-size:14px;color:var(--text-soft);margin-bottom:24px;">Bienvenue sur votre espace client</p>
-      <button class="direct-btn" id="welcome-connexion-btn" style="background:var(--navy);color:#fff;margin-top:0;">Connexion</button>
-    </div>
-  </section>
+  const backFromInfo        = document.getElementById("back-from-info");
+  const backFromServ        = document.getElementById("back-from-services");
+  const backFromComp        = document.getElementById("back-from-complem");
+  const backFromSalleInfo   = document.getElementById("back-from-salle-info");
+  const backFromHipOutils   = document.getElementById("back-from-hiptown-outils");
+  const backFromHipEspaces  = document.getElementById("back-from-hiptown-espaces");
+  const backFromSiteDetail  = document.getElementById("back-from-site-detail");
+  const siteDetailTitle     = document.getElementById("site-detail-title");
+  const siteDetailTools     = document.getElementById("site-detail-tools");
 
-  <!-- ÉTAPE -1 : CHOIX DE L'ESPACE -->
-  <section id="step-choice" hidden>
-    <button class="back-btn" id="back-from-choice">← Retour</button>
-    <p class="step-title">Quel espace souhaitez-vous rejoindre ?</p>
-    <div class="choice-grid">
+  const choiceSalle     = document.getElementById("choice-salle");
+  const choiceCoworking = document.getElementById("choice-coworking");
+  const choiceHiptown   = document.getElementById("choice-hiptown");
 
-      <div class="choice-card" id="choice-salle">
-        <div class="choice-icon" style="background:#e0f2fe;color:#0369a1;">🗓️</div>
-        <div class="choice-content">
-          <div class="choice-title">Client salle de réunion</div>
-          <div class="choice-desc">Connexion ou création de compte</div>
-        </div>
-        <div class="choice-arrow">→</div>
-      </div>
+  document.getElementById("year").textContent = new Date().getFullYear();
 
-      <div class="choice-card" id="choice-coworking">
-        <div class="choice-icon" style="background:#fef3c7;color:#92400e;">💼</div>
-        <div class="choice-content">
-          <div class="choice-title">Client Coworking</div>
-          <div class="choice-desc">Connexion ou création de compte</div>
-        </div>
-        <div class="choice-arrow">→</div>
-      </div>
+  // ── Événements ────────────────────────────────────────
+  function buildEvents() {
+    if (!PORTAIL.events || PORTAIL.events.length === 0) return;
+    const banner = document.getElementById("events-banner");
+    const track  = document.getElementById("events-track");
+    const dotsEl = document.getElementById("events-dots");
+    let current = 0;
 
-      <div class="choice-card" id="choice-hiptown">
-        <div class="choice-icon" style="background:#1e1847;color:#ffe700;">🏢</div>
-        <div class="choice-content">
-          <div class="choice-title">Hiptown</div>
-          <div class="choice-desc">Connexion réservée à l'équipe</div>
-        </div>
-        <div class="choice-arrow">→</div>
-      </div>
+    PORTAIL.events.forEach(function (ev, i) {
+      const card = document.createElement("div");
+      card.className = "event-card";
+      var imgHtml = ev.image
+        ? '<img src="' + ev.image + '" alt="' + ev.title + '"/>'
+        : '<div class="event-card-no-img">\uD83D\uDCC5</div>';
+      card.innerHTML = imgHtml +
+        '<div class="event-info">' +
+        '<div class="event-date">' + ev.date + '</div>' +
+        '<div class="event-title">' + ev.title + '</div>' +
+        '<div class="event-desc">' + ev.desc + '</div>' +
+        '</div>';
+      track.appendChild(card);
 
-    </div>
-  </section>
+      var dot = document.createElement("div");
+      dot.className = "events-dot" + (i === 0 ? " active" : "");
+      dot.addEventListener("click", function() { goTo(i); });
+      dotsEl.appendChild(dot);
+    });
 
-  <!-- ÉTAPE : CONNEXION / INSCRIPTION -->
-  <section id="step-auth" hidden>
-    <button class="back-btn" id="back-from-auth">← Retour</button>
-    <div class="pin-box" style="max-width:360px;">
+    function goTo(idx) {
+      current = idx;
+      track.querySelectorAll(".event-card").forEach(function(c, i) {
+        c.style.transform = "translateX(" + ((i - idx) * 100) + "%)";
+      });
+      dotsEl.querySelectorAll(".events-dot").forEach(function(d, i) {
+        d.classList.toggle("active", i === idx);
+      });
+    }
 
-      <div style="display:flex;gap:8px;margin-bottom:20px;">
-        <button class="direct-btn auth-tab active" data-tab="login" style="margin-top:0;">Se connecter</button>
-        <button class="direct-btn auth-tab" data-tab="signup" style="margin-top:0;">Créer un compte</button>
-      </div>
+    track.querySelectorAll(".event-card").forEach(function(c, i) {
+      c.style.transform = "translateX(" + (i * 100) + "%)";
+    });
 
-      <div id="auth-error" class="pin-error" hidden></div>
+    if (PORTAIL.events.length > 1) {
+      setInterval(function() { goTo((current + 1) % PORTAIL.events.length); }, 4000);
+    }
+  }
 
-      <!-- Connexion -->
-      <form id="login-form" class="auth-panel">
-        <input type="email" id="login-email" placeholder="Email" required
-               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="password" id="login-password" placeholder="Mot de passe" required
-               style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Se connecter</button>
-        <button type="button" id="forgot-password" class="direct-btn" style="border:none;font-size:12px;">Mot de passe oublié ?</button>
-      </form>
+  buildEvents();
 
-      <!-- Inscription -->
-      <form id="signup-form" class="auth-panel" hidden>
-        <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
-          Quel type d'accès souhaitez-vous ?
-        </p>
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <label style="flex:1;">
-            <input type="radio" name="signup-role" value="salle" checked/> Salle de réunion
-          </label>
-          <label style="flex:1;">
-            <input type="radio" name="signup-role" value="coworking"/> Coworking
-          </label>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <input type="text" id="signup-firstname" placeholder="Prénom" required
-                 style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-          <input type="text" id="signup-lastname" placeholder="Nom" required
-                 style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        </div>
-        <label style="display:block;font-size:12px;color:var(--text-soft);margin-bottom:4px;text-align:left;">Date de naissance</label>
-        <input type="date" id="signup-birthdate" required
-               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="email" id="signup-email" placeholder="Email" required
-               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)" required minlength="6"
-               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="text" id="signup-company" placeholder="Nom de votre entreprise (si coworking)"
-               style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
-        <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
-          Votre compte sera activé après validation par l'équipe Hiptown.
-        </p>
-      </form>
+  // ── Animation header ──────────────────────────────────
+  const taglines = ["Votre espace client", "Vos services en un clic", "Bienvenue chez Hiptown"];
+  let taglineIndex = 0;
+  const taglineEl = document.getElementById("header-tagline");
+  setInterval(function () {
+    taglineIndex = (taglineIndex + 1) % taglines.length;
+    taglineEl.style.opacity = "0";
+    setTimeout(function () { taglineEl.textContent = taglines[taglineIndex]; taglineEl.style.opacity = "1"; }, 300);
+  }, 2500);
 
-    </div>
-  </section>
+  // ── Tuiles ────────────────────────────────────────────
+  const TILE_DEFS = {
+    accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
+    marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
+    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/a/macros/hiptown.com/s/AKfycbw-MjoI7nMtyQOgZMWQEt9Zp8ZYL6EJqKAf9mD2aTa9xF5aP_sw9dD6yFk8D_jdVLx2iw/exec" },
+    factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
+    incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
+    info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
+    salleinfo: { title: "Utilisation des salles",    desc: "Internet, écran, sortie...",             icon: "🗓️", bg: "#e0f2fe", color: "#0369a1", url: null, action: "salleinfo" },
+    services:  { title: "Les services",              desc: "Tout ce qui est inclus",                 icon: "✨", bg: "#f0fdf4", color: "#166534", url: null, action: "services" },
+    complem:   { title: "Services complémentaires",  desc: "Parking, espace commun...",              icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
+    adresses:  { title: "Les bonnes adresses",       desc: "Restaurants, cafés, services...",        icon: "📍", bg: "#fce7f3", color: "#be185d", url: "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing" },
+    avis:      { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",            icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
+    hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
+    hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
+    gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
+    suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
+    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", url: "https://github.com/Cosme75-85/Hiptown/blob/main/Tarifs%20salles%20de%20r%C3%A9union" },
+    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", url: "https://github.com/Cosme75-85/Hiptown/blob/main/Tarifs%20Coworking" },
+  };
 
-  <!-- ÉTAPE : COMPTE EN ATTENTE DE VALIDATION -->
-  <section id="step-pending" hidden>
-    <div class="pin-box">
-      <div style="font-size:40px;margin-bottom:12px;">⏳</div>
-      <p class="pin-title">Compte en attente de validation</p>
-      <p style="font-size:13px;color:var(--text-soft);margin-bottom:20px;">
-        Votre demande a bien été reçue. L'équipe Hiptown va valider votre accès sous peu.
-      </p>
-      <button class="direct-btn" id="pending-logout">Se déconnecter</button>
-    </div>
-  </section>
+  const SPACE_TILES = {
+    salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "complem", "tarifssalle", "tarifscoworking", "avis"],
+    coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
+    hiptown:   ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
+  };
 
-  <!-- ÉTAPE : PANNEAU ADMINISTRATEUR -->
-  <section id="step-admin" hidden>
-    <button class="back-btn" id="back-from-admin">← Retour</button>
-    <h2 class="step-title">🔑 Gestion des comptes</h2>
+  // ── Données des sites ─────────────────────────────────
+  const SITES = {
+    nabo02: { name: "NABO02 — Place de la Bourse CCI Tetris", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo03: { name: "NABO03 — Ferrere", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo04: { name: "NABO04 — Chartrons", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo05: { name: "NABO05 — Place de la Bourse CCI KBRW", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo06: {
+      name: "NABO06 — Émergence",
+      tools: [
+        { cat: "🏗️ Gestion du site", items: [
+          { label: "SOONE",     url: "https://gestion.soone.io/#/site/13255/mode/0/bat/17640" },
+          { label: "Equans",    url: "https://axicontact.equans.fr/fr" },
+        { label: "Ticketing Mail", url: "https://docs.google.com/email-layouts/d/1YRtE7mRD0MEx6Ppy_ZVJJFQ5oKTL65MnKjC-f_Cx6Po/edit" },
+        { label: "Ticketing",      url: "https://app.notion.com/p/2c3924b0918981b3b238f0caae907739?v=380924b0918980cc9ff1000c09a3e59e" },
+        { label: "Gestion des tickets clients", url: "https://app.notion.com/p/2c3924b0918981b3b238f0caae907739?v=380924b0918980cc9ff1000c09a3e59e&pvs=28" },
+        ]},
+        { cat: "🪪 Badges", items: [
+          { label: "Scaleway",  url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
+          { label: "Coworking", url: "https://docs.google.com/spreadsheets/d/1inKYBGIAUy2B8HWuBZgRIKz1u8CtEYzasQExHmBgyJE/edit?gid=0#gid=0" },
+        ]},
+        { cat: "💰 Commercial", items: [
+          { label: "Créer un devis", url: "https://docs.google.com/spreadsheets/d/18w1TEuTH3PgPQiS93DUVZ3j-67dOGzMOC3cKp0fzgGI/edit?gid=382742302#gid=382742302" },
+          { label: "Facture DG",    url: "https://docs.google.com/spreadsheets/d/1cGdu68qtmZLC0ez3a56RKh0sq2GtytA896TcALCeopg/edit?gid=11173933#gid=11173933" },
+          { label: "CRM",           url: "https://hiptown.nocrm.io/login" },
+          { label: "Compte",        url: "https://docs.google.com/spreadsheets/d/1XKVAcpBn54BIh2q-jH8ApQXHPIKWx0Vlhz-yf4Xvr3Y/edit?gid=0#gid=0" },
+        ]},
+        { cat: "☕ Services", items: [
+          { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+        ]},
+      ]
+    },
+    nabo07: { name: "NABO07 — Tourny", tools: [
+      { cat: "☕ Services", items: [
+        { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+      ]},
+    ] },
+    nabo08: {
+      name: "NABO08 — Madéra",
+      tools: [
+        { cat: "🏗️ Gestion du site", items: [
+          { label: "Gestion des tickets clients", url: "https://app.notion.com/p/2c3924b0918981ee8c48fa270b982535?v=2c3924b09189817f9084000c3192e0f3" },
+        ]},
+        { cat: "☕ Services", items: [
+          { label: "Café et thé", url: "https://docs.google.com/spreadsheets/d/1Ep0WrXIHGhrn6wZ845F7h3KL7jCHwgbqdlMpZ9a82Y4/edit?gid=1103668669#gid=1103668669" },
+        ]},
+      ]
+    },
+  };
 
-    <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">Demandes en attente</h3>
-    <div class="info-grid" id="admin-pending-list"></div>
+  // ── État ──────────────────────────────────────────────
+  let currentSpace       = null;
+  let currentClientId    = null;
+  let currentExtraTiles  = [];
+  let currentHiddenTiles = [];
+  let dragSrc            = null;
 
-    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Créer un compte administrateur</h3>
-    <div class="pin-box" style="max-width:100%;text-align:left;">
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <input type="text" id="new-admin-firstname" placeholder="Prénom"
-               style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="text" id="new-admin-lastname" placeholder="Nom"
-               style="width:50%;padding:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-      </div>
-      <input type="email" id="new-admin-email" placeholder="Email"
-             style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-      <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire"
-             style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-      <button class="direct-btn" id="create-admin-btn" style="background:var(--navy);color:#fff;">Créer le compte admin</button>
-    </div>
+  // ── Helpers ───────────────────────────────────────────
+  function hideAll() {
+    [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
+     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail]
+    .forEach(function(s) { s.hidden = true; });
+    eventsBanner.hidden = true;
+  }
 
-    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Tous les comptes</h3>
-    <div class="info-grid" id="admin-all-list"></div>
-  </section>
+  // ── Accueil ⇄ Choix de l'espace ────────────────────────
+  welcomeConnexionBtn.addEventListener("click", function () {
+    hideAll(); stepChoice.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
-  <!-- TABLEAU DE BORD -->
-  <section id="step-dashboard" hidden>
-    <div class="dashboard-header">
-      <div class="company-badge" id="company-badge"></div>
-      <div style="flex:1;">
-        <h1 class="welcome-title" id="welcome-title"></h1>
-        <p class="welcome-sub" id="welcome-sub">Bienvenue sur votre espace Hiptown</p>
-      </div>
-      <div id="notif-bell-wrap" style="position:relative;" hidden>
-        <button id="notif-bell-btn" style="background:none;border:none;font-size:22px;cursor:pointer;position:relative;padding:4px;">
-          🔔
-          <span id="notif-badge" style="display:none;position:absolute;top:0;right:0;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;line-height:1.3;">0</span>
-        </button>
-        <div id="notif-dropdown" style="display:none;position:absolute;right:0;top:38px;width:300px;max-height:420px;overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-md);box-shadow:0 8px 28px rgba(30,24,71,0.15);z-index:20;padding:8px;"></div>
-      </div>
-    </div>
-    <div class="tiles-grid" id="tiles-grid"></div>
-    <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
-  </section>
+  backFromChoice.addEventListener("click", function () {
+    hideAll(); stepWelcome.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
-  <!-- PAGE INFORMATIONS -->
-  <section id="step-info" hidden>
-    <button class="back-btn" id="back-from-info">← Retour</button>
-    <h2 class="step-title">Informations pratiques</h2>
-    <div class="info-grid">
+  // ── Choix de l'espace ─────────────────────────────────
+  choiceSalle.addEventListener("click", function () { window.openAuthScreen("salle"); });
+  choiceCoworking.addEventListener("click", function () { window.openAuthScreen("coworking"); });
+  choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="info-icon">☕</span>
-          <span class="info-card-title">Machine à café</span>
-          <span class="info-chevron">▼</span>
-        </div>
-        <div class="info-card-body" hidden>
-          <a class="info-item" href="Nettoyage%20machine.png" target="_blank">🔧 Entretien — Nettoyage machine</a>
-          <a class="info-item" href="Vider%20le%20bac.png" target="_blank">🔧 Entretien — Vider le bac</a>
-          <a class="info-item" href="Changement%20de%20filtre.jpg" target="_blank">🔄 Changement de filtre</a>
-          <a class="info-item" href="D%C3%A9tartrage%201.1.pdf" target="_blank">💧 Détartrage</a>
-          <a class="info-item" href="#">☕ Grains</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
-        </div>
-      </div>
+  // ── Dashboard ─────────────────────────────────────────
+  function showDashboard(client) {
+    currentClientId = client.id;
+    companyBadge.style.background = client.color;
+    companyBadge.style.color      = client.textColor;
+    companyBadge.textContent      = client.initials;
+    welcomeTitle.textContent      = client.name;
+    welcomeSub.textContent        = client.personName || "Bienvenue sur votre espace Hiptown";
+    buildTiles(currentSpace, client.id);
+    hideAll(); stepDashboard.hidden = false;
+    if (PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="info-icon">🍽️</span>
-          <span class="info-card-title">Lave-vaisselle</span>
-          <span class="info-chevron">▼</span>
-        </div>
-        <div class="info-card-body" hidden>
-          <a class="info-item" href="#">🔧 Entretien</a>
-          <a class="info-item" href="#">🧴 Produit</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
-        </div>
-      </div>
+  logoutBtn.addEventListener("click", function () {
+    currentSpace = null; currentClientId = null;
+    hideAll(); stepWelcome.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="info-icon">🏢</span>
-          <span class="info-card-title">Espace commun</span>
-          <span class="info-chevron">▼</span>
-        </div>
-        <div class="info-card-body" hidden>
-          <a class="info-item" href="#">🗓️ Réservation</a>
-          <a class="info-item" href="#">📋 Règles d'utilisation</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
-        </div>
-      </div>
+  // ── Tuiles ────────────────────────────────────────────
+  function getSavedOrder(clientId, tileIds) {
+    try {
+      const saved = localStorage.getItem("tiles_" + clientId);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return tileIds;
+  }
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="info-icon">🪟</span>
-          <span class="info-card-title">Fenêtre</span>
-          <span class="info-chevron">▼</span>
-        </div>
-        <div class="info-card-body" hidden>
-          <a class="info-item" href="#">🔧 Entretien</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
-        </div>
-      </div>
+  function saveOrder(clientId) {
+    const order = Array.from(tilesGrid.querySelectorAll(".tile")).map(function(c) { return c.getAttribute("data-id"); });
+    localStorage.setItem("tiles_" + clientId, JSON.stringify(order));
+  }
 
-      <div class="info-card">
-        <div class="info-card-header">
-          <span class="info-icon">🖨️</span>
-          <span class="info-card-title">Imprimante</span>
-          <span class="info-chevron">▼</span>
-        </div>
-        <div class="info-card-body" hidden>
-          <a class="info-item" href="#">🔧 Entretien</a>
-          <a class="info-item" href="#">🖨️ Changer les cartouches</a>
-          <a class="info-item" href="#">📄 Ajouter du papier</a>
-          <a class="info-item" href="https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" target="_blank">⚠️ Signaler un incident</a>
-        </div>
-      </div>
+  function buildTiles(space, clientId) {
+    tilesGrid.innerHTML = "";
+    const baseIds = SPACE_TILES[space] || [];
 
-    </div>
-  </section>
+    // Personnalisation par utilisateur (définie dans sa fiche Firestore)
+    const extra  = currentExtraTiles  || [];
+    const hidden = currentHiddenTiles || [];
 
-  <!-- PAGE LES SERVICES -->
-  <section id="step-services" hidden>
-    <button class="back-btn" id="back-from-services">← Retour</button>
-    <h2 class="step-title">✨ Services inclus</h2>
-    <div class="services-grid">
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">☕</div><div class="service-card-title">Café / Thés</div><div class="service-card-desc">Café, thés et infusions en libre service toute la journée.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🍽️</div><div class="service-card-title">Vaisselle</div><div class="service-card-desc">Accès à la vaisselle et au lave-vaisselle pour vos repas.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚲</div><div class="service-card-title">Local vélo</div><div class="service-card-desc">Local sécurisé pour vos vélos et trottinettes.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🖨️</div><div class="service-card-title">Imprimante</div><div class="service-card-desc">Imprimante couleur et noir/blanc disponible.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">💧</div><div class="service-card-title">Fontaine à eau</div><div class="service-card-desc">Eau fraîche et pétillante en libre service.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🌐</div><div class="service-card-title">Internet Haut débit</div><div class="service-card-desc">Fibre 1Gb/s et Wi-Fi dernière génération.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚿</div><div class="service-card-title">Douches</div><div class="service-card-desc">Douches disponibles pour les sportifs.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🏢</div><div class="service-card-title">Espace commun</div><div class="service-card-desc">Grand espace de convivialité et de détente.</div></div>
-    </div>
-  </section>
+    let tileIds = baseIds.slice();
+    extra.forEach(function(id) { if (!tileIds.includes(id)) tileIds.push(id); });
+    tileIds = tileIds.filter(function(id) { return !hidden.includes(id); });
 
-  <!-- PAGE SERVICES COMPLEMENTAIRES -->
-  <section id="step-complem" hidden>
-    <button class="back-btn" id="back-from-complem">← Retour</button>
-    <h2 class="step-title">➕ Services complémentaires</h2>
-    <div class="complem-grid">
-      <div class="complem-card" onclick="this.classList.toggle('open')">
-        <div class="complem-card-icon">🅿️</div>
-        <div class="complem-card-body">
-          <div class="complem-card-title">Location Parking</div>
-          <div class="complem-card-desc">Place de parking sécurisée en sous-sol. Contactez-nous pour les tarifs.</div>
-        </div>
-        <div class="complem-chevron">▼</div>
-      </div>
-      <div class="complem-card" onclick="this.classList.toggle('open')">
-        <div class="complem-card-icon">🏢</div>
-        <div class="complem-card-body">
-          <div class="complem-card-title">Location Espace Commun</div>
-          <div class="complem-card-desc">Réservez l'espace pour vos événements et réunions. Tarifs sur demande.</div>
-        </div>
-        <div class="complem-chevron">▼</div>
-      </div>
-      <div class="info-card" id="breakfast-order-card">
-        <div class="info-card-header">
-          <span class="info-icon">🥐</span>
-          <span class="info-card-title">Commander un petit déjeuner</span>
-          <span class="info-chevron">▼</span>
-        </div>
-        <div class="info-card-body" hidden style="padding:16px 18px;">
-          <form id="breakfast-order-form">
-            <label style="display:block;font-size:12px;color:var(--text-soft);margin-bottom:4px;">Date du petit-déjeuner</label>
-            <input type="date" id="breakfast-date" required
-                   style="width:100%;padding:10px;margin-bottom:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+    const order   = getSavedOrder(clientId, tileIds);
+    const sorted  = order.filter(function(id) { return tileIds.includes(id); });
+    tileIds.forEach(function(id) { if (!sorted.includes(id)) sorted.push(id); });
 
-            <label style="display:block;font-size:12px;color:var(--text-soft);margin-bottom:4px;">Nombre de personnes</label>
-            <input type="number" id="breakfast-people" min="1" value="1" required
-                   style="width:100%;padding:10px;margin-bottom:12px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+    sorted.forEach(function (id) {
+      const tile = TILE_DEFS[id];
+      if (!tile) return;
 
-            <p style="font-size:15px;font-weight:700;color:var(--text-dark);margin-bottom:14px;">
-              Total : <span id="breakfast-price">7 €</span>
-              <span style="font-weight:400;font-size:11px;color:var(--text-soft);">(7 €/personne)</span>
-            </p>
+      const el = document.createElement("a");
+      el.className = "tile" + (tile.wide ? " tile-wide" : "");
+      el.href      = tile.url || "#";
+      el.setAttribute("data-id", id);
+      el.draggable = true;
+      if (tile.url) el.target = "_blank";
 
-            <div id="breakfast-order-error" class="pin-error" hidden></div>
-            <p id="breakfast-order-success" style="display:none;color:#166534;font-size:13px;margin-bottom:10px;">✅ Commande envoyée !</p>
+      el.innerHTML =
+        '<div class="tile-drag-hint">⠿</div>' +
+        '<div class="tile-icon" style="background:' + tile.bg + ';color:' + tile.color + ';">' + tile.icon + '</div>' +
+        '<div class="tile-title">' + tile.title + '</div>' +
+        '<div class="tile-desc">' + tile.desc + '</div>';
 
-            <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Commander</button>
-            <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">Commande à passer avant 17h la veille du petit-déjeuner.</p>
-          </form>
-        </div>
-      </div>
-      <div class="complem-card" onclick="this.classList.toggle('open')">
-        <div class="complem-card-icon">🥡</div>
-        <div class="complem-card-body">
-          <div class="complem-card-title">Commander à déjeuner</div>
-          <div class="complem-card-desc">
-            Nos partenaires livraison pour commander directement votre repas :
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
-              <a href="https://www.refectory.fr/" target="_blank" style="display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600;text-decoration:none;">🔗 Refectory</a>
-              <a href="https://dejopresto.com/" target="_blank" style="display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600;text-decoration:none;">🔗 Déjopresto</a>
-              <a href="https://www.sushidesign.fr/" target="_blank" style="display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600;text-decoration:none;">🔗 Sushi Design</a>
-              <a href="https://toutetbon.fr/" target="_blank" style="display:flex;align-items:center;gap:8px;color:var(--navy);font-weight:600;text-decoration:none;">🔗 Tout et bon <span style="font-weight:400;color:var(--text-soft);font-size:11px;">(adapté aux grands groupes)</span></a>
-            </div>
-          </div>
-        </div>
-        <div class="complem-chevron">▼</div>
-      </div>
-    </div>
-  </section>
+      if (tile.action) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          hideAll();
+          if (tile.action === "info")       stepInfo.hidden           = false;
+          if (tile.action === "services")   stepServices.hidden       = false;
+          if (tile.action === "complem")    stepComplem.hidden        = false;
+          if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
+          if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
+          if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
+          document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
 
-  <!-- PAGE UTILISATION DES SALLES -->
-  <section id="step-salle-info" hidden>
-    <button class="back-btn" id="back-from-salle-info">← Retour</button>
-    <h2 class="step-title">🗓️ Utilisation de nos salles de réunion</h2>
-    <div class="services-list">
-      <a class="service-item-link" href="#" target="_blank">
-        <span class="service-icon">🌐</span>
-        <span>Connexion internet</span>
-      </a>
-      <a class="service-item-link" href="#" target="_blank">
-        <span class="service-icon">🚪</span>
-        <span>Quitter la salle de réunion</span>
-      </a>
-      <a class="service-item-link" href="#" target="_blank">
-        <span class="service-icon">🖥️</span>
-        <span>Connexion écran</span>
-      </a>
-    </div>
-  </section>
+      // Desktop drag
+      el.addEventListener("dragstart", function (e) { dragSrc = this; this.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+      el.addEventListener("dragend",   function ()  { this.classList.remove("dragging"); tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); }); saveOrder(currentClientId); });
+      el.addEventListener("dragover",  function (e) { e.preventDefault(); if (this !== dragSrc) { tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); }); this.classList.add("drag-over"); } });
+      el.addEventListener("drop",      function (e) {
+        e.preventDefault();
+        if (this !== dragSrc) {
+          const all = Array.from(tilesGrid.querySelectorAll(".tile"));
+          if (all.indexOf(dragSrc) < all.indexOf(this)) tilesGrid.insertBefore(dragSrc, this.nextSibling);
+          else tilesGrid.insertBefore(dragSrc, this);
+        }
+      });
 
-  <!-- PAGE HIPTOWN OUTILS -->
-  <section id="step-hiptown-outils" hidden>
-  <button class="back-btn" id="back-from-hiptown-outils">← Retour</button>
-  <h2 class="step-title">🛠️ Outils Hiptown</h2>
-  <div class="search-wrap">
-    <input type="text" id="outils-search" placeholder="🔍 Rechercher un outil…" autocomplete="off"/>
-  </div>
-  <div id="outils-container">
+      // Mobile long press
+      var longPressTimer, clone, isDragging = false;
+      el.addEventListener("touchstart", function (e) {
+        if (e.touches.length !== 1) return;
+        var t = e.touches[0]; var self = this;
+        longPressTimer = setTimeout(function () {
+          isDragging = true; dragSrc = self;
+          clone = self.cloneNode(true);
+          clone.style.cssText = "position:fixed;opacity:0.7;pointer-events:none;z-index:9999;width:" + self.offsetWidth + "px;left:" + (t.clientX - self.offsetWidth/2) + "px;top:" + (t.clientY - self.offsetHeight/2) + "px;border-radius:14px;";
+          document.body.appendChild(clone);
+          self.classList.add("dragging");
+          if (navigator.vibrate) navigator.vibrate(50);
+        }, 500);
+      }, { passive: true });
+      el.addEventListener("touchmove", function (e) {
+        if (!isDragging) { clearTimeout(longPressTimer); return; }
+        e.preventDefault();
+        var t = e.touches[0];
+        clone.style.left = (t.clientX - dragSrc.offsetWidth/2) + "px";
+        clone.style.top  = (t.clientY - dragSrc.offsetHeight/2) + "px";
+        var tgt = document.elementFromPoint(t.clientX, t.clientY);
+        var tileTgt = tgt ? tgt.closest(".tile") : null;
+        tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); });
+        if (tileTgt && tileTgt !== dragSrc) tileTgt.classList.add("drag-over");
+      }, { passive: false });
+      el.addEventListener("touchend", function (e) {
+        clearTimeout(longPressTimer);
+        if (!isDragging) return;
+        var t = e.changedTouches[0];
+        var tgt = document.elementFromPoint(t.clientX, t.clientY);
+        var tileTgt = tgt ? tgt.closest(".tile") : null;
+        if (tileTgt && tileTgt !== dragSrc) {
+          var all = Array.from(tilesGrid.querySelectorAll(".tile"));
+          if (all.indexOf(dragSrc) < all.indexOf(tileTgt)) tilesGrid.insertBefore(dragSrc, tileTgt.nextSibling);
+          else tilesGrid.insertBefore(dragSrc, tileTgt);
+        }
+        if (clone) { clone.remove(); clone = null; }
+        dragSrc.classList.remove("dragging");
+        tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); });
+        saveOrder(currentClientId);
+        isDragging = false;
+      }, { passive: true });
+      el.addEventListener("touchcancel", function () {
+        clearTimeout(longPressTimer);
+        if (clone) { clone.remove(); clone = null; }
+        if (dragSrc) dragSrc.classList.remove("dragging");
+        tilesGrid.querySelectorAll(".tile").forEach(function(c) { c.classList.remove("drag-over"); });
+        isDragging = false;
+      }, { passive: true });
 
-    <div class="outils-category">
-      <div class="outils-category-title">💰 Facturation</div>
-      <div class="outils-grid">
-        <a class="outil-card" href="https://eu1.getyooz.com/#/workspace/-2" target="_blank" data-name="yooz facturation">
-          <div class="outil-logo">🧾</div>
-          <div class="outil-name">Yooz</div>
-        </a>
-        <a class="outil-card" href="https://marcel.hiptown.co/" target="_blank" data-name="marcel facturation">
-          <div class="outil-logo"><img src="H.png" style="width:32px;height:32px;object-fit:contain;"/></div>
-          <div class="outil-name">Marcel</div>
-        </a>
-        <a class="outil-card" href="https://app.leanpay.fr/login" target="_blank" data-name="leanpay facturation">
-          <div class="outil-logo">💳</div>
-          <div class="outil-name">Leanpay</div>
-        </a>
-      </div>
-    </div>
+      tilesGrid.appendChild(el);
+    });
+  }
 
-    <div class="outils-category">
-      <div class="outils-category-title">🏠 État des lieux</div>
-      <div class="outils-grid">
-        <a class="outil-card" href="https://app.nockee.fr/login?redirectUri=%2Finspection-report" target="_blank" data-name="nockee état des lieux">
-          <div class="outil-logo">📋</div>
-          <div class="outil-name">Nockee</div>
-        </a>
-      </div>
-    </div>
+  // ── Retours ───────────────────────────────────────────
+  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces].forEach(function (btn) {
+    btn.addEventListener("click", function () { hideAll(); stepDashboard.hidden = false; window.scrollTo({ top: 0, behavior: "smooth" }); });
+  });
 
-    <div class="outils-category">
-      <div class="outils-category-title">📋 Organisation</div>
-      <div class="outils-grid">
-        <a class="outil-card" href="https://www.notion.so" target="_blank" data-name="notion organisation">
-          <div class="outil-logo">📝</div>
-          <div class="outil-name">Notion</div>
-        </a>
-      </div>
-    </div>
+  backFromSiteDetail.addEventListener("click", function () {
+    hideAll(); stepHiptownEspaces.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 
-    <div class="outils-category">
-      <div class="outils-category-title">💻 Plateformes digitales</div>
-      <div class="outils-grid">
-        <a class="outil-card" href="https://www.kactus.com/fr-be/managers/catalogs" target="_blank" data-name="kactus plateformes">
-          <div class="outil-logo">🌵</div>
-          <div class="outil-name">Kactus</div>
-        </a>
-        <a class="outil-card" href="https://www.ubiq.fr" target="_blank" data-name="ubiq plateformes">
-          <div class="outil-logo">📡</div>
-          <div class="outil-name">Ubiq</div>
-        </a>
-        <a class="outil-card" href="https://www.coworkingcafe.com" target="_blank" data-name="coworking café plateformes">
-          <div class="outil-logo">☕</div>
-          <div class="outil-name">Coworking café</div>
-        </a>
-        <a class="outil-card" href="https://www.hub-grade.com" target="_blank" data-name="hub-grade plateformes">
-          <div class="outil-logo">🏢</div>
-          <div class="outil-name">Hub-grade</div>
-        </a>
-      </div>
-    </div>
+  // ── Sites ─────────────────────────────────────────────
+  document.querySelectorAll(".site-card").forEach(function (card) {
+    card.addEventListener("click", function () {
+      var siteId = this.getAttribute("data-site");
+      var site   = SITES[siteId];
+      if (!site) return;
+      siteDetailTitle.textContent = site.name;
+      siteDetailTools.innerHTML   = "";
 
-    <div class="outils-category">
-      <div class="outils-category-title">👥 Ressources Humaines</div>
-      <div class="outils-grid">
-        <a class="outil-card" href="http://access.dsin.nexity.fr/" target="_blank" data-name="satawad ressources humaines rh">
-          <div class="outil-logo">👥</div>
-          <div class="outil-name">Satawad</div>
-        </a>
-      </div>
-    </div>
+      if (site.tools.length === 0) {
+        siteDetailTools.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Outils à venir...</p>';
+      } else {
+        site.tools.forEach(function (cat) {
+          var div = document.createElement("div");
+          div.className = "info-card";
+          var bodyHtml = cat.items.map(function (item) {
+            return '<a class="info-item" href="' + item.url + '" target="_blank">🔗 ' + item.label + '</a>';
+          }).join("");
+          div.innerHTML =
+            '<div class="info-card-header">' +
+            '<span class="info-card-title">' + cat.cat + '</span>' +
+            '<span class="info-chevron">▼</span>' +
+            '</div>' +
+            '<div class="info-card-body" hidden>' + bodyHtml + '</div>';
+          div.querySelector(".info-card-header").addEventListener("click", function() {
+            var body = this.nextElementSibling;
+            var chev = this.querySelector(".info-chevron");
+            body.hidden = !body.hidden;
+            chev.textContent = body.hidden ? "▼" : "▲";
+          });
+          siteDetailTools.appendChild(div);
+        });
+      }
 
-    <div class="outils-category">
-      <div class="outils-category-title">💼 Commerce</div>
-      <div class="outils-grid">
-        <a class="outil-card" href="https://hiptown.nocrm.io/leads?from=todo&status=todo&mode=pipe&order=updated&direction=desc" target="_blank" data-name="nocrm commerce">
-          <div class="outil-logo">📈</div>
-          <div class="outil-name">NoCrm</div>
-        </a>
-        <a class="outil-card" href="https://docs.google.com/spreadsheets/d/18w1TEuTH3PgPQiS93DUVZ3j-67dOGzMOC3cKp0fzgGI/edit?gid=790763898#gid=790763898" target="_blank" data-name="devis commerce">
-          <div class="outil-logo">📝</div>
-          <div class="outil-name">Devis</div>
-        </a>
-        <a class="outil-card" href="https://docs.google.com/spreadsheets/d/1cGdu68qtmZLC0ez3a56RKh0sq2GtytA896TcALCeopg/edit?gid=11173933#gid=11173933" target="_blank" data-name="facture dg commerce">
-          <div class="outil-logo">🧾</div>
-          <div class="outil-name">Facture DG</div>
-        </a>
-        <a class="outil-card" href="https://docs.google.com/spreadsheets/d/1xkJ9s7LRGFaUxWCL5maYhNmBTJhEDnNzr9udtxsouOY/edit?gid=1406565597#gid=1406565597" target="_blank" data-name="suivi rrm commerce">
-          <div class="outil-logo">📊</div>
-          <div class="outil-name">Suivi RRM</div>
-        </a>
-      </div>
-    </div>
+      hideAll(); stepSiteDetail.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
 
-  </div>
-</section>
+  // ── Recherche outils Hiptown ──────────────────────────
+  var outilsSearch = document.getElementById("outils-search");
+  if (outilsSearch) {
+    outilsSearch.addEventListener("input", function () {
+      var q = this.value.trim().toLowerCase();
+      var cards = document.querySelectorAll(".outil-card");
+      cards.forEach(function (card) {
+        var name = card.getAttribute("data-name") || "";
+        card.style.display = (!q || name.includes(q)) ? "" : "none";
+      });
+      document.querySelectorAll(".outils-category").forEach(function (cat) {
+        var visible = Array.from(cat.querySelectorAll(".outil-card")).some(function(c) { return c.style.display !== "none"; });
+        cat.style.display = visible ? "" : "none";
+      });
+    });
+  }
 
-  <!-- PAGE HIPTOWN SITES -->
-  <section id="step-hiptown-espaces" hidden>
-    <button class="back-btn" id="back-from-hiptown-espaces">← Retour</button>
-    <h2 class="step-title">📍 Sites</h2>
-    <a href="https://docs.google.com/spreadsheets/d/1kSqZlOv1uvlL-8Q4PtGjqLOTz0-_iMezAPrrHnNjOr4/edit?gid=2091960551#gid=2091960551" target="_blank"
-       style="display:block;background:#0369a1;color:#fff;text-align:center;font-weight:700;padding:14px;border-radius:var(--radius-md);margin-bottom:16px;text-decoration:none;">
-      📊 Suivi des sites
-    </a>
-    <div class="sites-grid">
-      <div class="site-card" data-site="nabo02"><div class="site-code">NABO02</div><div class="site-name">Place de la Bourse CCI Tetris</div></div>
-      <div class="site-card" data-site="nabo03"><div class="site-code">NABO03</div><div class="site-name">Ferrere</div></div>
-      <div class="site-card" data-site="nabo04"><div class="site-code">NABO04</div><div class="site-name">Chartrons</div></div>
-      <div class="site-card" data-site="nabo05"><div class="site-code">NABO05</div><div class="site-name">Place de la Bourse CCI KBRW</div></div>
-      <div class="site-card" data-site="nabo06"><div class="site-code">NABO06</div><div class="site-name">Émergence</div></div>
-      <div class="site-card" data-site="nabo07"><div class="site-code">NABO07</div><div class="site-name">Tourny</div></div>
-      <div class="site-card" data-site="nabo08"><div class="site-code">NABO08</div><div class="site-name">Madéra</div></div>
-    </div>
-  </section>
+  // ── Accordéons statiques ──────────────────────────────
+  document.querySelectorAll(".info-card-header").forEach(function (header) {
+    header.addEventListener("click", function () {
+      var body = this.parentElement.querySelector(".info-card-body");
+      var chev = this.querySelector(".info-chevron");
+      body.hidden = !body.hidden;
+      chev.textContent = body.hidden ? "▼" : "▲";
+    });
+  });
 
-  <!-- PAGE DÉTAIL SITE -->
-  <section id="step-site-detail" hidden>
-    <button class="back-btn" id="back-from-site-detail">← Retour aux sites</button>
-    <h2 class="step-title" id="site-detail-title"></h2>
-    <div class="info-grid" id="site-detail-tools"></div>
-  </section>
+  // ── Pont vers app-auth.js ──────────────────────────────
+  window.hideAll = hideAll;
+  window.showDashboardFromAuth = function (client, space) {
+    currentSpace       = space;
+    currentExtraTiles  = client.extraTiles  || [];
+    currentHiddenTiles = client.hiddenTiles || [];
+    showDashboard(client);
+  };
 
-</main>
-
-<footer>
-  <p>Hiptown Bordeaux &copy; <span id="year"></span></p>
-</footer>
-
-<script src="config.js"></script>
-<script src="app.js"></script>
-<script type="module" src="app-auth.js"></script>
-<script type="module" src="breakfast.js"></script>
-</body>
-</html>
+})();
