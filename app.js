@@ -118,8 +118,8 @@
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
     gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
     suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
-    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", href="tarifs salles de réunion" target="_blank">🔄 Tarifs salles de réunion </a> },
-    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", href="tarifs coworking" target="_blank">🔄 Tarifs coworking </a> },
+    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", image: "https://drive.google.com/thumbnail?id=13iZvHQuzoO4M7Za6OEEtyJUBF-1Tv6ho&sz=w2000" },
+    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", image: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },
   };
 
   const SPACE_TILES = {
@@ -258,6 +258,27 @@
     localStorage.setItem("tiles_" + clientId, JSON.stringify(order));
   }
 
+  // ── Affichage d'image en plein écran (lightbox) ────────
+  function openImageModal(src, title) {
+    let modal = document.getElementById("image-modal-overlay");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "image-modal-overlay";
+      modal.style.cssText = "position:fixed;inset:0;background:rgba(21,15,51,0.9);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;";
+      modal.innerHTML =
+        '<div style="position:relative;max-width:100%;max-height:100%;">' +
+        '<button id="image-modal-close" style="position:absolute;top:-40px;right:0;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;">✕</button>' +
+        '<img id="image-modal-img" style="max-width:100%;max-height:85vh;border-radius:8px;display:block;"/>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener("click", function (e) { if (e.target === modal) modal.style.display = "none"; });
+      document.getElementById("image-modal-close").addEventListener("click", function () { modal.style.display = "none"; });
+    }
+    document.getElementById("image-modal-img").src = src;
+    document.getElementById("image-modal-img").alt = title || "";
+    modal.style.display = "flex";
+  }
+
   function buildTiles(space, clientId) {
     tilesGrid.innerHTML = "";
     const baseIds = SPACE_TILES[space] || [];
@@ -290,6 +311,13 @@
         '<div class="tile-icon" style="background:' + tile.bg + ';color:' + tile.color + ';">' + tile.icon + '</div>' +
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
+
+      if (tile.image) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          openImageModal(tile.image, tile.title);
+        });
+      }
 
       if (tile.action) {
         el.addEventListener("click", function (e) {
