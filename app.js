@@ -105,7 +105,7 @@
   const TILE_DEFS = {
     accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
     marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
-    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/a/macros/hiptown.com/s/AKfycbw-MjoI7nMtyQOgZMWQEt9Zp8ZYL6EJqKAf9mD2aTa9xF5aP_sw9dD6yFk8D_jdVLx2iw/exec" },
+    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/macros/s/AKfycbx2fI698Crn-qFpWF4LM26bwpt8llCylEW1yL1C-JpcR59CrEePmNF2b2No2kASKPowAw/exec" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
     info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
@@ -118,8 +118,8 @@
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
     gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
     suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
-    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", url: "https://github.com/Cosme75-85/Hiptown/blob/main/Tarifs%20salles%20de%20r%C3%A9union" },
-    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", url: "https://github.com/Cosme75-85/Hiptown/blob/main/Tarifs%20Coworking" },
+    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", url: "https://raw.githubusercontent.com/Cosme75-85/Hiptown/main/Tarifs%20salles%20de%20r%C3%A9union" },
+    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", url: "https://raw.githubusercontent.com/Cosme75-85/Hiptown/main/Tarifs%20Coworking" },
   };
 
   const SPACE_TILES = {
