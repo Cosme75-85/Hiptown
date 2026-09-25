@@ -9,22 +9,28 @@ ouvert depuis la tuile « Réserver une salle » du portail client (`app.js`).
 | `Index.html` | Page de réservation affichée au client |
 | `appsscript.json` | Manifeste (fuseau horaire, droits de la web app) |
 
-## Déployer
+## Mettre à jour Apps Script avec cette version
 
-### Option A — copier-coller (sans outil)
-Coller chaque fichier dans l'éditeur script.google.com, puis
-**Déployer > Gérer les déploiements > ✏️ > Nouvelle version**
-(garder le même déploiement pour conserver la même URL).
+Le code qui tourne est celui de script.google.com : ce dossier en est la copie
+de référence (historique, retour arrière possible). Après chaque modification :
 
-### Option B — clasp (outil officiel Google, gratuit)
-Synchronise ce dossier avec le projet Apps Script, sans copier-coller.
+1. Ouvrir le projet sur script.google.com.
+2. `Code.gs` : tout sélectionner (Ctrl+A), supprimer, coller le contenu de `reservation/Code.gs`.
+3. `Index.html` : même chose avec `reservation/Index.html`.
+4. Enregistrer (Ctrl+S).
+5. **Déployer > Gérer les déploiements > ✏️ (crayon) > Version : Nouvelle version > Déployer**
+   (modifier le déploiement existant garde la même URL, donc le lien du portail reste valable).
+
+**Une seule fois** : dans le menu déroulant des fonctions, choisir `installExpiryTrigger`,
+cliquer sur ▶ Exécuter et accepter les autorisations (purge nocturne des demandes expirées).
+
+### Option avancée — clasp (outil officiel Google, gratuit)
+Remplace les étapes 1 à 4 par une commande.
 
 ```bash
 npm install -g @google/clasp
 clasp login
 # Dans ce dossier, créer .clasp.json (ID : Paramètres du projet Apps Script > "ID du script")
 echo '{"scriptId":"TON_ID_DE_SCRIPT","rootDir":"."}' > .clasp.json
-clasp push        # envoie le code vers Apps Script
+clasp push
 ```
-
-Puis publier une nouvelle version du déploiement existant (voir option A).

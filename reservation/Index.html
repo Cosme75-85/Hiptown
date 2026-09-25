@@ -1004,7 +1004,10 @@
       }
       if (q.breakfastPrice > 0) lines.push('Petit déjeuner : ' + q.breakfastPrice.toFixed(2) + ' €HT');
       if (q.lunchPrice > 0) lines.push('Déjeuner : ' + q.lunchPrice.toFixed(2) + ' €HT');
-      if (q.parkingPrice > 0) lines.push(parkingQty + ' place(s) de parking : ' + q.parkingPrice.toFixed(2) + ' €HT');
+      if (q.parkingPrice > 0) {
+        const daysLabel = pendingBooking.endDateString ? ' × ' + numberOfDaysBooked() + ' jours' : '';
+        lines.push(parkingQty + ' place(s) de parking' + daysLabel + ' : ' + q.parkingPrice.toFixed(2) + ' €HT');
+      }
 
       const summaryEl = document.getElementById('priceSummary');
       if (q.grandTotal > 0) {

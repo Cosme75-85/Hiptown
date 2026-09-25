@@ -198,53 +198,38 @@ function getSpacesMeta() {
 // ==================== DISPONIBILITÉ SUR UN MOIS (pour le calendrier coloré) ====================
 
 /**
- * @param {string} spaceId
- * @param {number} year
- * @param {number} month  1-12
- */
-/**
- * Version groupée : récupère la disponibilité des 5 espaces en un seul appel serveur
- * (plus rapide que 5 appels séparés).
+ * Disponibilité de tous les espaces pour un mois, en un seul appel serveur.
+ * Chaque espace est mis en cache séparément : un agenda en erreur n'empêche
+ * pas les autres d'être servis depuis le cache.
  */
 function getAllMonthsAvailability(year, month) {
   const result = {};
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return result;
   SPACES.forEach(space => {
-    result[space.id] = getMonthAvailability(space.id, year, month);
+    result[space.id] = withCache(
+      'month:' + space.id + ':' + year + '-' + month,
+      () => getMonthAvailability(space, year, month),
+      data => !data.days.some(d => d.status === 'error')
+    );
   });
   return result;
 }
 
-function getMonthAvailability(spaceId, year, month) {
-  const space = SPACES.find(s => s.id === spaceId);
-  if (!space) return { year: year, month: month, days: [] };
-
+function getMonthAvailability(space, year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  let cal = null;
-  try {
-    cal = CalendarApp.getCalendarById(space.calendarId);
-  } catch (err) {
-    cal = null;
-  }
-
   // Un seul appel Calendar pour tout le mois, au lieu d'un appel par jour
-  let monthEvents = [];
-  let quantityCache = null;
+  let slots = [];
   let fetchError = false;
-  if (cal !== null) {
-    try {
-      const monthStart = new Date(year, month - 1, 1, 0, 0, 0);
-      const monthEnd = new Date(year, month - 1, daysInMonth, 23, 59, 59);
-      monthEvents = cal.getEvents(monthStart, monthEnd);
-      quantityCache = precomputeQuantities(monthEvents); // calculé une seule fois pour tout le mois
-    } catch (err) {
-      fetchError = true;
-    }
-  } else {
-    fetchError = true;
+  try {
+    const cal = CalendarApp.getCalendarById(space.calendarId);
+    const monthStart = new Date(year, month - 1, 1, 0, 0, 0);
+    const monthEnd = new Date(year, month - 1, daysInMonth, 23, 59, 59);
+    slots = toBookedSlots(cal.getEvents(monthStart, monthEnd));
+  } catch (err) {
+    fetchError = true; // agenda introuvable (null) ou inaccessible
   }
 
   const days = [];
@@ -261,26 +246,17 @@ function getMonthAvailability(spaceId, year, month) {
       status = 'error';
       remaining = 0;
     } else {
-      // Ne garde que les événements qui touchent réellement cette date
+      // Ne garde que les réservations qui touchent réellement cette date
       // (utile pour les réservations multi-jours qui débordent sur d'autres jours)
-      const dayStart = setTime(dateObj, START_HOUR, 0);
-      const dayEnd = setTime(dateObj, END_HOUR, 0);
-      const relevantEvents = monthEvents.filter(ev => ev.getStartTime() < dayEnd && ev.getEndTime() > dayStart);
+      const daySlots = slots.filter(s => s.start < setTime(dateObj, END_HOUR, 0).getTime()
+        && s.end > setTime(dateObj, START_HOUR, 0).getTime());
 
       let minRemaining = space.capacity;
       let maxRemaining = 0;
       let minMorning = space.capacity;
       let minAfternoon = space.capacity;
       for (let h = START_HOUR; h < END_HOUR; h++) {
-        const hourStart = setTime(dateObj, h, 0);
-        const hourEnd = setTime(dateObj, h + 1, 0);
-        let count = 0;
-        relevantEvents.forEach(ev => {
-          if (ev.getStartTime() < hourEnd && ev.getEndTime() > hourStart) {
-            count += quantityCache.get(ev);
-          }
-        });
-        const rem = space.capacity - count;
+        const rem = space.capacity - occupancy(daySlots, setTime(dateObj, h, 0).getTime(), setTime(dateObj, h + 1, 0).getTime());
         if (rem < minRemaining) minRemaining = rem;
         if (rem > maxRemaining) maxRemaining = rem;
         if (h < 13) {
@@ -317,33 +293,73 @@ function getDayAvailability(spaceId, dateString) {
   const space = SPACES.find(s => s.id === spaceId);
   if (!space || !isValidDateString(dateString)) return { hours: [], capacity: 0 };
 
-  const date = parseDate(dateString);
-  const dayStart = setTime(date, START_HOUR, 0);
-  const dayEnd = setTime(date, END_HOUR, 0);
+  return withCache(
+    'day:' + spaceId + ':' + dateString,
+    () => computeDayAvailability(space, parseDate(dateString)),
+    data => !data.error
+  );
+}
 
+function computeDayAvailability(space, date) {
   const hours = [];
+  let error = false;
   try {
-    const cal = CalendarApp.getCalendarById(space.calendarId);
-    const events = cal.getEvents(dayStart, dayEnd);
-    const quantityCache = precomputeQuantities(events);
+    const events = CalendarApp.getCalendarById(space.calendarId)
+      .getEvents(setTime(date, START_HOUR, 0), setTime(date, END_HOUR, 0));
+    const slots = toBookedSlots(events);
     for (let h = START_HOUR; h < END_HOUR; h++) {
-      const hourStart = setTime(date, h, 0);
-      const hourEnd = setTime(date, h + 1, 0);
-      let count = 0;
-      events.forEach(ev => {
-        if (ev.getStartTime() < hourEnd && ev.getEndTime() > hourStart) {
-          count += quantityCache.get(ev);
-        }
-      });
-      hours.push({ hour: h, remaining: space.capacity - count });
+      const booked = occupancy(slots, setTime(date, h, 0).getTime(), setTime(date, h + 1, 0).getTime());
+      hours.push({ hour: h, remaining: space.capacity - booked });
     }
   } catch (err) {
+    error = true;
     for (let h = START_HOUR; h < END_HOUR; h++) {
       hours.push({ hour: h, remaining: 0 });
     }
   }
 
-  return { spaceId: spaceId, name: space.name, capacity: space.capacity, hours: hours };
+  return { spaceId: space.id, name: space.name, capacity: space.capacity, hours: hours, error: error };
+}
+
+// ==================== CACHE DES DISPONIBILITÉS ====================
+
+/**
+ * Lire un agenda Google prend du temps (plusieurs secondes pour 6 agendas sur un mois).
+ * On garde donc le résultat en mémoire côté serveur (CacheService, gratuit) pendant
+ * CACHE_TTL_SECONDS. Toute réservation, refus ou purge « vide » le cache aussitôt.
+ * Seules les modifications faites à la main dans Google Agenda attendent l'expiration.
+ * Aucun risque de double réservation : bookRoom revérifie toujours l'agenda réel.
+ */
+const CACHE_TTL_SECONDS = 600; // 10 minutes
+
+let cacheVersion = null; // mémorisé le temps d'une requête
+
+/**
+ * Renvoie la valeur en cache, sinon la calcule avec compute()
+ * et la met en cache si isCacheable(valeur) (on ne garde jamais une erreur).
+ */
+function withCache(key, compute, isCacheable) {
+  if (cacheVersion === null) {
+    cacheVersion = PropertiesService.getScriptProperties().getProperty('CACHE_VERSION') || '0';
+  }
+  const cache = CacheService.getScriptCache();
+  const fullKey = cacheVersion + ':' + key;
+
+  const hit = cache.get(fullKey);
+  if (hit) return JSON.parse(hit);
+
+  const value = compute();
+  if (isCacheable(value)) cache.put(fullKey, JSON.stringify(value), CACHE_TTL_SECONDS);
+  return value;
+}
+
+/**
+ * « Vide » tout le cache d'un coup : on change le numéro de version inclus dans
+ * chaque clé, les anciennes entrées ne sont plus jamais lues et expirent seules.
+ */
+function invalidateAvailabilityCache() {
+  cacheVersion = String(Date.now());
+  PropertiesService.getScriptProperties().setProperty('CACHE_VERSION', cacheVersion);
 }
 
 // ==================== CRÉATION D'UNE DEMANDE DE RÉSERVATION ====================
@@ -477,7 +493,10 @@ function bookRoom(rawBooking) {
     const servicesList = [];
     if (booking.wantsBreakfast) servicesList.push('Petit déjeuner (' + breakfastPrice.toFixed(2) + ' €HT)');
     if (booking.wantsLunch) servicesList.push('Déjeuner (' + lunchPrice.toFixed(2) + ' €HT)');
-    if (parkingQuantity > 0) servicesList.push(parkingQuantity + ' place(s) de parking (' + parkingPrice.toFixed(2) + ' €HT)');
+    if (parkingQuantity > 0) {
+      servicesList.push(parkingQuantity + ' place(s) de parking' + (isMultiDay ? ' × ' + numberOfDays + ' jours' : '')
+        + ' (' + parkingPrice.toFixed(2) + ' €HT)');
+    }
     if (booking.wantsOther) servicesList.push('Autre (voir note)');
 
     const descriptionLines = [];
@@ -514,6 +533,8 @@ function bookRoom(rawBooking) {
     event.setTag(TAG_EMAIL, booking.requesterEmail);
     event.setTag(TAG_FIRST_NAME, booking.firstName);
     event.setTag(TAG_QUANTITY, String(spaceQuantity));
+
+    invalidateAvailabilityCache(); // la disponibilité vient de changer
 
     sendApprovalEmail({
       space: space,
@@ -605,6 +626,7 @@ function purgeExpiredRequests() {
           const firstName = getRequesterFirstName(ev);
           Logger.log('🗑️ Demande expirée supprimée : ' + space.name + ' — ' + ev.getTitle());
           ev.deleteEvent();
+          invalidateAvailabilityCache();
           if (NOTIFY_ON_EXPIRY && requesterEmail) {
             MailApp.sendEmail({
               to: requesterEmail,
@@ -749,6 +771,7 @@ function applyApprovalAction(action, event) {
 
   // action === 'reject' (garanti par la signature)
   event.deleteEvent();
+  invalidateAvailabilityCache(); // le créneau est libéré
   if (requesterEmail) {
     MailApp.sendEmail({
       to: requesterEmail,
@@ -845,13 +868,25 @@ function getEventQuantity(event) {
 }
 
 /**
- * Pré-calcule la quantité de chaque événement UNE seule fois, plutôt que de
- * la relire à chaque heure testée dans les boucles de disponibilité.
+ * Convertit les événements Google en objets simples { start, end, qty } (en millisecondes).
+ * Chaque getStartTime() / getTag() est un appel à Google, donc lent : on les fait
+ * UNE seule fois par événement, puis toutes les boucles comparent de simples nombres.
  */
-function precomputeQuantities(events) {
-  const map = new Map();
-  events.forEach(ev => map.set(ev, getEventQuantity(ev)));
-  return map;
+function toBookedSlots(events) {
+  return events.map(ev => ({
+    start: ev.getStartTime().getTime(),
+    end: ev.getEndTime().getTime(),
+    qty: getEventQuantity(ev)
+  }));
+}
+
+/** Nombre d'unités de capacité occupées sur l'intervalle [from, to) (millisecondes). */
+function occupancy(slots, from, to) {
+  let count = 0;
+  slots.forEach(s => {
+    if (s.start < to && s.end > from) count += s.qty;
+  });
+  return count;
 }
 
 /**
@@ -880,7 +915,8 @@ function computeQuote(space, q) {
 
   const breakfastPrice = q.wantsBreakfast ? PRICES.breakfast * q.numberOfPeople : 0;
   const lunchPrice = q.wantsLunch ? PRICES.lunch * q.numberOfPeople : 0;
-  const parkingPrice = q.parkingQuantity * (isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
+  // Parking facturé par jour ; les repas, eux, sont comptés une fois par personne pour toute la réservation
+  const parkingPrice = q.parkingQuantity * (isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay) * q.numberOfDays;
   const totalExtras = breakfastPrice + lunchPrice + parkingPrice;
 
   return {
@@ -899,19 +935,11 @@ function computeQuote(space, q) {
  * sur plusieurs jours (réservation multi-jours).
  */
 function maxOverlapInRange(events, start, end) {
-  const quantityCache = precomputeQuantities(events);
+  const slots = toBookedSlots(events);
+  const HOUR = 60 * 60 * 1000;
   let maxCount = 0;
-  let cursor = new Date(start);
-  while (cursor < end) {
-    const hourEnd = new Date(cursor.getTime() + 60 * 60 * 1000);
-    let count = 0;
-    events.forEach(ev => {
-      if (ev.getStartTime() < hourEnd && ev.getEndTime() > cursor) {
-        count += quantityCache.get(ev);
-      }
-    });
-    if (count > maxCount) maxCount = count;
-    cursor = hourEnd;
+  for (let t = start.getTime(); t < end.getTime(); t += HOUR) {
+    maxCount = Math.max(maxCount, occupancy(slots, t, t + HOUR));
   }
   return maxCount;
 }
