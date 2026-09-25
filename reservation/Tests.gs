@@ -47,3 +47,19 @@ function testAttachment() {
     Logger.log('❌ ERREUR : ' + err.message);
   }
 }
+
+/**
+ * Génère un devis d'exemple (numéro « TEST », compteur non modifié)
+ * et l'envoie à OWNER_EMAIL pour vérifier la mise en page.
+ */
+function testDevis() {
+  const booking = {
+    spaceId: 'salleCanele', dateString: '2026-10-01', endDateString: '2026-10-02',
+    startHour: START_HOUR, endHour: END_HOUR, numberOfDays: 2, spaceQuantity: 1,
+    numberOfPeople: 12, wantsBreakfast: true, wantsLunch: true, parkingQuantity: 2,
+    firstName: 'Jean', lastName: 'Dupont', company: 'Entreprise Exemple'
+  };
+  const pdf = buildQuotePdf(findSpace(booking.spaceId), booking, DEVIS.numberPrefix + 'TEST');
+  MailApp.sendEmail({ to: OWNER_EMAIL, subject: 'Test devis', htmlBody: '<p>Devis d\'exemple en pièce jointe.</p>', attachments: [pdf] });
+  Logger.log('✅ Devis de test envoyé à ' + OWNER_EMAIL);
+}

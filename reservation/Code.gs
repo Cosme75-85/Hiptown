@@ -385,6 +385,7 @@ function bookRoom(rawBooking) {
     event.setTag(TAG_EMAIL, booking.requesterEmail);
     event.setTag(TAG_FIRST_NAME, booking.firstName);
     event.setTag(TAG_QUANTITY, String(booking.spaceQuantity));
+    event.setTag(TAG_BOOKING, JSON.stringify(bookingForQuote(booking)));
 
     invalidateAvailabilityCache(); // la disponibilité vient de changer
     sendApprovalEmail(space, event.getId(), summary);
@@ -399,6 +400,29 @@ function bookRoom(rawBooking) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Données de la demande nécessaires au devis, enregistrées dans l'événement
+ * (tag limité à 1024 caractères : les textes libres, titre et note, n'y vont pas).
+ */
+function bookingForQuote(b) {
+  return {
+    spaceId: b.space.id,
+    dateString: b.dateString,
+    endDateString: b.isMultiDay ? b.endDateString : '',
+    startHour: b.startHour,
+    endHour: b.endHour,
+    numberOfDays: b.numberOfDays,
+    spaceQuantity: b.spaceQuantity,
+    numberOfPeople: b.numberOfPeople,
+    wantsBreakfast: b.wantsBreakfast,
+    wantsLunch: b.wantsLunch,
+    parkingQuantity: b.parkingQuantity,
+    firstName: b.firstName,
+    lastName: b.lastName,
+    company: b.company
+  };
 }
 
 /**
@@ -589,22 +613,37 @@ function applyApprovalAction(action, event) {
     event.setTitle(CONFIRMED_PREFIX + cleanTitle);
     event.setColor(CalendarApp.EventColor.GREEN);
 
+    // Devis : une erreur ici ne doit pas bloquer la confirmation, on la signale au gérant
+    let quote = null;
+    let quoteStatus = 'Pas de devis : demande créée avant l\'ajout des devis automatiques.';
+    try {
+      quote = createQuoteForEvent(event);
+      if (quote) {
+        quoteStatus = 'Devis n°' + quote.number + ' joint à l\'email (copie dans le dossier Drive « ' + DEVIS.driveFolderName + ' »).';
+        event.setDescription(event.getDescription() + '\nDevis : ' + quote.number);
+      }
+    } catch (err) {
+      quoteStatus = '⚠️ Devis non généré : ' + err.message;
+    }
+
     if (requesterEmail) {
-      let attachments = [];
+      const attachments = quote ? [quote.pdf] : [];
       try {
-        attachments = [DriveApp.getFileById(ACCESS_PLAN_FILE_ID).getBlob()];
+        attachments.push(DriveApp.getFileById(ACCESS_PLAN_FILE_ID).getBlob());
       } catch (err) {
-        // Fichier inaccessible : on envoie quand même l'email, sans pièce jointe
+        // Plan d'accès inaccessible : on envoie quand même l'email
       }
 
       sendClientEmail(requesterEmail, firstName, 'Réservation confirmée — Hiptown', [
         'Merci d\'avoir choisi <b>Hiptown</b> !',
         'Votre réservation <b>"' + escapeHtml(cleanTitle) + '"</b> est confirmée.',
         'Lors de votre arrivée le jour J, appelez-nous ou scannez le QR code en bas, nous descendrons vous accueillir. Vous retrouverez en pièce jointe le plan d\'accès à notre bâtiment avec nos contacts.',
-        'La facture correspondante vous sera envoyée par email à la suite de cette réservation.'
+        quote
+          ? 'Vous trouverez également en pièce jointe votre devis n°<b>' + quote.number + '</b>. La facture correspondante vous sera envoyée par email à la suite de cette réservation.'
+          : 'La facture correspondante vous sera envoyée par email à la suite de cette réservation.'
       ], 'À bientôt', attachments);
     }
-    return 'Réservation confirmée pour "' + cleanTitle + '".';
+    return 'Réservation confirmée pour "' + cleanTitle + '". ' + quoteStatus;
   }
 
   // action === 'reject' (garanti par la signature)
@@ -747,35 +786,54 @@ function occupancy(slots, from, to) {
  * @param {Object} space  l'espace (tarifs horaire / demi-journée / journée)
  * @param {Object} q      startHour, endHour, numberOfDays, spaceQuantity,
  *                        numberOfPeople, wantsBreakfast, wantsLunch, parkingQuantity
+ * @return {Object} lines (lignes du devis : label, qty, unitPrice, total),
+ *                  totaux par type, totalHT, totalVAT, totalTTC
  */
 function computeQuote(space, q) {
+  const round = n => Math.round(n * 100) / 100;
   const duration = q.endHour - q.startHour;
   const isFullDay = duration > 5;
+  const days = q.numberOfDays || 1;
+  const period = isFullDay ? 'journée complète' : (duration === 5 ? 'demi-journée' : duration + 'h');
 
-  let roomPrice = 0;
+  const lines = [];
+  const addLine = (type, label, qty, unitPrice) => {
+    if (qty > 0 && unitPrice > 0) lines.push({ type: type, label: label, qty: qty, unitPrice: unitPrice, total: round(qty * unitPrice) });
+  };
+
+  // Location de l'espace
+  const spaceLabel = space.name + (space.maxPeople ? ' (' + space.maxPeople + ' pers.)' : '');
   if (space.quantitySelectable) {
     const deskPrices = isFullDay ? PRICES.deskFullDay : PRICES.deskHalfDay;
-    roomPrice = q.spaceQuantity >= 2 ? deskPrices[1] : deskPrices[0];
+    addLine('room', spaceLabel + ' – ' + q.spaceQuantity + ' poste(s) – ' + period, 1, deskPrices[q.spaceQuantity >= 2 ? 1 : 0]);
   } else if (space.hourlyPrice) {
-    if (q.numberOfDays > 1) roomPrice = space.fullDayPrice * q.numberOfDays; // multi-jours : journée complète × nb de jours
-    else if (isFullDay) roomPrice = space.fullDayPrice;
-    else if (duration === 5) roomPrice = space.halfDayPrice;
-    else roomPrice = space.hourlyPrice * duration;
+    if (days > 1) addLine('room', spaceLabel + ' – journée complète', days, space.fullDayPrice); // multi-jours : 1 journée par jour
+    else if (isFullDay) addLine('room', spaceLabel + ' – journée complète', 1, space.fullDayPrice);
+    else if (duration === 5) addLine('room', spaceLabel + ' – demi-journée', 1, space.halfDayPrice);
+    else addLine('room', spaceLabel + ' – à l\'heure', duration, space.hourlyPrice);
   }
 
-  const breakfastPrice = q.wantsBreakfast ? PRICES.breakfast * q.numberOfPeople : 0;
-  const lunchPrice = q.wantsLunch ? PRICES.lunch * q.numberOfPeople : 0;
-  // Parking facturé par jour ; les repas, eux, sont comptés une fois par personne pour toute la réservation
-  const parkingPrice = q.parkingQuantity * (isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay) * q.numberOfDays;
-  const totalExtras = breakfastPrice + lunchPrice + parkingPrice;
+  // Services : repas comptés une fois par personne, parking par place et par jour
+  addLine('breakfast', 'Petit déjeuner', q.wantsBreakfast ? q.numberOfPeople : 0, PRICES.breakfast);
+  addLine('lunch', 'Déjeuner', q.wantsLunch ? q.numberOfPeople : 0, PRICES.lunch);
+  addLine('parking', 'Place de parking – ' + (isFullDay ? 'journée' : 'demi-journée'),
+    q.parkingQuantity * days, isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
+
+  const totalOf = type => round(lines.filter(l => l.type === type).reduce((sum, l) => sum + l.total, 0));
+  const totalHT = round(lines.reduce((sum, l) => sum + l.total, 0));
+  const totalVAT = round(totalHT * PRICES.vatRate);
 
   return {
-    roomPrice: roomPrice,
-    breakfastPrice: breakfastPrice,
-    lunchPrice: lunchPrice,
-    parkingPrice: parkingPrice,
-    totalExtras: totalExtras,
-    grandTotal: roomPrice + totalExtras
+    lines: lines,
+    roomPrice: totalOf('room'),
+    breakfastPrice: totalOf('breakfast'),
+    lunchPrice: totalOf('lunch'),
+    parkingPrice: totalOf('parking'),
+    totalExtras: round(totalHT - totalOf('room')),
+    grandTotal: totalHT, // alias historique du total HT
+    totalHT: totalHT,
+    totalVAT: totalVAT,
+    totalTTC: round(totalHT + totalVAT)
   };
 }
 

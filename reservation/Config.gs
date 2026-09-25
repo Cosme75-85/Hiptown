@@ -29,7 +29,36 @@ const PRICES = {
   parkingHalfDay: 7.5,    // par place, créneau ≤ 5h
   parkingFullDay: 15,     // par place, créneau > 5h
   deskHalfDay: [15, 25],  // Bureau 2 postes : [1 poste, 2 postes] (tarif dégressif)
-  deskFullDay: [30, 50]
+  deskFullDay: [30, 50],
+  vatRate: 0.2            // TVA appliquée à toutes les lignes (salles, repas, parking)
+};
+
+// Devis PDF joint à l'email de confirmation (voir Devis.gs). Textes repris du modèle Excel.
+const DEVIS = {
+  numberPrefix: 'NABO06',        // + date JJMMAAAA (+ 1, 2, 3... si plusieurs devis le même jour)
+  validityDays: 30,              // date d'échéance = date du devis + 30 jours
+  driveFolderName: 'Devis réservations Hiptown',  // copie de chaque devis, dossier créé automatiquement
+  issuerLines: [
+    'Hiptown bureaux flexibles',
+    '67 rue Arago – CS 70058 – 93585 SAINT-OUEN CEDEX',
+    '02 30 96 23 60',
+    'cc@hiptown.com',
+    'N° Siret : 853 953 735 00018',
+    'N° TVA intra. : FR37853953735'
+  ],
+  // Remarques affichées selon la catégorie de l'espace (aucune si la catégorie n'est pas listée)
+  remarksByCategory: {
+    'Salles de réunion': 'Salle de réunion toute équipée : TV connectée, white board et wifi haut débit. '
+      + 'Ce prix comprend l\'accès à l\'espace commun, café et thé. '
+      + 'Nous proposons une option « viennoiserie » disponible sur demande.'
+  },
+  paymentMethod: 'Par virement bancaire',
+  paymentTerms: 'Conditions de règlement : A réception de facture. A défaut et conformément à la loi, des pénalités de retard '
+    + 'égales à trois fois le taux de d\'intérêt légal, et une indemnité forfaitaire de 40 € sont dues, le jour suivant la date '
+    + 'd\'exigibilité de la présente facture. Aucun escompte ne sera accordé pour paiement anticipé. TVA payée sur les encaissements',
+  footerCompany: ['HIPTOWN EXPLOITATION', 'N° Siret : 853 953 735 00018', 'N° TVA intra. : FR37853953735'],
+  contact: { name: 'Anne-Lise MEDALIN', phone: '(+33) 7 66 87 61 74', email: 'alm@hiptown.com' },
+  bankDetails: 'Envoyées avec la 1ère facture'
 };
 
 // Une demande non traitée au bout de ce délai est supprimée (voir purgeExpiredRequests)
@@ -49,7 +78,7 @@ const CACHE_TTL_SECONDS = 600; // 10 minutes
 // une requête peut être fabriquée à la main sans passer par le formulaire.
 const MAX_MULTI_DAYS = 31;       // durée max d'une réservation multi-jours
 const MAX_PARKING = 10;          // places de parking max par demande
-const MAX_TEXT_LENGTH = 200;     // prénom, nom, entreprise, email, titre
+const MAX_TEXT_LENGTH = 100;     // prénom, nom, entreprise, email, titre
 const MAX_NOTES_LENGTH = 2000;   // note libre
 
 // Données rangées dans l'événement lui-même (invisibles dans l'agenda) :
@@ -57,3 +86,4 @@ const MAX_NOTES_LENGTH = 2000;   // note libre
 const TAG_EMAIL = 'requesterEmail';
 const TAG_FIRST_NAME = 'firstName';
 const TAG_QUANTITY = 'quantity';
+const TAG_BOOKING = 'booking';   // détail de la demande (JSON), relu pour éditer le devis

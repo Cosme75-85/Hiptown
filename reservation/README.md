@@ -7,7 +7,8 @@ ouvert depuis la tuile « Réserver une salle » du portail client (`app.js`).
 |---|---|---|
 | `Config.gs` | **Tout ce qui se règle** : espaces, agendas, horaires, tarifs, emails | ✅ |
 | `Code.gs` | La logique : disponibilités, demandes, emails, approbation | ✅ |
-| `Tests.gs` | Fonctions de diagnostic à lancer à la main | ✅ |
+| `Devis.gs` | Devis PDF joint à l'email de confirmation | ✅ |
+| `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
 | `README.md` | Ce mode d'emploi | ❌ |
@@ -18,10 +19,10 @@ Le code qui tourne est celui de script.google.com : ce dossier en est la copie
 de référence (historique, retour arrière possible). Après chaque modification :
 
 1. Ouvrir le projet sur script.google.com.
-2. Pour chacun des 4 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
+2. Pour chacun des 5 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
    dans Apps Script (le créer avec **+ > Script** s'il n'existe pas, sans taper « .gs »),
    tout sélectionner (Ctrl+A), supprimer, coller le contenu du fichier GitHub.
-3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ces trois-là : deux fichiers qui
+3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ces quatre-là : deux fichiers qui
    déclarent la même constante provoquent l'erreur « already been declared ».
 4. Enregistrer (Ctrl+S).
 5. **Déployer > Gérer les déploiements > ✏️ (crayon) > Version : Nouvelle version > Déployer**
@@ -40,3 +41,16 @@ clasp login
 echo '{"scriptId":"TON_ID_DE_SCRIPT","rootDir":"."}' > .clasp.json
 clasp push
 ```
+
+## Devis automatiques
+
+À l'approbation d'une demande, un devis PDF est créé, joint à l'email de confirmation
+du client et copié dans le dossier Drive « Devis réservations Hiptown » (créé tout seul).
+
+- Numéro : `NABO06` + date du jour (`JJMMAAAA`), puis `1`, `2`, `3`… pour les devis
+  suivants du même jour (ex. `NABO0625092026`, `NABO06250920261`).
+- TVA de 20 % sur toutes les lignes ; échéance à 30 jours.
+- Textes du devis (mentions, contact, conditions) : objet `DEVIS` dans `Config.gs`.
+- Aperçu : lancer `testDevis` (fichier `Tests.gs`) — un devis d'exemple arrive par email.
+- Les demandes créées avant cette version n'ont pas de devis automatique.
+

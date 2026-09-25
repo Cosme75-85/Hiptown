@@ -441,8 +441,9 @@
       return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     }
 
-    function formatEuro(n) {
-      return n.toFixed(2).replace('.', ',').replace(',00', '') + ' €HT';
+    /** 249.5 -> "249,50 €HT" ; tax = 'HT' (par défaut), 'TTC' ou '' */
+    function formatEuro(n, tax = 'HT') {
+      return n.toFixed(2).replace('.', ',').replace(',00', '') + ' €' + tax;
     }
 
     /** "2026-10-12" -> "lundi 12 octobre 2026" */
@@ -770,20 +771,13 @@
         startHour: b.startHour, endHour: b.endHour, numberOfDays: days, spaceQuantity: b.spaceQuantity
       }, services));
 
-      const lines = [];
-      if (q.roomPrice > 0) {
-        const label = b.space.quantitySelectable ? 'Location (' + b.spaceQuantity + ' poste(s))'
-          : (days > 1 ? 'Location (' + days + ' jours)' : 'Location de l\'espace');
-        lines.push(label + ' : ' + formatEuro(q.roomPrice));
-      }
-      if (q.breakfastPrice > 0) lines.push('Petit déjeuner : ' + formatEuro(q.breakfastPrice));
-      if (q.lunchPrice > 0) lines.push('Déjeuner : ' + formatEuro(q.lunchPrice));
-      if (q.parkingPrice > 0) {
-        lines.push(services.parkingQuantity + ' place(s) de parking' + (days > 1 ? ' × ' + days + ' jours' : '') + ' : ' + formatEuro(q.parkingPrice));
-      }
+      const lines = q.lines.map(l => l.label + (l.qty > 1 ? ' × ' + l.qty : '') + ' : ' + formatEuro(l.total));
 
-      $('priceSummary').hidden = q.grandTotal <= 0;
-      $('priceSummary').innerHTML = lines.join('<br>') + '<br><b>Total estimé : ' + formatEuro(q.grandTotal) + '</b>';
+      $('priceSummary').hidden = q.totalHT <= 0;
+      $('priceSummary').innerHTML = lines.map(escapeHtml).join('<br>')
+        + '<br><b>Total HT : ' + formatEuro(q.totalHT) + '</b>'
+        + '<br>TVA ' + Math.round(PRICES.vatRate * 100) + ' % : ' + formatEuro(q.totalVAT, '')
+        + '<br><b>Total TTC : ' + formatEuro(q.totalTTC, 'TTC') + '</b>';
     }
 
     function confirmBooking() {
