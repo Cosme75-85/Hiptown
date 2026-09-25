@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      background: #f6f8fc;
+      margin: 0;
+      padding: 24px;
+      color: #202124;
+    }
+    .header-banner {
+      background: #1E1847;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 0;
+    }
+    .logo-chip {
+      background: white;
+      border-radius: 8px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+    }
+    .page-header img {
+      height: 32px;
+      width: auto;
+      border-radius: 0;
+      display: block;
+    }
+    .page-header h1 {
+      margin: 0;
+      font-size: 24px;
+      color: white;
+    }
+    .header-sub {
+      color: rgba(255,255,255,0.85);
+      font-size: 14px;
+      margin: 8px 0 2px 0;
+    }
+    .header-address {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      margin: 0;
+    }
+
+    h1 { font-size: 22px; margin-bottom: 4px; }
+    .subtitle { color: #5f6368; margin-bottom: 20px; font-size: 14px; }
+
+    .page-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .sidebar-nav {
+      width: 210px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .sidebar-nav .sidebar-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #9aa0a6;
+      font-weight: 600;
+      padding: 4px 10px 6px 10px;
+      letter-spacing: 0.03em;
+    }
+    .sidebar-link {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #202124;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .sidebar-link:hover { background: #f1f3f4; }
+    .main-content { flex: 1; min-width: 0; }
+
+    .category-section:first-child .category-banner { margin-top: 0; }
+    .category-banner {
+      background: #1E1847;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 16px;
+      margin: 28px 0 14px 0;
+      color: white;
+      scroll-margin-top: 16px;
+    }
+
+    @media (max-width: 760px) {
+      .page-layout { flex-direction: column; }
+      .sidebar-nav {
+        width: 100%;
+        position: static;
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 6px;
+        padding: 8px;
+      }
+      .sidebar-nav .sidebar-title { display: none; }
+      .sidebar-link { white-space: nowrap; background: #f1f3f4; }
+      .spaces-grid { grid-template-columns: 1fr; }
+      .space-card { width: 100%; }
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .month-nav button {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #dadce0;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .month-nav button:hover { background: #f1f3f4; }
+    .month-nav .label { font-weight: 500; font-size: 15px; min-width: 140px; text-align: center; text-transform: capitalize; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: #5f6368;
+    }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .dot.free { background: #34a853; }
+    .dot.full { background: #ea4335; }
+    .dot.past { background: #dadce0; }
+
+    .spaces-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 320px);
+      gap: 16px;
+    }
+    .space-card {
+      width: 320px;
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      border-top: 4px solid #ccc;
+    }
+    .space-photo {
+      width: 100%;
+      height: 130px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      background: #eee;
+    }
+    .space-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .space-name { font-weight: 500; font-size: 16px; }
+    .capacity-badge {
+      font-size: 11px;
+      background: #f1f3f4;
+      color: #5f6368;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      transition: opacity 0.15s ease;
+    }
+    .month-grid.loading { opacity: 0.4; pointer-events: none; }
+    .month-nav button:disabled { opacity: 0.4; cursor: default; }
+    .day-cell { transition: background-color 0.15s ease, transform 0.1s ease; }
+    .day-cell.available:active { transform: scale(0.92); }
+    .dow {
+      text-align: center;
+      font-size: 11px;
+      color: #9aa0a6;
+      font-weight: 500;
+      padding-bottom: 4px;
+    }
+    .day-cell {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      position: relative;
+      color: white;
+      font-weight: 500;
+    }
+    .day-cell.empty { visibility: hidden; cursor: default; }
+    .day-cell.available { background: #34a853; }
+    .day-cell.available:hover { background: #2d9248; }
+    .day-cell.full { background: #ea4335; cursor: not-allowed; }
+    .day-cell.past { background: #eee; color: #b0b0b0; cursor: default; }
+    .day-cell.error { background: #fff3cd; color: #856404; cursor: not-allowed; }
+    .day-cell .remaining {
+      font-size: 9px;
+      font-weight: 400;
+      opacity: 0.9;
+    }
+    .loading-mini { grid-column: span 7; text-align: center; color: #9aa0a6; font-size: 12px; padding: 10px 0; }
+
+    /* Modal */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      width: 380px;
+      max-width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .modal h3 { margin-top: 0; margin-bottom: 4px; }
+    .modal .modal-sub { font-size: 12px; color: #5f6368; margin-bottom: 14px; }
+    .modal label { font-size: 13px; font-weight: 500; display: block; margin-top: 10px; }
+    .modal input, .modal textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 6px 0 4px 0;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .modal textarea { resize: vertical; min-height: 60px; }
+    .field-row { display: flex; gap: 8px; }
+    .field-row > div { flex: 1; }
+
+    .time-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .time-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #dadce0;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .time-btn:hover { border-color: #1a73e8; }
+    .time-btn.selected { background: #1a73e8; color: white; border-color: #1a73e8; }
+    .time-btn:disabled { background: #f1f3f4; color: #b0b0b0; cursor: not-allowed; border-color: #eee; }
+
+    .custom-range {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .custom-range select {
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      flex: 1;
+    }
+
+    .step-divider {
+      border-top: 1px solid #eee;
+      margin: 16px 0;
+      padding-top: 12px;
+    }
+
+    .services-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .service-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .service-row input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+    .service-row label {
+      margin: 0;
+      font-weight: 400;
+      flex: 1;
+      cursor: pointer;
+    }
+    .service-price {
+      font-size: 12px;
+      color: #5f6368;
+    }
+    .parking-qty {
+      width: 60px !important;
+      margin: 0 !important;
+      padding: 4px 6px !important;
+      display: inline-block;
+    }
+    .price-summary {
+      background: #e6f4ea;
+      color: #137333;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-top: 12px;
+      display: none;
+    }
+    .price-summary.visible { display: block; }
+    .selected-slot-banner {
+      background: #e8f0fe;
+      color: #1a73e8;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    .modal-actions button { padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; }
+    .modal-actions .cancel { background: #f1f3f4; }
+    .modal-actions .confirm { background: #1a73e8; color: white; }
+    .modal-actions .confirm:disabled { background: #dadce0; color: #80868b; cursor: not-allowed; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #202124;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      max-width: 90vw;
+      text-align: center;
+      z-index: 200;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-banner">
+    <div class="page-header">
+      <div class="logo-chip">
+        <img src="https://www.flitdesk.com/logos/Hiptown.png" alt="Hiptown">
+      </div>
+      <h1>Bordeaux</h1>
+    </div>
+    <div class="header-sub">Réservation de salles de réunion chez Hiptown Bordeaux</div>
+    <div class="header-address">52 quai de Paludate</div>
+  </div>
+
+  <div class="page-layout">
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="sidebar-title">Aller à</div>
+    </nav>
+
+    <div class="main-content">
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">◀</button>
+        <div class="label" id="monthLabel"></div>
+        <button onclick="changeMonth(1)">▶</button>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot free"></i> Disponible</span>
+        <span><i class="dot full"></i> Complet</span>
+        <span><i class="dot past"></i> Passé</span>
+      </div>
+
+      <div id="spacesContainer"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="overlay" id="modalOverlay">
+    <div class="modal">
+      <h3 id="modalTitle">Réserver</h3>
+      <div class="modal-sub" id="modalDate"></div>
+
+      <div id="timeStep">
+        <div id="spaceQtySelector" style="display:none;"></div>
+
+        <div id="multiDayBlock" style="display:none;">
+          <div class="service-row" style="margin-bottom:10px;">
+            <input type="checkbox" id="multiDayCheckbox" onchange="toggleMultiDay()">
+            <label for="multiDayCheckbox">Réserver sur plusieurs jours (journée complète chaque jour)</label>
+          </div>
+          <div class="custom-range" id="multiDayRange" style="display:none;">
+            <span>Jusqu'au</span>
+            <input type="date" id="multiDayEnd" oninput="onMultiDayEndChange()">
+            <button class="time-btn" style="flex:0 0 auto;" onclick="selectMultiDay()">Valider</button>
+          </div>
+        </div>
+
+        <div class="time-options" id="quickButtons">
+          <div class="loading-mini">Chargement des disponibilités...</div>
+        </div>
+        <div class="custom-range" id="customRangeBlock">
+          <span>Ou choisis :</span>
+          <select id="customStart"></select>
+          <span>→</span>
+          <select id="customEnd"></select>
+          <button class="time-btn" style="flex:0 0 auto;" onclick="selectCustomRange()">OK</button>
+        </div>
+      </div>
+
+      <div id="formStep" style="display:none;">
+        <div class="step-divider">
+          <div class="selected-slot-banner" id="selectedSlotBanner"></div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label>Prénom *</label>
+            <input type="text" id="firstName" placeholder="Jean">
+          </div>
+          <div>
+            <label>Nom *</label>
+            <input type="text" id="lastName" placeholder="Dupont">
+          </div>
+        </div>
+        <label>Entreprise *</label>
+        <input type="text" id="company" placeholder="Nom de l'entreprise">
+        <label>Ton email *</label>
+        <input type="email" id="requesterEmail" placeholder="prenom.nom@exemple.com">
+        <label>Nombre de personnes *</label>
+        <input type="number" id="numberOfPeople" min="1" value="1" oninput="updatePriceSummary()">
+        <label>Titre de la réunion</label>
+        <input type="text" id="meetingTitle" placeholder="Ex: Point client">
+
+        <label>Services additionnels</label>
+        <div class="services-list">
+          <div class="service-row">
+            <input type="checkbox" id="wantsBreakfast" onchange="updatePriceSummary()">
+            <label for="wantsBreakfast">Petit déjeuner</label>
+            <span class="service-price">5,50 €HT/pers.</span>
+          </div>
+          <div class="service-row">
+            <input type="checkbox" id="wantsLunch" onchange="updatePriceSummary()">
+            <label for="wantsLunch">Déjeuner</label>
+            <span class="service-price">30 €HT/pers.</span>
+          </div>
+          <div class="service-row">
+            <input type="checkbox" id="wantsParkingCheckbox" onchange="toggleParkingQty()">
+            <label for="wantsParkingCheckbox">Place(s) de parking</label>
+            <input type="number" id="parkingQuantity" class="parking-qty" min="1" value="1" style="display:none;" oninput="updatePriceSummary()">
+            <span class="service-price" id="parkingPriceLabel">7,50€HT demi-j / 15€HT journée</span>
+          </div>
+          <div class="service-row">
+            <input type="checkbox" id="wantsOther" onchange="updatePriceSummary()">
+            <label for="wantsOther">Autre (précisez dans la note)</label>
+          </div>
+        </div>
+
+        <div class="price-summary" id="priceSummary"></div>
+
+        <label>Note / demande particulière (optionnel)</label>
+        <textarea id="meetingNotes" placeholder="Si vous réservez pour la première fois, merci de nous transmettre la raison sociale et l'adresse complète pour l'envoi de la facture"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="cancel" onclick="closeModal()">Annuler</button>
+        <button class="confirm" id="submitBtn" style="display:none;" onclick="confirmBooking()">Envoyer la demande</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const START_HOUR = 8;
+    const END_HOUR = 18;
+    const MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+    const BASE_URL = "<?= baseUrl ?>";
+
+    let currentYear, currentMonth; // month 1-12
+    let spaces = [];
+    let pendingBooking = null; // { spaceId, spaceName, dateString, startHour, endHour }
+    let currentDayHours = [];
+
+    function init() {
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth() + 1;
+      fetch(BASE_URL + '?action=getSpacesMeta')
+        .then(r => r.json())
+        .then(onSpacesLoaded)
+        .catch(err => showToast('Erreur : ' + err.message));
+    }
+
+    function onSpacesLoaded(spacesMeta) {
+      spaces = spacesMeta;
+      renderSkeleton();
+      updateMonthLabel();
+      loadAllMonths();
+    }
+
+    function updateMonthLabel() {
+      document.getElementById('monthLabel').textContent = MONTH_NAMES[currentMonth - 1] + ' ' + currentYear;
+    }
+
+    function changeMonth(delta) {
+      currentMonth += delta;
+      if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+      if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+      updateMonthLabel();
+      loadAllMonths();
+    }
+
+    function slugify(text) {
+      return text.toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    }
+
+    function renderSkeleton() {
+      const container = document.getElementById('spacesContainer');
+      const sidebar = document.getElementById('sidebarNav');
+      container.innerHTML = '';
+      sidebar.innerHTML = '<div class="sidebar-title">Aller à</div>';
+
+      // Regroupe les espaces par catégorie, en conservant l'ordre d'apparition
+      const categories = [];
+      const bySpaceCategory = {};
+      spaces.forEach(space => {
+        const cat = space.category || 'Autres espaces';
+        if (!bySpaceCategory[cat]) {
+          bySpaceCategory[cat] = [];
+          categories.push(cat);
+        }
+        bySpaceCategory[cat].push(space);
+      });
+
+      categories.forEach(cat => {
+        const catId = 'cat-' + slugify(cat);
+
+        // Lien dans la sidebar
+        const link = document.createElement('a');
+        link.className = 'sidebar-link';
+        link.textContent = cat;
+        link.onclick = () => document.getElementById(catId).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        sidebar.appendChild(link);
+
+        // Section avec bandeau
+        const section = document.createElement('div');
+        section.className = 'category-section';
+        const banner = document.createElement('div');
+        banner.className = 'category-banner';
+        banner.id = catId;
+        banner.textContent = cat;
+        section.appendChild(banner);
+
+        const grid = document.createElement('div');
+        grid.className = 'spaces-grid';
+
+        bySpaceCategory[cat].forEach(space => {
+          const card = document.createElement('div');
+          card.className = 'space-card';
+          card.id = 'card-' + space.id;
+          card.style.borderTopColor = space.color;
+          const photoHtml = space.photoUrl
+            ? '<img class="space-photo" src="' + space.photoUrl + '" alt="' + space.name + '">'
+            : '';
+          let badgeHtml = '';
+          if (space.badgeLabel) {
+            badgeHtml = '<div class="capacity-badge">' + space.badgeLabel + '</div>';
+          } else if (space.maxPeople) {
+            badgeHtml = '<div class="capacity-badge">Jusqu\'à ' + space.maxPeople + ' personnes</div>';
+          } else if (space.capacity > 1) {
+            badgeHtml = '<div class="capacity-badge">' + space.capacity + ' places simultanées</div>';
+          }
+          card.innerHTML = `
+            ${photoHtml}
+            <div class="space-header">
+              <div class="space-name">${space.name}</div>
+              ${badgeHtml}
+            </div>
+            <div class="month-grid" id="grid-${space.id}">
+              <div class="loading-mini">Chargement...</div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        container.appendChild(section);
+      });
+    }
+
+    let monthCache = {}; // clé "YYYY-M" -> résultat de getAllMonthsAvailability
+    let monthRequestToken = 0; // idem : ignore les réponses réseau obsolètes en cas de clics rapides
+
+    function cacheKey(year, month) { return year + '-' + month; }
+
+    function loadAllMonths() {
+      const key = cacheKey(currentYear, currentMonth);
+
+      // Si déjà en cache, affichage instantané sans appel serveur
+      if (monthCache[key]) {
+        renderAllGrids(monthCache[key]);
+        return;
+      }
+
+      setNavEnabled(false);
+      spaces.forEach(space => {
+        const gridEl = document.getElementById('grid-' + space.id);
+        if (gridEl && gridEl.innerHTML.trim() !== '') gridEl.classList.add('loading');
+      });
+
+      monthRequestToken++;
+      const requestId = monthRequestToken;
+      const requestedYear = currentYear;
+      const requestedMonth = currentMonth;
+
+      fetch(BASE_URL + '?action=getAllMonthsAvailability&year=' + requestedYear + '&month=' + requestedMonth)
+        .then(r => r.json())
+        .then(data => {
+          monthCache[cacheKey(requestedYear, requestedMonth)] = data;
+          if (requestId !== monthRequestToken) return; // l'utilisateur a déjà navigué ailleurs entre-temps
+          renderAllGrids(data);
+          setNavEnabled(true);
+          prefetchAdjacentMonths();
+        })
+        .catch(err => {
+          if (requestId !== monthRequestToken) return;
+          showToast('Erreur : ' + err.message);
+          setNavEnabled(true);
+        });
+    }
+
+    function renderAllGrids(dataBySpace) {
+      spaces.forEach(space => {
+        const data = dataBySpace[space.id];
+        if (data) renderMonthGrid(space.id, data);
+        const gridEl = document.getElementById('grid-' + space.id);
+        if (gridEl) gridEl.classList.remove('loading');
+      });
+    }
+
+    function setNavEnabled(enabled) {
+      document.querySelectorAll('.month-nav button').forEach(b => b.disabled = !enabled);
+    }
+
+    // Précharge le mois précédent et suivant en arrière-plan pour une navigation instantanée
+    function prefetchAdjacentMonths() {
+      [-1, 1].forEach(delta => {
+        let y = currentYear, m = currentMonth + delta;
+        if (m > 12) { m = 1; y++; }
+        if (m < 1) { m = 12; y--; }
+        const key = cacheKey(y, m);
+        if (!monthCache[key]) {
+          fetch(BASE_URL + '?action=getAllMonthsAvailability&year=' + y + '&month=' + m)
+            .then(r => r.json())
+            .then(data => { monthCache[key] = data; })
+            .catch(() => {});
+        }
+      });
+    }
+
+    function renderMonthGrid(spaceId, data) {
+      const gridEl = document.getElementById('grid-' + spaceId);
+      if (!gridEl) return;
+
+      const firstDay = new Date(data.year, data.month - 1, 1);
+      const startOffset = (firstDay.getDay() + 6) % 7; // 0 = lundi
+
+      let html = '';
+      ['L','M','M','J','V','S','D'].forEach(l => html += '<div class="dow">' + l + '</div>');
+      for (let i = 0; i < startOffset; i++) html += '<div class="day-cell empty"></div>';
+
+      data.days.forEach(d => {
+        let cls = 'day-cell ';
+        let styleAttr = '';
+        if (d.status === 'past') {
+          cls += 'past';
+        } else if (d.status === 'error') {
+          cls += 'error';
+        } else {
+          // 'available' ou 'full' : dégradé gauche (matin) / droite (après-midi)
+          cls += d.status;
+          const leftColor = d.morningFree ? '#34a853' : '#ea4335';
+          const rightColor = d.afternoonFree ? '#34a853' : '#ea4335';
+          styleAttr = ' style="background: linear-gradient(to right, ' + leftColor + ' 50%, ' + rightColor + ' 50%);"';
+        }
+
+        let remainingHtml = '';
+        if (d.capacity > 1 && (d.status === 'available' || d.status === 'full')) {
+          remainingHtml = '<span class="remaining">' + Math.max(d.remaining, 0) + '</span>';
+        }
+
+        const clickable = (d.status === 'available');
+        const onclickAttr = clickable
+          ? ' onclick="openDayModal(\'' + spaceId + '\',' + data.year + ',' + data.month + ',' + d.day + ')"'
+          : '';
+
+        html += '<div class="' + cls + '"' + styleAttr + onclickAttr + '>' + d.day + remainingHtml + '</div>';
+      });
+
+      gridEl.innerHTML = html;
+    }
+
+    // ==================== MODALE DE RÉSERVATION ====================
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    let dayRequestToken = 0; // incrémenté à chaque ouverture, pour ignorer les réponses réseau obsolètes
+
+    function openDayModal(spaceId, year, month, day) {
+      const space = spaces.find(s => s.id === spaceId);
+      const dateString = year + '-' + pad(month) + '-' + pad(day);
+
+      pendingBooking = { spaceId: spaceId, spaceName: space.name, dateString: dateString, startHour: null, endHour: null, spaceQuantity: 1 };
+
+      document.getElementById('modalTitle').textContent = 'Réserver ' + space.name;
+      document.getElementById('modalDate').textContent = day + ' ' + MONTH_NAMES[month - 1] + ' ' + year;
+      document.getElementById('timeStep').style.display = 'block';
+      document.getElementById('formStep').style.display = 'none';
+      document.getElementById('submitBtn').style.display = 'none';
+      document.getElementById('quickButtons').innerHTML = '<div class="loading-mini">Chargement des disponibilités...</div>';
+
+      // Sélecteur de nombre de postes (uniquement pour les espaces qui le permettent)
+      const qtySelector = document.getElementById('spaceQtySelector');
+      if (space.quantitySelectable) {
+        qtySelector.style.display = 'block';
+        qtySelector.innerHTML = `
+          <label>Nombre de postes</label>
+          <div class="time-options">
+            <button class="time-btn selected" id="qtyBtn1" onclick="selectSpaceQuantity(1)">1 poste</button>
+            <button class="time-btn" id="qtyBtn2" onclick="selectSpaceQuantity(2)">2 postes (privatif)</button>
+          </div>
+        `;
+      } else {
+        qtySelector.style.display = 'none';
+        qtySelector.innerHTML = '';
+      }
+
+      // Les horaires libres ne sont proposés que pour les espaces qui les autorisent
+      document.getElementById('customRangeBlock').style.display = space.onlyHalfOrFullDay ? 'none' : 'flex';
+
+      // Option "plusieurs jours" (uniquement pour les espaces qui le permettent, ex: salles de réunion)
+      const multiDayBlock = document.getElementById('multiDayBlock');
+      if (space.allowMultiDay) {
+        multiDayBlock.style.display = 'block';
+        document.getElementById('multiDayCheckbox').checked = false;
+        document.getElementById('multiDayRange').style.display = 'none';
+        document.getElementById('multiDayEnd').value = dateString;
+        document.getElementById('multiDayEnd').min = dateString;
+      } else {
+        multiDayBlock.style.display = 'none';
+      }
+
+      document.getElementById('modalOverlay').classList.add('open');
+
+      dayRequestToken++;
+      const requestId = dayRequestToken;
+      fetch(BASE_URL + '?action=getDayAvailability&spaceId=' + encodeURIComponent(spaceId) + '&dateString=' + dateString)
+        .then(r => r.json())
+        .then(data => {
+          if (requestId !== dayRequestToken) return; // une ouverture plus récente a eu lieu entre-temps, on ignore
+          renderTimeOptions(data);
+        })
+        .catch(err => {
+          if (requestId !== dayRequestToken) return;
+          showToast('Erreur : ' + err.message);
+        });
+    }
+
+    function toggleMultiDay() {
+      const checked = document.getElementById('multiDayCheckbox').checked;
+      document.getElementById('multiDayRange').style.display = checked ? 'flex' : 'none';
+      document.getElementById('quickButtons').style.display = checked ? 'none' : 'flex';
+      document.getElementById('customRangeBlock').style.display = checked ? 'none' : (pendingBooking && spaces.find(s => s.id === pendingBooking.spaceId).onlyHalfOrFullDay ? 'none' : 'flex');
+    }
+
+    function onMultiDayEndChange() {
+      // Recalcule le prix affiché si l'utilisateur est déjà sur le formulaire (peu probable ici, mais garde cohérent)
+    }
+
+    function selectMultiDay() {
+      if (!pendingBooking) return;
+      const endDate = document.getElementById('multiDayEnd').value;
+      if (!endDate || endDate < pendingBooking.dateString) {
+        showToast('Merci de choisir une date de fin valide.');
+        return;
+      }
+      pendingBooking.endDateString = endDate;
+      pendingBooking.startHour = START_HOUR;
+      pendingBooking.endHour = END_HOUR;
+      showFormStep();
+    }
+
+    function selectSpaceQuantity(qty) {
+      if (!pendingBooking) return;
+      pendingBooking.spaceQuantity = qty;
+      document.getElementById('qtyBtn1').classList.toggle('selected', qty === 1);
+      document.getElementById('qtyBtn2').classList.toggle('selected', qty === 2);
+      renderTimeOptions({ hours: currentDayHours });
+      updatePriceSummary(); // le prix (30€/50€ ou 15€/25€) doit s'adapter immédiatement
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+      pendingBooking = null;
+    }
+
+    function minRemainingInRange(hours, start, end) {
+      let m = Infinity;
+      hours.forEach(h => { if (h.hour >= start && h.hour < end) m = Math.min(m, h.remaining); });
+      return m === Infinity ? 0 : m;
+    }
+
+    function renderTimeOptions(data) {
+      currentDayHours = data.hours;
+      const neededQty = (pendingBooking && pendingBooking.spaceQuantity) ? pendingBooking.spaceQuantity : 1;
+
+      const morningFree = minRemainingInRange(data.hours, START_HOUR, 13) >= neededQty;
+      const afternoonFree = minRemainingInRange(data.hours, 13, END_HOUR) >= neededQty;
+      const fullDayFree = minRemainingInRange(data.hours, START_HOUR, END_HOUR) >= neededQty;
+
+      const btns = document.getElementById('quickButtons');
+      btns.innerHTML = `
+        <button class="time-btn" ${!morningFree ? 'disabled' : ''} onclick="selectSlot(${START_HOUR},13,this)">Matin (8h-13h)</button>
+        <button class="time-btn" ${!afternoonFree ? 'disabled' : ''} onclick="selectSlot(13,${END_HOUR},this)">Après-midi (13h-18h)</button>
+        <button class="time-btn" ${!fullDayFree ? 'disabled' : ''} onclick="selectSlot(${START_HOUR},${END_HOUR},this)">Journée complète</button>
+      `;
+
+      const startSel = document.getElementById('customStart');
+      const endSel = document.getElementById('customEnd');
+      startSel.innerHTML = '';
+      endSel.innerHTML = '';
+      for (let h = START_HOUR; h < END_HOUR; h++) {
+        startSel.innerHTML += '<option value="' + h + '">' + h + 'h</option>';
+      }
+      for (let h = START_HOUR + 1; h <= END_HOUR; h++) {
+        endSel.innerHTML += '<option value="' + h + '">' + h + 'h</option>';
+      }
+    }
+
+    function selectSlot(start, end, btnEl) {
+      if (!pendingBooking) return;
+      pendingBooking.startHour = start;
+      pendingBooking.endHour = end;
+
+      document.querySelectorAll('#quickButtons .time-btn').forEach(b => b.classList.remove('selected'));
+      if (btnEl) btnEl.classList.add('selected');
+
+      showFormStep();
+    }
+
+    function selectCustomRange() {
+      const start = parseInt(document.getElementById('customStart').value);
+      const end = parseInt(document.getElementById('customEnd').value);
+      if (start >= end) {
+        showToast("L'heure de fin doit être après l'heure de début.");
+        return;
+      }
+      const neededQty = (pendingBooking && pendingBooking.spaceQuantity) ? pendingBooking.spaceQuantity : 1;
+      const remaining = minRemainingInRange(currentDayHours, start, end);
+      if (remaining < neededQty) {
+        showToast('Ce créneau est complet, choisis un autre horaire.');
+        return;
+      }
+      selectSlot(start, end, null);
+    }
+
+    function showFormStep() {
+      const b = pendingBooking;
+      const bannerText = b.endDateString
+        ? b.spaceName + ' — du ' + b.dateString + ' au ' + b.endDateString + ' (journée complète)'
+        : b.spaceName + ' — ' + b.dateString + ' — ' + b.startHour + 'h à ' + b.endHour + 'h';
+      document.getElementById('selectedSlotBanner').textContent = bannerText;
+      document.getElementById('firstName').value = '';
+      document.getElementById('lastName').value = '';
+      document.getElementById('company').value = '';
+      document.getElementById('requesterEmail').value = '';
+      document.getElementById('numberOfPeople').value = 1;
+      document.getElementById('meetingTitle').value = '';
+      document.getElementById('meetingNotes').value = '';
+      document.getElementById('wantsBreakfast').checked = false;
+      document.getElementById('wantsLunch').checked = false;
+      document.getElementById('wantsParkingCheckbox').checked = false;
+      document.getElementById('wantsOther').checked = false;
+      document.getElementById('parkingQuantity').style.display = 'none';
+      document.getElementById('parkingQuantity').value = 1;
+      document.getElementById('priceSummary').classList.remove('visible');
+      document.getElementById('formStep').style.display = 'block';
+      document.getElementById('submitBtn').style.display = 'inline-block';
+      updatePriceSummary();
+    }
+
+    function toggleParkingQty() {
+      const checked = document.getElementById('wantsParkingCheckbox').checked;
+      document.getElementById('parkingQuantity').style.display = checked ? 'inline-block' : 'none';
+      updatePriceSummary();
+    }
+
+    function parkingUnitPrice() {
+      if (!pendingBooking) return 7.5;
+      const duration = pendingBooking.endHour - pendingBooking.startHour;
+      return duration > 5 ? 15 : 7.5;
+    }
+
+    function deskPrice() {
+      if (!pendingBooking || !pendingBooking.spaceQuantity) return 0;
+      const duration = pendingBooking.endHour - pendingBooking.startHour;
+      const qty = pendingBooking.spaceQuantity;
+      if (duration > 5) {
+        return qty >= 2 ? 50 : 30;
+      }
+      return qty >= 2 ? 25 : 15;
+    }
+
+    function numberOfDaysBooked() {
+      if (!pendingBooking || !pendingBooking.endDateString) return 1;
+      const start = new Date(pendingBooking.dateString + 'T00:00:00');
+      const end = new Date(pendingBooking.endDateString + 'T00:00:00');
+      return Math.round((end - start) / 86400000) + 1;
+    }
+
+    /**
+     * Prix de la location de l'espace lui-même. Couvre les 3 cas :
+     * - Bureau 2 postes (tarif dégressif selon quantité)
+     * - Salle de réunion classique (tarif horaire / demi-journée / journée, ou × nb de jours si multi-jours)
+     * - Café Cowork (aucun tarif de location, uniquement les extras)
+     */
+    function spaceRentalPrice() {
+      if (!pendingBooking) return 0;
+      const space = spaces.find(s => s.id === pendingBooking.spaceId);
+      if (!space) return 0;
+
+      if (space.quantitySelectable) {
+        return deskPrice();
+      }
+
+      if (space.hourlyPrice) {
+        if (pendingBooking.endDateString) {
+          return space.fullDayPrice * numberOfDaysBooked();
+        }
+        const duration = pendingBooking.endHour - pendingBooking.startHour;
+        if (duration > 5) return space.fullDayPrice;
+        if (duration === 5) return space.halfDayPrice;
+        return space.hourlyPrice * duration;
+      }
+
+      return 0;
+    }
+
+    function updatePriceSummary() {
+      const roomPrice = spaceRentalPrice();
+
+      const people = parseInt(document.getElementById('numberOfPeople').value, 10) || 0;
+      const breakfast = document.getElementById('wantsBreakfast').checked;
+      const lunch = document.getElementById('wantsLunch').checked;
+      const parkingChecked = document.getElementById('wantsParkingCheckbox').checked;
+      const parkingQty = parkingChecked ? (parseInt(document.getElementById('parkingQuantity').value, 10) || 0) : 0;
+
+      const breakfastTotal = breakfast ? 5.5 * people : 0;
+      const lunchTotal = lunch ? 30 * people : 0;
+      const parkingTotal = parkingQty * parkingUnitPrice();
+      const total = roomPrice + breakfastTotal + lunchTotal + parkingTotal;
+
+      const summaryEl = document.getElementById('priceSummary');
+      let lines = [];
+      if (roomPrice > 0) {
+        const label = pendingBooking.spaceQuantity
+          ? 'Location (' + pendingBooking.spaceQuantity + ' poste(s)) : '
+          : (pendingBooking.endDateString ? 'Location (' + numberOfDaysBooked() + ' jours) : ' : 'Location de la salle : ');
+        lines.push(label + roomPrice.toFixed(2) + ' €HT');
+      }
+      if (breakfastTotal > 0) lines.push('Petit déjeuner : ' + breakfastTotal.toFixed(2) + ' €HT');
+      if (lunchTotal > 0) lines.push('Déjeuner : ' + lunchTotal.toFixed(2) + ' €HT');
+      if (parkingTotal > 0) lines.push(parkingQty + ' place(s) de parking : ' + parkingTotal.toFixed(2) + ' €HT');
+
+      if (total > 0) {
+        summaryEl.innerHTML = lines.join('<br>') + '<br><b>Total : ' + total.toFixed(2) + ' €HT</b>';
+        summaryEl.classList.add('visible');
+      } else {
+        summaryEl.classList.remove('visible');
+      }
+    }
+
+    function confirmBooking() {
+      if (!pendingBooking || pendingBooking.startHour === null) return;
+
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const company = document.getElementById('company').value.trim();
+      const email = document.getElementById('requesterEmail').value.trim();
+      const numberOfPeople = parseInt(document.getElementById('numberOfPeople').value, 10);
+      const title = document.getElementById('meetingTitle').value;
+      const notes = document.getElementById('meetingNotes').value;
+      const wantsBreakfast = document.getElementById('wantsBreakfast').checked;
+      const wantsLunch = document.getElementById('wantsLunch').checked;
+      const wantsParking = document.getElementById('wantsParkingCheckbox').checked;
+      const parkingQuantity = wantsParking ? (parseInt(document.getElementById('parkingQuantity').value, 10) || 0) : 0;
+      const wantsOther = document.getElementById('wantsOther').checked;
+
+      if (!firstName || !lastName || !company || !email) {
+        showToast('Merci de renseigner prénom, nom, entreprise et email.');
+        return;
+      }
+      if (!numberOfPeople || numberOfPeople < 1) {
+        showToast('Merci de renseigner le nombre de personnes.');
+        return;
+      }
+
+      const payload = {
+        spaceId: pendingBooking.spaceId,
+        dateString: pendingBooking.dateString,
+        startHour: pendingBooking.startHour,
+        endHour: pendingBooking.endHour,
+        title: title,
+        notes: notes,
+        firstName: firstName,
+        lastName: lastName,
+        company: company,
+        requesterEmail: email,
+        numberOfPeople: numberOfPeople,
+        wantsBreakfast: wantsBreakfast,
+        wantsLunch: wantsLunch,
+        parkingQuantity: parkingQuantity,
+        wantsOther: wantsOther,
+        spaceQuantity: pendingBooking.spaceQuantity || 1,
+        endDateString: pendingBooking.endDateString || null
+      };
+
+      closeModal();
+      showToast('Envoi de la demande...');
+
+      fetch(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'bookRoom', payload: payload })
+      })
+        .then(r => r.json())
+        .then(res => {
+          showToast(res.message);
+          if (res.success) {
+            monthCache = {}; // invalide le cache : la disponibilité vient de changer
+            loadAllMonths();
+          }
+        })
+        .catch(err => showToast('Erreur : ' + err.message));
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
