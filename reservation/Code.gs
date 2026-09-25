@@ -117,14 +117,11 @@ function getMonthAvailability(space, year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = startOfToday();
 
-  // Un seul appel Calendar pour tout le mois, au lieu d'un appel par jour
+  // Une seule lecture de l'agenda pour tout le mois, au lieu d'une par jour
   let slots = [];
   let fetchError = false;
   try {
-    const cal = CalendarApp.getCalendarById(space.calendarId);
-    const monthStart = new Date(year, month - 1, 1, 0, 0, 0);
-    const monthEnd = new Date(year, month - 1, daysInMonth, 23, 59, 59);
-    slots = toBookedSlots(cal.getEvents(monthStart, monthEnd));
+    slots = getBookedSlots(space, new Date(year, month - 1, 1), new Date(year, month, 1));
   } catch (err) {
     fetchError = true; // agenda introuvable (null) ou inaccessible
   }
@@ -201,9 +198,7 @@ function computeDayAvailability(space, date) {
   const hours = [];
   let error = false;
   try {
-    const events = CalendarApp.getCalendarById(space.calendarId)
-      .getEvents(setTime(date, START_HOUR), setTime(date, END_HOUR));
-    const slots = toBookedSlots(events);
+    const slots = getBookedSlots(space, setTime(date, START_HOUR), setTime(date, END_HOUR));
     for (let h = START_HOUR; h < END_HOUR; h++) {
       const booked = occupancy(slots, setTime(date, h).getTime(), setTime(date, h + 1).getTime());
       hours.push({ hour: h, remaining: space.capacity - booked });
@@ -369,7 +364,7 @@ function bookRoom(rawBooking) {
     if (!cal) return { success: false, message: 'Agenda introuvable pour cet espace.' };
 
     // Vérifie la capacité disponible sur toute la plage demandée (jour unique ou multi-jours)
-    if (maxOverlapInRange(cal.getEvents(start, end), start, end) + booking.spaceQuantity > space.capacity) {
+    if (maxOverlapInRange(getBookedSlots(space, start, end), start, end) + booking.spaceQuantity > space.capacity) {
       return { success: false, message: 'Ce créneau est complet, merci de choisir un autre horaire.' };
     }
 
@@ -473,8 +468,7 @@ function checkRangeAvailability(spaceId, dateString, endDateString, quantity) {
   const end = setTime(parseDate(endDateString), END_HOUR);
   if (end <= start) return { available: false };
   try {
-    const events = CalendarApp.getCalendarById(space.calendarId).getEvents(start, end);
-    return { available: maxOverlapInRange(events, start, end) + (quantity || 1) <= space.capacity };
+    return { available: maxOverlapInRange(getBookedSlots(space, start, end), start, end) + (quantity || 1) <= space.capacity };
   } catch (err) {
     return { available: false };
   }
@@ -755,20 +749,67 @@ function getRequesterFirstName(event) {
  * Par défaut 1 si l'information est absente.
  */
 function getEventQuantity(event) {
-  return parseInt(readEventData(event, TAG_QUANTITY, /Postes réservés : (\d+)/), 10) || 1;
+  const tag = event.getTag(TAG_QUANTITY);
+  return quantityFrom(tag, tag ? '' : event.getDescription());
 }
 
 /**
- * Convertit les événements Google en objets simples { start, end, qty } (en millisecondes).
- * Chaque getStartTime() / getTag() est un appel à Google, donc lent : on les fait
- * UNE seule fois par événement, puis toutes les boucles comparent de simples nombres.
+ * Réservations d'un espace entre deux dates, sous forme d'objets simples
+ * { start, end, qty } (en millisecondes) sur lesquels les boucles calculent vite.
+ *
+ * Voie rapide : le service avancé « Google Calendar API » (à activer une fois dans
+ * l'éditeur : Services > + > Google Calendar API). Un seul appel par agenda renvoie
+ * début, fin et quantité de TOUS les événements.
+ * Voie de secours (service non activé) : CalendarApp, qui fait un appel à Google
+ * par information et par événement, donc nettement plus lent.
  */
-function toBookedSlots(events) {
-  return events.map(ev => ({
+function getBookedSlots(space, from, to) {
+  // Une salle de capacité 1 est bloquée par n'importe quel événement : inutile de lire la quantité
+  const readQty = space.capacity > 1;
+
+  if (typeof Calendar !== 'undefined') {
+    const slots = [];
+    let pageToken;
+    do {
+      const page = Calendar.Events.list(space.calendarId, {
+        timeMin: from.toISOString(),
+        timeMax: to.toISOString(),
+        singleEvents: true,  // événements récurrents dépliés, comme CalendarApp
+        maxResults: 2500,
+        pageToken: pageToken,
+        fields: 'nextPageToken,items(start,end,description,extendedProperties/private)'
+      });
+      (page.items || []).forEach(ev => {
+        const tags = (ev.extendedProperties && ev.extendedProperties.private) || {};
+        slots.push({
+          start: apiEventTime(ev.start),
+          end: apiEventTime(ev.end),
+          qty: readQty ? quantityFrom(tags[TAG_QUANTITY], ev.description) : 1
+        });
+      });
+      pageToken = page.nextPageToken;
+    } while (pageToken);
+    return slots;
+  }
+
+  const cal = CalendarApp.getCalendarById(space.calendarId);
+  if (!cal) throw new Error('Agenda introuvable : ' + space.calendarId);
+  return cal.getEvents(from, to).map(ev => ({
     start: ev.getStartTime().getTime(),
     end: ev.getEndTime().getTime(),
-    qty: getEventQuantity(ev)
+    qty: readQty ? getEventQuantity(ev) : 1
   }));
+}
+
+/** Heure d'un événement renvoyé par l'API : dateTime, ou date seule (journée entière, minuit local). */
+function apiEventTime(time) {
+  return (time.dateTime ? new Date(time.dateTime) : parseDate(time.date)).getTime();
+}
+
+/** Nombre de postes : tag de l'événement, sinon ligne « Postes réservés » de la description, sinon 1. */
+function quantityFrom(tagValue, description) {
+  const match = tagValue ? null : (description || '').match(/Postes réservés : (\d+)/);
+  return parseInt(tagValue || (match && match[1]), 10) || 1;
 }
 
 /** Nombre d'unités de capacité occupées sur l'intervalle [from, to) (millisecondes). */
@@ -844,8 +885,7 @@ function computeQuote(space, q) {
  * heure par heure. Fonctionne pour une plage sur un seul jour ou étalée
  * sur plusieurs jours (réservation multi-jours).
  */
-function maxOverlapInRange(events, start, end) {
-  const slots = toBookedSlots(events);
+function maxOverlapInRange(slots, start, end) {
   const HOUR = 60 * 60 * 1000;
   let maxCount = 0;
   for (let t = start.getTime(); t < end.getTime(); t += HOUR) {

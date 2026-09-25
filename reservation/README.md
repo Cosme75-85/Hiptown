@@ -28,6 +28,11 @@ de référence (historique, retour arrière possible). Après chaque modificatio
 5. **Déployer > Gérer les déploiements > ✏️ (crayon) > Version : Nouvelle version > Déployer**
    (modifier le déploiement existant garde la même URL, donc le lien du portail reste valable).
 
+**Une seule fois** : activer le service avancé Google Agenda (lecture des disponibilités
+bien plus rapide) : dans l'éditeur, colonne de gauche **Services > +**, choisir
+**Google Calendar API**, laisser l'identifiant `Calendar`, cliquer sur **Ajouter**.
+`testPerformance` (fichier `Tests.gs`) indique s'il est actif et mesure les temps de lecture.
+
 **Une seule fois** : dans le menu déroulant des fonctions, choisir `installExpiryTrigger`,
 cliquer sur ▶ Exécuter et accepter les autorisations (purge nocturne des demandes expirées).
 

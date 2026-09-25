@@ -68,3 +68,24 @@ function testDevis() {
   MailApp.sendEmail({ to: OWNER_EMAIL, subject: 'Test devis', htmlBody: '<p>Devis d\'exemple en pièce jointe.</p>', attachments: [pdf] });
   Logger.log('✅ Devis de test envoyé à ' + OWNER_EMAIL);
 }
+
+/**
+ * Mesure le temps de lecture des disponibilités du mois en cours, espace par espace,
+ * SANS le cache (comme pour le premier visiteur). Indique aussi la méthode utilisée.
+ */
+function testPerformance() {
+  const now = new Date();
+  Logger.log(typeof Calendar !== 'undefined'
+    ? '✅ Service avancé « Google Calendar API » activé (lecture rapide)'
+    : '⚠️ Service avancé « Google Calendar API » NON activé (lecture lente, voir README)');
+  let total = 0;
+  SPACES.forEach(space => {
+    const t0 = Date.now();
+    getMonthAvailability(space, now.getFullYear(), now.getMonth() + 1);
+    const ms = Date.now() - t0;
+    total += ms;
+    Logger.log(space.name + ' : ' + ms + ' ms');
+  });
+  Logger.log('TOTAL pour le mois : ' + total + ' ms');
+}
+
