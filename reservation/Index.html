@@ -1057,6 +1057,11 @@
         showToast('Merci de renseigner le nombre de personnes.');
         return;
       }
+      const space = spaces.find(s => s.id === pendingBooking.spaceId);
+      if (space.maxPeople && numberOfPeople > space.maxPeople) {
+        showToast(space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.');
+        return;
+      }
 
       const payload = {
         spaceId: pendingBooking.spaceId,
