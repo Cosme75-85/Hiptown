@@ -25,16 +25,20 @@ const END_HOUR = 18;    // heure de fermeture
 const PENDING_PREFIX = '[EN ATTENTE] ';
 const CONFIRMED_PREFIX = '[CONFIRMÉ] ';
 
-const PRICE_BREAKFAST = 5.5;      // €/personne
-const PRICE_LUNCH = 30;           // €/personne
-const PRICE_PARKING_HALF_DAY = 7.5;  // €/place, créneau ≤ 5h
-const PRICE_PARKING_FULL_DAY = 15;   // €/place, créneau > 5h
+// Tarifs des services (€HT). Seul endroit où les modifier : la page les reçoit du serveur.
+// Les tarifs des salles sont dans SPACES (hourlyPrice, halfDayPrice, fullDayPrice).
+const PRICES = {
+  breakfast: 5.5,         // par personne
+  lunch: 30,              // par personne
+  parkingHalfDay: 7.5,    // par place, créneau ≤ 5h
+  parkingFullDay: 15,     // par place, créneau > 5h
+  deskHalfDay: [15, 25],  // Bureau 2 postes : [1 poste, 2 postes] (tarif dégressif)
+  deskFullDay: [30, 50]
+};
 
-// Bureau 2 postes : tarif dégressif si la même personne prend les 2 places
-const DESK_PRICE_FULL_DAY_1 = 30;
-const DESK_PRICE_FULL_DAY_2 = 50;
-const DESK_PRICE_HALF_DAY_1 = 15;
-const DESK_PRICE_HALF_DAY_2 = 25;
+// Une demande non traitée au bout de ce délai est supprimée (voir purgeExpiredRequests)
+const PENDING_EXPIRY_DAYS = 14;
+const NOTIFY_ON_EXPIRY = true;  // prévenir le client par email quand sa demande expire
 
 // Email qui reçoit les demandes à valider
 const OWNER_EMAIL = 'cc@hiptown.com';
@@ -120,6 +124,11 @@ function doGet(e) {
     return jsonResponse(getAllMonthsAvailability(year, month));
   }
 
+  if (action === 'checkRangeAvailability') {
+    const p = e.parameter;
+    return jsonResponse(checkRangeAvailability(p.spaceId, p.dateString, p.endDateString, parseInt(p.quantity, 10)));
+  }
+
   if (action === 'getDayAvailability') {
     return jsonResponse(getDayAvailability(e.parameter.spaceId, e.parameter.dateString));
   }
@@ -127,6 +136,13 @@ function doGet(e) {
   // Aucune action : on sert la page HTML, avec l'URL de base injectée
   const template = HtmlService.createTemplateFromFile('Index');
   template.baseUrl = ScriptApp.getService().getUrl();
+  // Constantes et calcul du devis envoyés tels quels à la page : un seul code source pour les deux côtés
+  template.sharedScript = [
+    'const START_HOUR = ' + START_HOUR + ';',
+    'const END_HOUR = ' + END_HOUR + ';',
+    'const PRICES = ' + JSON.stringify(PRICES) + ';',
+    computeQuote.toString()
+  ].join('\n');
   return template.evaluate()
     .setTitle('Réservation d\'espaces')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -456,28 +472,7 @@ function bookRoom(rawBooking) {
 
     const baseTitle = booking.title || 'Réservation - ' + space.name;
 
-    const breakfastPrice = booking.wantsBreakfast ? PRICE_BREAKFAST * numberOfPeople : 0;
-    const lunchPrice = booking.wantsLunch ? PRICE_LUNCH * numberOfPeople : 0;
-
-    const slotDuration = booking.endHour - booking.startHour;
-    const parkingUnitPrice = slotDuration > 5 ? PRICE_PARKING_FULL_DAY : PRICE_PARKING_HALF_DAY;
-    const parkingPrice = parkingQuantity * parkingUnitPrice;
-
-    const totalExtras = breakfastPrice + lunchPrice + parkingPrice;
-
-    // Prix de location de l'espace lui-même : bureau 2 postes, salle de réunion classique, ou aucun (coworking)
-    let roomPrice = 0;
-    if (space.quantitySelectable) {
-      roomPrice = computeDeskPrice(slotDuration, spaceQuantity);
-    } else if (space.hourlyPrice) {
-      if (isMultiDay) {
-        // Chaque jour de la plage est facturé au tarif journée complète
-        roomPrice = space.fullDayPrice * numberOfDays;
-      } else {
-        roomPrice = computeRoomPrice(space, slotDuration);
-      }
-    }
-    const grandTotal = roomPrice + totalExtras;
+    const { roomPrice, breakfastPrice, lunchPrice, parkingPrice, totalExtras, grandTotal } = computeQuote(space, booking);
 
     const servicesList = [];
     if (booking.wantsBreakfast) servicesList.push('Petit déjeuner (' + breakfastPrice.toFixed(2) + ' €HT)');
@@ -553,6 +548,79 @@ function bookRoom(rawBooking) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ==================== VÉRIFICATION D'UNE PLAGE MULTI-JOURS ====================
+
+/** Indique si l'espace est libre sur toute la plage (8h le 1er jour → 18h le dernier). */
+function checkRangeAvailability(spaceId, dateString, endDateString, quantity) {
+  const space = SPACES.find(s => s.id === spaceId);
+  if (!space || !isValidDateString(dateString) || !isValidDateString(endDateString)) {
+    return { available: false };
+  }
+  const start = setTime(parseDate(dateString), START_HOUR, 0);
+  const end = setTime(parseDate(endDateString), END_HOUR, 0);
+  if (end <= start) return { available: false };
+  try {
+    const events = CalendarApp.getCalendarById(space.calendarId).getEvents(start, end);
+    return { available: maxOverlapInRange(events, start, end) + (quantity || 1) <= space.capacity };
+  } catch (err) {
+    return { available: false };
+  }
+}
+
+// ==================== EXPIRATION DES DEMANDES NON TRAITÉES ====================
+
+/**
+ * À exécuter UNE fois à la main (menu déroulant > installExpiryTrigger > ▶ Exécuter) :
+ * programme purgeExpiredRequests chaque nuit vers 3h. Relancer ne crée pas de doublon.
+ */
+function installExpiryTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'purgeExpiredRequests')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('purgeExpiredRequests').timeBased().everyDays(1).atHour(3).create();
+  Logger.log('✅ Purge quotidienne programmée.');
+}
+
+/**
+ * Supprime les demandes restées « EN ATTENTE » plus de PENDING_EXPIRY_DAYS jours
+ * après leur création, pour libérer les créneaux qu'elles bloquent.
+ */
+function purgeExpiredRequests() {
+  const now = new Date();
+  const expiryLimit = new Date(now.getTime() - PENDING_EXPIRY_DAYS * 86400000);
+  // Fenêtre de recherche : les demandes portent sur des dates futures, ou juste passées
+  const searchStart = new Date(now.getTime() - 31 * 86400000);
+  const searchEnd = new Date(now.getTime() + 400 * 86400000);
+
+  SPACES.forEach(space => {
+    try {
+      const cal = CalendarApp.getCalendarById(space.calendarId);
+      if (!cal) return;
+      cal.getEvents(searchStart, searchEnd)
+        .filter(ev => ev.getTitle().indexOf(PENDING_PREFIX) === 0 && ev.getDateCreated() < expiryLimit)
+        .forEach(ev => {
+          const requesterEmail = getRequesterEmail(ev);
+          const firstName = getRequesterFirstName(ev);
+          Logger.log('🗑️ Demande expirée supprimée : ' + space.name + ' — ' + ev.getTitle());
+          ev.deleteEvent();
+          if (NOTIFY_ON_EXPIRY && requesterEmail) {
+            MailApp.sendEmail({
+              to: requesterEmail,
+              subject: 'Votre demande de réservation — Hiptown',
+              htmlBody:
+                '<p>Bonjour' + (firstName ? ' ' + escapeHtml(firstName) : '') + ',</p>' +
+                '<p>Nous n\'avons malheureusement pas pu traiter à temps votre demande de réservation pour <b>' + escapeHtml(space.name) + '</b>, elle a donc été annulée.</p>' +
+                '<p>N\'hésitez pas à effectuer une nouvelle demande, nous serons ravis de vous accueillir.</p>' +
+                '<p>Cordialement,<br>L\'équipe Hiptown</p>'
+            });
+          }
+        });
+    } catch (err) {
+      Logger.log('❌ ' + space.name + ' — ERREUR : ' + err.message);
+    }
+  });
 }
 
 // ==================== EMAIL DE VALIDATION ====================
@@ -786,26 +854,43 @@ function precomputeQuantities(events) {
   return map;
 }
 
-function computeDeskPrice(durationHours, quantity) {
-  const isFullDay = durationHours > 5;
-  if (quantity >= 2) {
-    return isFullDay ? DESK_PRICE_FULL_DAY_2 : DESK_PRICE_HALF_DAY_2;
-  }
-  return isFullDay ? DESK_PRICE_FULL_DAY_1 : DESK_PRICE_HALF_DAY_1;
-}
-
 /**
- * Prix d'une salle de réunion pour UNE journée de créneau.
- * - durationHours > 5 => tarif journée complète
- * - durationHours == 5 => tarif demi-journée
- * - sinon => tarif horaire × nombre d'heures (hypothèse raisonnable,
- *   la grille tarifaire ne détaillant que 1h / demi-journée / journée)
+ * Calcul du devis. Fonction « pure » (aucun service Google) : elle est
+ * utilisée par le serveur ET injectée telle quelle dans la page (voir doGet),
+ * donc le prix affiché au client est toujours le prix facturé.
+ *
+ * @param {Object} space  l'espace (tarifs horaire / demi-journée / journée)
+ * @param {Object} q      startHour, endHour, numberOfDays, spaceQuantity,
+ *                        numberOfPeople, wantsBreakfast, wantsLunch, parkingQuantity
  */
-function computeRoomPrice(space, durationHours) {
-  if (!space.hourlyPrice) return 0;
-  if (durationHours > 5) return space.fullDayPrice;
-  if (durationHours === 5) return space.halfDayPrice;
-  return space.hourlyPrice * durationHours;
+function computeQuote(space, q) {
+  const duration = q.endHour - q.startHour;
+  const isFullDay = duration > 5;
+
+  let roomPrice = 0;
+  if (space.quantitySelectable) {
+    const deskPrices = isFullDay ? PRICES.deskFullDay : PRICES.deskHalfDay;
+    roomPrice = q.spaceQuantity >= 2 ? deskPrices[1] : deskPrices[0];
+  } else if (space.hourlyPrice) {
+    if (q.numberOfDays > 1) roomPrice = space.fullDayPrice * q.numberOfDays; // multi-jours : journée complète × nb de jours
+    else if (isFullDay) roomPrice = space.fullDayPrice;
+    else if (duration === 5) roomPrice = space.halfDayPrice;
+    else roomPrice = space.hourlyPrice * duration;
+  }
+
+  const breakfastPrice = q.wantsBreakfast ? PRICES.breakfast * q.numberOfPeople : 0;
+  const lunchPrice = q.wantsLunch ? PRICES.lunch * q.numberOfPeople : 0;
+  const parkingPrice = q.parkingQuantity * (isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
+  const totalExtras = breakfastPrice + lunchPrice + parkingPrice;
+
+  return {
+    roomPrice: roomPrice,
+    breakfastPrice: breakfastPrice,
+    lunchPrice: lunchPrice,
+    parkingPrice: parkingPrice,
+    totalExtras: totalExtras,
+    grandTotal: roomPrice + totalExtras
+  };
 }
 
 /**

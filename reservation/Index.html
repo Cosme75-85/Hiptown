@@ -485,18 +485,18 @@
           <div class="service-row">
             <input type="checkbox" id="wantsBreakfast" onchange="updatePriceSummary()">
             <label for="wantsBreakfast">Petit déjeuner</label>
-            <span class="service-price">5,50 €HT/pers.</span>
+            <span class="service-price" id="breakfastPriceLabel"></span>
           </div>
           <div class="service-row">
             <input type="checkbox" id="wantsLunch" onchange="updatePriceSummary()">
             <label for="wantsLunch">Déjeuner</label>
-            <span class="service-price">30 €HT/pers.</span>
+            <span class="service-price" id="lunchPriceLabel"></span>
           </div>
           <div class="service-row">
             <input type="checkbox" id="wantsParkingCheckbox" onchange="toggleParkingQty()">
             <label for="wantsParkingCheckbox">Place(s) de parking</label>
             <input type="number" id="parkingQuantity" class="parking-qty" min="1" value="1" style="display:none;" oninput="updatePriceSummary()">
-            <span class="service-price" id="parkingPriceLabel">7,50€HT demi-j / 15€HT journée</span>
+            <span class="service-price" id="parkingPriceLabel"></span>
           </div>
           <div class="service-row">
             <input type="checkbox" id="wantsOther" onchange="updatePriceSummary()">
@@ -519,9 +519,9 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- START_HOUR, END_HOUR, PRICES et computeQuote() : injectés depuis Code.gs (source unique) -->
+  <script><?!= sharedScript ?></script>
   <script>
-    const START_HOUR = 8;
-    const END_HOUR = 18;
     const MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
     const BASE_URL = "<?= baseUrl ?>";
@@ -531,7 +531,16 @@
     let pendingBooking = null; // { spaceId, spaceName, dateString, startHour, endHour }
     let currentDayHours = [];
 
+    function formatEuro(n) {
+      return n.toFixed(2).replace('.', ',').replace(',00', '') + ' €HT';
+    }
+
     function init() {
+      document.getElementById('breakfastPriceLabel').textContent = formatEuro(PRICES.breakfast) + '/pers.';
+      document.getElementById('lunchPriceLabel').textContent = formatEuro(PRICES.lunch) + '/pers.';
+      document.getElementById('parkingPriceLabel').textContent =
+        formatEuro(PRICES.parkingHalfDay) + ' demi-j / ' + formatEuro(PRICES.parkingFullDay) + ' journée';
+
       const now = new Date();
       currentYear = now.getFullYear();
       currentMonth = now.getMonth() + 1;
@@ -837,10 +846,23 @@
         showToast('Merci de choisir une date de fin valide.');
         return;
       }
-      pendingBooking.endDateString = endDate;
-      pendingBooking.startHour = START_HOUR;
-      pendingBooking.endHour = END_HOUR;
-      showFormStep();
+      const b = pendingBooking;
+      showToast('Vérification des disponibilités...');
+      fetch(BASE_URL + '?action=checkRangeAvailability&spaceId=' + encodeURIComponent(b.spaceId)
+        + '&dateString=' + b.dateString + '&endDateString=' + endDate + '&quantity=' + b.spaceQuantity)
+        .then(r => r.json())
+        .then(res => {
+          if (pendingBooking !== b) return; // la modale a été fermée ou rouverte entre-temps
+          if (!res.available) {
+            showToast("L'espace n'est pas libre sur toute cette période, choisis d'autres dates.");
+            return;
+          }
+          b.endDateString = endDate;
+          b.startHour = START_HOUR;
+          b.endHour = END_HOUR;
+          showFormStep();
+        })
+        .catch(err => showToast('Erreur : ' + err.message));
     }
 
     function selectSpaceQuantity(qty) {
@@ -948,22 +970,6 @@
       updatePriceSummary();
     }
 
-    function parkingUnitPrice() {
-      if (!pendingBooking) return 7.5;
-      const duration = pendingBooking.endHour - pendingBooking.startHour;
-      return duration > 5 ? 15 : 7.5;
-    }
-
-    function deskPrice() {
-      if (!pendingBooking || !pendingBooking.spaceQuantity) return 0;
-      const duration = pendingBooking.endHour - pendingBooking.startHour;
-      const qty = pendingBooking.spaceQuantity;
-      if (duration > 5) {
-        return qty >= 2 ? 50 : 30;
-      }
-      return qty >= 2 ? 25 : 15;
-    }
-
     function numberOfDaysBooked() {
       if (!pendingBooking || !pendingBooking.endDateString) return 1;
       const start = new Date(pendingBooking.dateString + 'T00:00:00');
@@ -971,62 +977,38 @@
       return Math.round((end - start) / 86400000) + 1;
     }
 
-    /**
-     * Prix de la location de l'espace lui-même. Couvre les 3 cas :
-     * - Bureau 2 postes (tarif dégressif selon quantité)
-     * - Salle de réunion classique (tarif horaire / demi-journée / journée, ou × nb de jours si multi-jours)
-     * - Café Cowork (aucun tarif de location, uniquement les extras)
-     */
-    function spaceRentalPrice() {
-      if (!pendingBooking) return 0;
-      const space = spaces.find(s => s.id === pendingBooking.spaceId);
-      if (!space) return 0;
-
-      if (space.quantitySelectable) {
-        return deskPrice();
-      }
-
-      if (space.hourlyPrice) {
-        if (pendingBooking.endDateString) {
-          return space.fullDayPrice * numberOfDaysBooked();
-        }
-        const duration = pendingBooking.endHour - pendingBooking.startHour;
-        if (duration > 5) return space.fullDayPrice;
-        if (duration === 5) return space.halfDayPrice;
-        return space.hourlyPrice * duration;
-      }
-
-      return 0;
-    }
-
     function updatePriceSummary() {
-      const roomPrice = spaceRentalPrice();
-
-      const people = parseInt(document.getElementById('numberOfPeople').value, 10) || 0;
-      const breakfast = document.getElementById('wantsBreakfast').checked;
-      const lunch = document.getElementById('wantsLunch').checked;
+      if (!pendingBooking) return;
+      const space = spaces.find(s => s.id === pendingBooking.spaceId);
       const parkingChecked = document.getElementById('wantsParkingCheckbox').checked;
       const parkingQty = parkingChecked ? (parseInt(document.getElementById('parkingQuantity').value, 10) || 0) : 0;
 
-      const breakfastTotal = breakfast ? 5.5 * people : 0;
-      const lunchTotal = lunch ? 30 * people : 0;
-      const parkingTotal = parkingQty * parkingUnitPrice();
-      const total = roomPrice + breakfastTotal + lunchTotal + parkingTotal;
+      // Même fonction que celle utilisée par le serveur pour facturer
+      const q = computeQuote(space, {
+        startHour: pendingBooking.startHour,
+        endHour: pendingBooking.endHour,
+        numberOfDays: numberOfDaysBooked(),
+        spaceQuantity: pendingBooking.spaceQuantity,
+        numberOfPeople: parseInt(document.getElementById('numberOfPeople').value, 10) || 0,
+        wantsBreakfast: document.getElementById('wantsBreakfast').checked,
+        wantsLunch: document.getElementById('wantsLunch').checked,
+        parkingQuantity: parkingQty
+      });
 
-      const summaryEl = document.getElementById('priceSummary');
-      let lines = [];
-      if (roomPrice > 0) {
-        const label = pendingBooking.spaceQuantity
+      const lines = [];
+      if (q.roomPrice > 0) {
+        const label = space.quantitySelectable
           ? 'Location (' + pendingBooking.spaceQuantity + ' poste(s)) : '
           : (pendingBooking.endDateString ? 'Location (' + numberOfDaysBooked() + ' jours) : ' : 'Location de la salle : ');
-        lines.push(label + roomPrice.toFixed(2) + ' €HT');
+        lines.push(label + q.roomPrice.toFixed(2) + ' €HT');
       }
-      if (breakfastTotal > 0) lines.push('Petit déjeuner : ' + breakfastTotal.toFixed(2) + ' €HT');
-      if (lunchTotal > 0) lines.push('Déjeuner : ' + lunchTotal.toFixed(2) + ' €HT');
-      if (parkingTotal > 0) lines.push(parkingQty + ' place(s) de parking : ' + parkingTotal.toFixed(2) + ' €HT');
+      if (q.breakfastPrice > 0) lines.push('Petit déjeuner : ' + q.breakfastPrice.toFixed(2) + ' €HT');
+      if (q.lunchPrice > 0) lines.push('Déjeuner : ' + q.lunchPrice.toFixed(2) + ' €HT');
+      if (q.parkingPrice > 0) lines.push(parkingQty + ' place(s) de parking : ' + q.parkingPrice.toFixed(2) + ' €HT');
 
-      if (total > 0) {
-        summaryEl.innerHTML = lines.join('<br>') + '<br><b>Total : ' + total.toFixed(2) + ' €HT</b>';
+      const summaryEl = document.getElementById('priceSummary');
+      if (q.grandTotal > 0) {
+        summaryEl.innerHTML = lines.join('<br>') + '<br><b>Total : ' + q.grandTotal.toFixed(2) + ' €HT</b>';
         summaryEl.classList.add('visible');
       } else {
         summaryEl.classList.remove('visible');
@@ -1083,8 +1065,10 @@
         endDateString: pendingBooking.endDateString || null
       };
 
-      closeModal();
-      showToast('Envoi de la demande...');
+      // La modale reste ouverte pendant l'envoi : en cas d'erreur, le client ne perd pas sa saisie
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours...';
 
       fetch(BASE_URL, {
         method: 'POST',
@@ -1095,11 +1079,16 @@
         .then(res => {
           showToast(res.message);
           if (res.success) {
+            closeModal();
             monthCache = {}; // invalide le cache : la disponibilité vient de changer
             loadAllMonths();
           }
         })
-        .catch(err => showToast('Erreur : ' + err.message));
+        .catch(err => showToast('Erreur : ' + err.message))
+        .finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Envoyer la demande';
+        });
     }
 
     function showToast(msg) {
