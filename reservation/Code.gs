@@ -1,108 +1,12 @@
 /**
- * SYSTÈME DE RÉSERVATION D'ESPACES — Code.gs (v3)
- * -------------------------------------------------
- * À coller dans script.google.com (Extensions > Apps Script)
- * Nécessite le fichier Index.html dans le même projet.
+ * SYSTÈME DE RÉSERVATION D'ESPACES — Code.gs
+ * -------------------------------------------
+ * Projet Apps Script en 4 fichiers :
+ *   Config.gs   → tout ce qui se règle (espaces, horaires, tarifs, emails)
+ *   Code.gs     → la logique (ce fichier)
+ *   Tests.gs    → fonctions de diagnostic à lancer à la main
+ *   Index.html  → la page affichée au client
  */
-
-// ==================== CONFIGURATION ====================
-
-// capacity: 1 pour une salle classique (un seul créneau à la fois)
-//           5 pour un espace type coworking (jusqu'à 5 réservations simultanées)
-const SPACES = [
-  { id: 'salleCanele', name: 'Salle Canelé', calendarId: 'c_fec46c2863f6a212b080da22b9370f4a167e38ce02fe9dcb0c6a45fd45f77e09@group.calendar.google.com', color: '#4285F4', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_table_ovale_ecran.png', capacity: 1, maxPeople: 15, category: 'Salles de réunion', hourlyPrice: 60, halfDayPrice: 220, fullDayPrice: 420, allowMultiDay: true },
-  { id: 'salleBouchon', name: 'Salle Bouchon', calendarId: 'c_eea6ff19556cc6e7f09bcf491b707839dfc04f39077ae9003fbda9e9bcf154c8@group.calendar.google.com', color: '#EA4335', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_salle_equipee_ecran-1.png', capacity: 1, maxPeople: 12, category: 'Salles de réunion', hourlyPrice: 55, halfDayPrice: 200, fullDayPrice: 380, allowMultiDay: true },
-  { id: 'salleDuneblanche', name: 'Salle Dune Blanche', calendarId: 'c_8f827f6fb5f22d9b567c96f9c2af8cee3b03d2cab5a0a0b5299de5f5eb5665e0@group.calendar.google.com', color: '#34A853', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_salle_ronde_ecran.png', capacity: 1, maxPeople: 4, category: 'Salles de réunion', hourlyPrice: 30, halfDayPrice: 105, fullDayPrice: 200, allowMultiDay: true },
-  { id: 'sallePuitsdamour', name: 'Salle Puits d amour', calendarId: 'c_61a5eca91edea3e3d9bf8c4d8b27f253baf756f7e5358031ecf175a0dbb0a628@group.calendar.google.com', color: '#FBBC05', photoUrl: 'https://drive.google.com/thumbnail?id=1XPUNS0f8N8HmVy4vitLiooGa_XFV-qa6&sz=w1000', capacity: 1, maxPeople: 12, category: 'Salles de réunion', hourlyPrice: 55, halfDayPrice: 200, fullDayPrice: 380, allowMultiDay: true },
-  { id: 'cafecowork', name: 'Café Cowork', calendarId: 'c_860e1aed1cb31caa76635278dc4d7418a6559e241b0181e9ff7f7850faa3e620@group.calendar.google.com', color: '#9C27B0', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_espaces_communs_bordeaux_emergence_cuisine_partagee-800x455.png', capacity: 5, maxPeople: null, category: 'Café Cowork', hourlyPrice: 6.5, halfDayPrice: 18, fullDayPrice: 30 },
-  { id: 'bureau2postes', name: 'Bureau 2 postes', calendarId: 'c_80c2d145121bbcbbc09c1692430fd5e77ea89c0412cda596e6501a5019a0bee1@group.calendar.google.com', color: '#00ACC1', photoUrl: 'https://drive.google.com/thumbnail?id=1lVwerjtjuFl8Rlx2BDwdi1qxOwlaMBSH&sz=w1000', capacity: 2, maxPeople: null, quantitySelectable: true, onlyHalfOrFullDay: true, badgeLabel: '2 postes de travail', category: 'Location de bureau courte durée' }
-];
-
-const START_HOUR = 8;   // heure d'ouverture
-const END_HOUR = 18;    // heure de fermeture
-
-const PENDING_PREFIX = '[EN ATTENTE] ';
-const CONFIRMED_PREFIX = '[CONFIRMÉ] ';
-
-// Tarifs des services (€HT). Seul endroit où les modifier : la page les reçoit du serveur.
-// Les tarifs des salles sont dans SPACES (hourlyPrice, halfDayPrice, fullDayPrice).
-const PRICES = {
-  breakfast: 5.5,         // par personne
-  lunch: 30,              // par personne
-  parkingHalfDay: 7.5,    // par place, créneau ≤ 5h
-  parkingFullDay: 15,     // par place, créneau > 5h
-  deskHalfDay: [15, 25],  // Bureau 2 postes : [1 poste, 2 postes] (tarif dégressif)
-  deskFullDay: [30, 50]
-};
-
-// Une demande non traitée au bout de ce délai est supprimée (voir purgeExpiredRequests)
-const PENDING_EXPIRY_DAYS = 14;
-const NOTIFY_ON_EXPIRY = true;  // prévenir le client par email quand sa demande expire
-
-// Email qui reçoit les demandes à valider
-const OWNER_EMAIL = 'cc@hiptown.com';
-
-// Fichier Drive joint à l'email de confirmation (plan d'accès au bâtiment)
-const ACCESS_PLAN_FILE_ID = '103mmvdLZYGekCjWOXS0FrXej2YtfAgNH';
-
-// Limites vérifiées côté serveur : on ne fait jamais confiance au navigateur,
-// une requête peut être fabriquée à la main sans passer par le formulaire.
-const MAX_MULTI_DAYS = 31;       // durée max d'une réservation multi-jours
-const MAX_PARKING = 10;          // places de parking max par demande
-const MAX_TEXT_LENGTH = 200;     // prénom, nom, entreprise, email, titre
-const MAX_NOTES_LENGTH = 2000;   // note libre
-
-// Données rangées dans l'événement lui-même (invisibles dans l'agenda) :
-// plus fiables que relire la description, que l'on peut modifier à la main.
-const TAG_EMAIL = 'requesterEmail';
-const TAG_FIRST_NAME = 'firstName';
-const TAG_QUANTITY = 'quantity';
-
-// ==================== DIAGNOSTIC (à exécuter manuellement si besoin) ====================
-
-function testCalendarAccess() {
-  SPACES.forEach(space => {
-    try {
-      const cal = CalendarApp.getCalendarById(space.calendarId);
-      if (cal === null) {
-        Logger.log('❌ ' + space.name + ' — ID INTROUVABLE ou PAS D\'ACCÈS : "' + space.calendarId + '"');
-      } else {
-        Logger.log('✅ ' + space.name + ' — OK, nom réel de l\'agenda : "' + cal.getName() + '"');
-      }
-    } catch (err) {
-      Logger.log('❌ ' + space.name + ' — ERREUR : ' + err.message);
-    }
-  });
-}
-
-function testEmail() {
-  MailApp.sendEmail({
-    to: OWNER_EMAIL,
-    subject: 'Test email réservation',
-    htmlBody: '<p>Bonjour, ceci est un test.</p>'
-  });
-}
-
-/**
- * Sélectionne "testAttachment" dans le menu déroulant, clique sur ▶ Exécuter,
- * puis regarde Affichage > Journaux pour voir la cause exacte si ça échoue.
- */
-function testAttachment() {
-  try {
-    const file = DriveApp.getFileById(ACCESS_PLAN_FILE_ID);
-    const blob = file.getBlob();
-    Logger.log('✅ Fichier trouvé : "' + file.getName() + '" (' + blob.getBytes().length + ' octets)');
-    MailApp.sendEmail({
-      to: OWNER_EMAIL,
-      subject: 'Test pièce jointe',
-      htmlBody: '<p>Ceci est un test avec pièce jointe.</p>',
-      attachments: [blob]
-    });
-    Logger.log('✅ Email de test envoyé avec la pièce jointe à ' + OWNER_EMAIL);
-  } catch (err) {
-    Logger.log('❌ ERREUR : ' + err.message);
-  }
-}
 
 // ==================== SERVIR LA PAGE WEB ====================
 
@@ -111,10 +15,6 @@ function doGet(e) {
 
   if (action === 'approve' || action === 'reject') {
     return handleApprovalAction(e.parameter);
-  }
-
-  if (action === 'getSpacesMeta') {
-    return jsonResponse(getSpacesMeta());
   }
 
   if (action === 'getAllMonthsAvailability') {
@@ -132,11 +32,13 @@ function doGet(e) {
     return jsonResponse(getDayAvailability(e.parameter.spaceId, e.parameter.dateString));
   }
 
-  // Aucune action : on sert la page HTML, avec l'URL de base injectée
+  // Aucune action : on sert la page HTML. Tout ce dont elle a besoin au démarrage
+  // (URL, espaces, horaires, tarifs, calcul du devis) y est écrit directement :
+  // un seul code source pour les deux côtés, et aucun appel réseau pour démarrer.
   const template = HtmlService.createTemplateFromFile('Index');
-  template.baseUrl = ScriptApp.getService().getUrl();
-  // Constantes et calcul du devis envoyés tels quels à la page : un seul code source pour les deux côtés
   template.sharedScript = [
+    'const BASE_URL = ' + JSON.stringify(ScriptApp.getService().getUrl()) + ';',
+    'const SPACES = ' + JSON.stringify(getSpacesMeta()) + ';',
     'const START_HOUR = ' + START_HOUR + ';',
     'const END_HOUR = ' + END_HOUR + ';',
     'const PRICES = ' + JSON.stringify(PRICES) + ';',
@@ -169,12 +71,9 @@ function jsonResponse(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
 // ==================== MÉTADONNÉES DES ESPACES (pour affichage initial) ====================
 
+/** Infos publiques des espaces (sans l'ID d'agenda, qui reste côté serveur). */
 function getSpacesMeta() {
   return SPACES.map(s => ({
     id: s.id,
@@ -216,8 +115,7 @@ function getAllMonthsAvailability(year, month) {
 
 function getMonthAvailability(space, year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = startOfToday();
 
   // Un seul appel Calendar pour tout le mois, au lieu d'un appel par jour
   let slots = [];
@@ -247,15 +145,15 @@ function getMonthAvailability(space, year, month) {
     } else {
       // Ne garde que les réservations qui touchent réellement cette date
       // (utile pour les réservations multi-jours qui débordent sur d'autres jours)
-      const daySlots = slots.filter(s => s.start < setTime(dateObj, END_HOUR, 0).getTime()
-        && s.end > setTime(dateObj, START_HOUR, 0).getTime());
+      const daySlots = slots.filter(s => s.start < setTime(dateObj, END_HOUR).getTime()
+        && s.end > setTime(dateObj, START_HOUR).getTime());
 
       let minRemaining = space.capacity;
       let maxRemaining = 0;
       let minMorning = space.capacity;
       let minAfternoon = space.capacity;
       for (let h = START_HOUR; h < END_HOUR; h++) {
-        const rem = space.capacity - occupancy(daySlots, setTime(dateObj, h, 0).getTime(), setTime(dateObj, h + 1, 0).getTime());
+        const rem = space.capacity - occupancy(daySlots, setTime(dateObj, h).getTime(), setTime(dateObj, h + 1).getTime());
         if (rem < minRemaining) minRemaining = rem;
         if (rem > maxRemaining) maxRemaining = rem;
         if (h < 13) {
@@ -289,7 +187,7 @@ function getMonthAvailability(space, year, month) {
 // ==================== DISPONIBILITÉ SUR UNE JOURNÉE (pour le choix d'horaire) ====================
 
 function getDayAvailability(spaceId, dateString) {
-  const space = SPACES.find(s => s.id === spaceId);
+  const space = findSpace(spaceId);
   if (!space || !isValidDateString(dateString)) return { hours: [], capacity: 0 };
 
   return withCache(
@@ -304,10 +202,10 @@ function computeDayAvailability(space, date) {
   let error = false;
   try {
     const events = CalendarApp.getCalendarById(space.calendarId)
-      .getEvents(setTime(date, START_HOUR, 0), setTime(date, END_HOUR, 0));
+      .getEvents(setTime(date, START_HOUR), setTime(date, END_HOUR));
     const slots = toBookedSlots(events);
     for (let h = START_HOUR; h < END_HOUR; h++) {
-      const booked = occupancy(slots, setTime(date, h, 0).getTime(), setTime(date, h + 1, 0).getTime());
+      const booked = occupancy(slots, setTime(date, h).getTime(), setTime(date, h + 1).getTime());
       hours.push({ hour: h, remaining: space.capacity - booked });
     }
   } catch (err) {
@@ -325,11 +223,11 @@ function computeDayAvailability(space, date) {
 /**
  * Lire un agenda Google prend du temps (plusieurs secondes pour 6 agendas sur un mois).
  * On garde donc le résultat en mémoire côté serveur (CacheService, gratuit) pendant
- * CACHE_TTL_SECONDS. Toute réservation, refus ou purge « vide » le cache aussitôt.
- * Seules les modifications faites à la main dans Google Agenda attendent l'expiration.
- * Aucun risque de double réservation : bookRoom revérifie toujours l'agenda réel.
+ * CACHE_TTL_SECONDS (voir Config.gs). Toute réservation, refus ou purge « vide » le
+ * cache aussitôt ; seules les modifications faites à la main dans Google Agenda
+ * attendent l'expiration. Aucun risque de double réservation : bookRoom revérifie
+ * toujours l'agenda réel.
  */
-const CACHE_TTL_SECONDS = 600; // 10 minutes
 
 let cacheVersion = null; // mémorisé le temps d'une requête
 
@@ -371,7 +269,7 @@ function invalidateAvailabilityCache() {
 function validateBooking(raw) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
 
-  const space = SPACES.find(s => s.id === raw.spaceId);
+  const space = findSpace(raw.spaceId);
   if (!space) return { error: 'Espace introuvable.' };
 
   const b = {
@@ -415,10 +313,8 @@ function validateBooking(raw) {
 
   // --- Dates ---
   if (!isValidDateString(b.dateString)) return { error: 'Date invalide.' };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   b.startDate = parseDate(b.dateString);
-  if (b.startDate < today) return { error: 'Impossible de réserver une date passée.' };
+  if (b.startDate < startOfToday()) return { error: 'Impossible de réserver une date passée.' };
 
   // Réservation multi-jours : chaque jour de la plage est réservé en journée complète (8h-18h)
   b.isMultiDay = !!b.endDateString && b.endDateString !== b.dateString;
@@ -432,7 +328,7 @@ function validateBooking(raw) {
   } else {
     b.endDate = b.startDate;
   }
-  b.numberOfDays = Math.round((b.endDate - b.startDate) / 86400000) + 1;
+  b.numberOfDays = Math.round((b.endDate - b.startDate) / DAY_MS) + 1;
   if (b.numberOfDays > MAX_MULTI_DAYS) {
     return { error: 'Une réservation ne peut pas dépasser ' + MAX_MULTI_DAYS + ' jours.' };
   }
@@ -461,102 +357,37 @@ function bookRoom(rawBooking) {
   try {
     lock.waitLock(10000);
   } catch (e) {
-    return { success: false, message: 'Le système est occupé, réessaie dans quelques secondes.' };
+    return { success: false, message: 'Le système est occupé, merci de réessayer dans quelques secondes.' };
   }
 
   try {
     const space = booking.space;
-    const isMultiDay = booking.isMultiDay;
-    const numberOfDays = booking.numberOfDays;
-    const numberOfPeople = booking.numberOfPeople;
-    const spaceQuantity = booking.spaceQuantity;
-    const parkingQuantity = booking.parkingQuantity;
-
-    const start = setTime(booking.startDate, booking.startHour, 0);
-    const end = setTime(booking.endDate, booking.endHour, 0);
+    const start = setTime(booking.startDate, booking.startHour);
+    const end = setTime(booking.endDate, booking.endHour);
 
     const cal = CalendarApp.getCalendarById(space.calendarId);
     if (!cal) return { success: false, message: 'Agenda introuvable pour cet espace.' };
 
     // Vérifie la capacité disponible sur toute la plage demandée (jour unique ou multi-jours)
-    const overlapping = cal.getEvents(start, end);
-    const maxCount = maxOverlapInRange(overlapping, start, end);
-    if (maxCount + spaceQuantity > space.capacity) {
+    if (maxOverlapInRange(cal.getEvents(start, end), start, end) + booking.spaceQuantity > space.capacity) {
       return { success: false, message: 'Ce créneau est complet, merci de choisir un autre horaire.' };
     }
 
-    const baseTitle = booking.title || 'Réservation - ' + space.name;
+    const title = booking.title || 'Réservation - ' + space.name;
+    const summary = summarizeBooking(booking, computeQuote(space, booking), title);
 
-    const { roomPrice, breakfastPrice, lunchPrice, parkingPrice, totalExtras, grandTotal } = computeQuote(space, booking);
-
-    const servicesList = [];
-    if (booking.wantsBreakfast) servicesList.push('Petit déjeuner (' + breakfastPrice.toFixed(2) + ' €HT)');
-    if (booking.wantsLunch) servicesList.push('Déjeuner (' + lunchPrice.toFixed(2) + ' €HT)');
-    if (parkingQuantity > 0) {
-      servicesList.push(parkingQuantity + ' place(s) de parking' + (isMultiDay ? ' × ' + numberOfDays + ' jours' : '')
-        + ' (' + parkingPrice.toFixed(2) + ' €HT)');
-    }
-    if (booking.wantsOther) servicesList.push('Autre (voir note)');
-
-    const descriptionLines = [];
-    descriptionLines.push('Demandé par : ' + booking.firstName + ' ' + booking.lastName + ' (' + booking.company + ')');
-    descriptionLines.push('Email : ' + booking.requesterEmail);
-    descriptionLines.push('Nombre de personnes : ' + numberOfPeople);
-    if (isMultiDay) {
-      descriptionLines.push('Réservation sur ' + numberOfDays + ' jours (du ' + booking.dateString + ' au ' + booking.endDateString + ')');
-    }
-    if (space.quantitySelectable) {
-      descriptionLines.push('Postes réservés : ' + spaceQuantity);
-    }
-    if (roomPrice > 0) {
-      descriptionLines.push('Prix location : ' + roomPrice.toFixed(2) + ' €HT');
-    }
-    if (servicesList.length > 0) {
-      descriptionLines.push('Services : ' + servicesList.join(', '));
-    }
-    if (totalExtras > 0) {
-      descriptionLines.push('Supplément estimé : ' + totalExtras.toFixed(2) + ' €HT');
-    }
-    if (grandTotal > 0) {
-      descriptionLines.push('Total estimé : ' + grandTotal.toFixed(2) + ' €HT');
-    }
-    if (booking.notes) {
-      descriptionLines.push('Note : ' + booking.notes);
-    }
-    descriptionLines.push('Statut : en attente de validation');
-
-    const event = cal.createEvent(PENDING_PREFIX + baseTitle, start, end, {
-      description: descriptionLines.join('\n')
+    const event = cal.createEvent(PENDING_PREFIX + title, start, end, {
+      description: summary.map(([label, value]) => label + ' : ' + value)
+        .concat('Statut : en attente de validation')
+        .join('\n')
     });
     event.setColor(CalendarApp.EventColor.ORANGE);
     event.setTag(TAG_EMAIL, booking.requesterEmail);
     event.setTag(TAG_FIRST_NAME, booking.firstName);
-    event.setTag(TAG_QUANTITY, String(spaceQuantity));
+    event.setTag(TAG_QUANTITY, String(booking.spaceQuantity));
 
     invalidateAvailabilityCache(); // la disponibilité vient de changer
-
-    sendApprovalEmail({
-      space: space,
-      eventId: event.getId(),
-      calendarId: space.calendarId,
-      dateString: booking.dateString,
-      endDateString: isMultiDay ? booking.endDateString : null,
-      numberOfDays: numberOfDays,
-      startHour: booking.startHour,
-      endHour: booking.endHour,
-      title: baseTitle,
-      spaceQuantity: space.quantitySelectable ? spaceQuantity : null,
-      roomPrice: roomPrice,
-      grandTotal: grandTotal,
-      firstName: booking.firstName,
-      lastName: booking.lastName,
-      company: booking.company,
-      notes: booking.notes,
-      numberOfPeople: numberOfPeople,
-      servicesList: servicesList,
-      totalExtras: totalExtras,
-      requesterEmail: booking.requesterEmail
-    });
+    sendApprovalEmail(space, event.getId(), summary);
 
     return {
       success: true,
@@ -570,16 +401,52 @@ function bookRoom(rawBooking) {
   }
 }
 
+/**
+ * Récapitulatif de la demande sous forme de lignes [libellé, valeur].
+ * Une seule source pour la description de l'événement ET l'email de validation.
+ */
+function summarizeBooking(b, quote, title) {
+  const euros = n => n.toFixed(2) + ' €HT';
+
+  const services = [];
+  if (b.wantsBreakfast) services.push('Petit déjeuner (' + euros(quote.breakfastPrice) + ')');
+  if (b.wantsLunch) services.push('Déjeuner (' + euros(quote.lunchPrice) + ')');
+  if (b.parkingQuantity > 0) {
+    services.push(b.parkingQuantity + ' place(s) de parking' + (b.isMultiDay ? ' × ' + b.numberOfDays + ' jours' : '')
+      + ' (' + euros(quote.parkingPrice) + ')');
+  }
+  if (b.wantsOther) services.push('Autre (voir note)');
+
+  return [
+    ['Espace', b.space.name],
+    b.isMultiDay
+      ? ['Dates', 'du ' + b.dateString + ' au ' + b.endDateString + ' (' + b.numberOfDays + ' jours)']
+      : ['Date', b.dateString],
+    ['Horaire', b.startHour + 'h - ' + b.endHour + 'h' + (b.isMultiDay ? ' (chaque jour)' : '')],
+    ['Titre', title],
+    // « Demandé par », « Email » et « Postes réservés » sont aussi relus par readEventData (anciennes demandes)
+    ['Demandé par', b.firstName + ' ' + b.lastName + ' (' + b.company + ')'],
+    ['Email', b.requesterEmail],
+    ['Nombre de personnes', b.numberOfPeople],
+    b.space.quantitySelectable && ['Postes réservés', b.spaceQuantity],
+    quote.roomPrice > 0 && ['Prix location', euros(quote.roomPrice)],
+    services.length > 0 && ['Services', services.join(', ')],
+    quote.totalExtras > 0 && ['Total suppléments', euros(quote.totalExtras)],
+    quote.grandTotal > 0 && ['Total estimé', euros(quote.grandTotal)],
+    b.notes && ['Note', b.notes]
+  ].filter(Boolean); // retire les lignes non applicables (false)
+}
+
 // ==================== VÉRIFICATION D'UNE PLAGE MULTI-JOURS ====================
 
 /** Indique si l'espace est libre sur toute la plage (8h le 1er jour → 18h le dernier). */
 function checkRangeAvailability(spaceId, dateString, endDateString, quantity) {
-  const space = SPACES.find(s => s.id === spaceId);
+  const space = findSpace(spaceId);
   if (!space || !isValidDateString(dateString) || !isValidDateString(endDateString)) {
     return { available: false };
   }
-  const start = setTime(parseDate(dateString), START_HOUR, 0);
-  const end = setTime(parseDate(endDateString), END_HOUR, 0);
+  const start = setTime(parseDate(dateString), START_HOUR);
+  const end = setTime(parseDate(endDateString), END_HOUR);
   if (end <= start) return { available: false };
   try {
     const events = CalendarApp.getCalendarById(space.calendarId).getEvents(start, end);
@@ -609,10 +476,10 @@ function installExpiryTrigger() {
  */
 function purgeExpiredRequests() {
   const now = new Date();
-  const expiryLimit = new Date(now.getTime() - PENDING_EXPIRY_DAYS * 86400000);
+  const expiryLimit = new Date(now.getTime() - PENDING_EXPIRY_DAYS * DAY_MS);
   // Fenêtre de recherche : les demandes portent sur des dates futures, ou juste passées
-  const searchStart = new Date(now.getTime() - 31 * 86400000);
-  const searchEnd = new Date(now.getTime() + 400 * 86400000);
+  const searchStart = new Date(now.getTime() - 31 * DAY_MS);
+  const searchEnd = new Date(now.getTime() + 400 * DAY_MS);
 
   SPACES.forEach(space => {
     try {
@@ -627,15 +494,10 @@ function purgeExpiredRequests() {
           ev.deleteEvent();
           invalidateAvailabilityCache();
           if (NOTIFY_ON_EXPIRY && requesterEmail) {
-            MailApp.sendEmail({
-              to: requesterEmail,
-              subject: 'Votre demande de réservation — Hiptown',
-              htmlBody:
-                '<p>Bonjour' + (firstName ? ' ' + escapeHtml(firstName) : '') + ',</p>' +
-                '<p>Nous n\'avons malheureusement pas pu traiter à temps votre demande de réservation pour <b>' + escapeHtml(space.name) + '</b>, elle a donc été annulée.</p>' +
-                '<p>N\'hésitez pas à effectuer une nouvelle demande, nous serons ravis de vous accueillir.</p>' +
-                '<p>Cordialement,<br>L\'équipe Hiptown</p>'
-            });
+            sendClientEmail(requesterEmail, firstName, 'Votre demande de réservation — Hiptown', [
+              'Nous n\'avons malheureusement pas pu traiter à temps votre demande de réservation pour <b>' + escapeHtml(space.name) + '</b>, elle a donc été annulée.',
+              'N\'hésitez pas à effectuer une nouvelle demande, nous serons ravis de vous accueillir.'
+            ], 'Cordialement');
           }
         });
     } catch (err) {
@@ -658,41 +520,25 @@ function buildApprovalUrl(action, calendarId, eventId) {
     + '&sig=' + encodeURIComponent(signApproval(action, calendarId, eventId));
 }
 
-function sendApprovalEmail(data) {
-  const approveUrl = buildApprovalUrl('approve', data.calendarId, data.eventId);
-  const rejectUrl = buildApprovalUrl('reject', data.calendarId, data.eventId);
+function sendApprovalEmail(space, eventId, summary) {
+  const button = (url, color, label) =>
+    '<a href="' + url + '" style="background:' + color + ';color:#ffffff;padding:10px 18px;border-radius:6px;'
+    + 'text-decoration:none;margin-right:10px;display:inline-block;">' + label + '</a>';
 
   // Tout texte saisi par le client est échappé avant d'être inséré dans le HTML
-  const e = escapeHtml;
-  const subject = 'Nouvelle demande de réservation — ' + data.space.name;
-  const htmlBody = `
-    <p>Une nouvelle demande de réservation est en attente :</p>
-    <ul>
-      <li><b>Espace :</b> ${e(data.space.name)}</li>
-      ${data.endDateString ? '<li><b>Dates :</b> du ' + data.dateString + ' au ' + data.endDateString + ' (' + data.numberOfDays + ' jours)</li>' : '<li><b>Date :</b> ' + data.dateString + '</li>'}
-      <li><b>Horaire :</b> ${formatHour(data.startHour)} - ${formatHour(data.endHour)}${data.endDateString ? ' (chaque jour)' : ''}</li>
-      <li><b>Titre :</b> ${e(data.title)}</li>
-      <li><b>Nom :</b> ${e(data.firstName)} ${e(data.lastName)}</li>
-      <li><b>Entreprise :</b> ${e(data.company)}</li>
-      <li><b>Email :</b> ${e(data.requesterEmail)}</li>
-      <li><b>Nombre de personnes :</b> ${data.numberOfPeople}</li>
-      ${data.spaceQuantity ? '<li><b>Postes réservés :</b> ' + data.spaceQuantity + '</li>' : ''}
-      ${data.roomPrice > 0 ? '<li><b>Prix location :</b> ' + data.roomPrice.toFixed(2) + ' €HT</li>' : ''}
-      ${data.servicesList && data.servicesList.length > 0 ? '<li><b>Services :</b> ' + data.servicesList.join(', ') + '</li>' : ''}
-      ${data.totalExtras > 0 ? '<li><b>Total suppléments :</b> ' + data.totalExtras.toFixed(2) + ' €HT</li>' : ''}
-      ${data.grandTotal > 0 ? '<li><b>Total général :</b> ' + data.grandTotal.toFixed(2) + ' €HT</li>' : ''}
-      ${data.notes ? '<li><b>Note :</b> ' + e(data.notes).replace(/\n/g, '<br>') + '</li>' : ''}
-    </ul>
-    <p>
-      <a href="${approveUrl}" style="background:#137333;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;margin-right:10px;">✅ Approuver</a>
-      <a href="${rejectUrl}" style="background:#c5221f;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;">❌ Refuser</a>
-    </p>
-  `;
+  const items = summary.map(([label, value]) =>
+    '<li><b>' + label + ' :</b> ' + escapeHtml(value).replace(/\n/g, '<br>') + '</li>').join('');
 
   MailApp.sendEmail({
     to: OWNER_EMAIL,
-    subject: subject,
-    htmlBody: htmlBody
+    subject: 'Nouvelle demande de réservation — ' + space.name,
+    htmlBody:
+      '<p>Une nouvelle demande de réservation est en attente :</p>' +
+      '<ul>' + items + '</ul>' +
+      '<p>' +
+      button(buildApprovalUrl('approve', space.calendarId, eventId), '#137333', '✅ Approuver') +
+      button(buildApprovalUrl('reject', space.calendarId, eventId), '#c5221f', '❌ Refuser') +
+      '</p>'
   });
 }
 
@@ -717,10 +563,10 @@ function handleApprovalAction(params) {
   }
 
   return HtmlService.createHtmlOutput(
-    '<div style="font-family:Roboto,Arial,sans-serif;padding:40px;text-align:center;">' +
+    '<div style="font-family:Montserrat,Arial,sans-serif;color:#1E1847;padding:40px 16px;text-align:center;">' +
     '<h2>' + escapeHtml(message) + '</h2>' +
     '</div>'
-  );
+  ).addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 /** Approuve ou refuse la demande, prévient le client, et renvoie le message à afficher. */
@@ -735,7 +581,6 @@ function applyApprovalAction(action, event) {
   // L'email vient de l'événement, jamais de l'URL : un lien modifié ne peut pas écrire à un tiers
   const requesterEmail = getRequesterEmail(event);
   const firstName = getRequesterFirstName(event);
-  const greeting = '<p>Bonjour' + (firstName ? ' ' + escapeHtml(firstName) : '') + ',</p>';
 
   if (action === 'approve') {
     const cleanTitle = currentTitle.indexOf(PENDING_PREFIX) === 0
@@ -749,21 +594,15 @@ function applyApprovalAction(action, event) {
       try {
         attachments = [DriveApp.getFileById(ACCESS_PLAN_FILE_ID).getBlob()];
       } catch (err) {
-        // Si le fichier est inaccessible, on envoie quand même l'email sans pièce jointe
+        // Fichier inaccessible : on envoie quand même l'email, sans pièce jointe
       }
 
-      MailApp.sendEmail({
-        to: requesterEmail,
-        subject: 'Réservation confirmée — Hiptown',
-        htmlBody:
-          greeting +
-          '<p>Merci d\'avoir choisi <b>Hiptown</b> !</p>' +
-          '<p>Votre réservation <b>"' + escapeHtml(cleanTitle) + '"</b> est confirmée.</p>' +
-          '<p>Lors de votre arrivée le jour J, appelez-nous ou scannez le QR code en bas, nous descendrons vous accueillir. Vous retrouverez en pièce jointe le plan d\'accès à notre bâtiment avec nos contacts.</p>' +
-          '<p>La facture correspondante vous sera envoyée par email à la suite de cette réservation.</p>' +
-          '<p>À bientôt,<br>L\'équipe Hiptown</p>',
-        attachments: attachments
-      });
+      sendClientEmail(requesterEmail, firstName, 'Réservation confirmée — Hiptown', [
+        'Merci d\'avoir choisi <b>Hiptown</b> !',
+        'Votre réservation <b>"' + escapeHtml(cleanTitle) + '"</b> est confirmée.',
+        'Lors de votre arrivée le jour J, appelez-nous ou scannez le QR code en bas, nous descendrons vous accueillir. Vous retrouverez en pièce jointe le plan d\'accès à notre bâtiment avec nos contacts.',
+        'La facture correspondante vous sera envoyée par email à la suite de cette réservation.'
+      ], 'À bientôt', attachments);
     }
     return 'Réservation confirmée pour "' + cleanTitle + '".';
   }
@@ -772,18 +611,30 @@ function applyApprovalAction(action, event) {
   event.deleteEvent();
   invalidateAvailabilityCache(); // le créneau est libéré
   if (requesterEmail) {
-    MailApp.sendEmail({
-      to: requesterEmail,
-      subject: 'Réservation non disponible — Hiptown',
-      htmlBody:
-        greeting +
-        '<p>Nous vous remercions pour votre demande de réservation.</p>' +
-        '<p>Malheureusement, l\'espace n\'est pas disponible à la date et l\'horaire demandés.</p>' +
-        '<p>N\'hésitez pas à effectuer une nouvelle demande sur un autre créneau, nous serons ravis de vous accueillir.</p>' +
-        '<p>Cordialement,<br>L\'équipe Hiptown</p>'
-    });
+    sendClientEmail(requesterEmail, firstName, 'Réservation non disponible — Hiptown', [
+      'Nous vous remercions pour votre demande de réservation.',
+      'Malheureusement, l\'espace n\'est pas disponible à la date et l\'horaire demandés.',
+      'N\'hésitez pas à effectuer une nouvelle demande sur un autre créneau, nous serons ravis de vous accueillir.'
+    ], 'Cordialement');
   }
   return 'Demande refusée et créneau libéré.';
+}
+
+/**
+ * Email au client, avec la formule d'appel et la signature communes à tous les messages.
+ * Les paragraphes sont du HTML écrit par nous : tout texte saisi par le client
+ * doit y être passé par escapeHtml avant.
+ */
+function sendClientEmail(to, firstName, subject, paragraphs, signOff, attachments) {
+  MailApp.sendEmail({
+    to: to,
+    subject: subject,
+    htmlBody:
+      '<p>Bonjour' + (firstName ? ' ' + escapeHtml(firstName) : '') + ',</p>' +
+      paragraphs.map(p => '<p>' + p + '</p>').join('') +
+      '<p>' + signOff + ',<br>L\'équipe Hiptown</p>',
+    attachments: attachments || []
+  });
 }
 
 // ==================== SÉCURITÉ ====================
@@ -943,19 +794,26 @@ function maxOverlapInRange(events, start, end) {
   return maxCount;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function findSpace(spaceId) {
+  return SPACES.find(s => s.id === spaceId);
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
 function parseDate(dateString) {
   const parts = dateString.split('-');
   return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
 
-function setTime(date, hours, minutes) {
+/** Copie de la date, placée à l'heure pile demandée. */
+function setTime(date, hours) {
   const d = new Date(date);
-  d.setHours(hours, minutes, 0, 0);
+  d.setHours(hours, 0, 0, 0);
   return d;
-}
-
-function formatHour(h) {
-  const hours = Math.floor(h);
-  const minutes = Math.round((h - hours) * 60);
-  return (minutes === 0) ? hours + 'h' : hours + 'h' + minutes;
 }
