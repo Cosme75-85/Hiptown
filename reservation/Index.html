@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Charte graphique Hiptown (v5, couleurs 2023) ===== */
+    :root {
+      --navy: #1E1847;          /* Bleu anthracite — couleur principale */
+      --citron: #FFE700;        /* Citron — couleur principale */
+      --citron-light: #FFF4A2;
+      --vert-eau-light: #B9EFE4;
+      --menthe: #68DEA4;
+      --menthe-light: #AAFFCF;
+      --corail: #F47A5B;        /* couleur secondaire (édition 2019) */
+      --gris-chaud: #D9D4CD;
+      --gris-chaud-light: #F6F5F4;
+      --white: #FFFFFF;
+      --text-soft: #5B5775;
+
+      /* Rôles (à modifier ici plutôt que dans le reste du CSS) */
+      --free: var(--menthe);
+      --busy: var(--corail);
+      --radius: 12px;
+      --gutter: 16px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* ===== Base : mobile d'abord ===== */
+    body {
+      margin: 0;
+      padding: var(--gutter);
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-size: 15px;
+      background: var(--gris-chaud-light);
+      color: var(--navy);
+    }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid var(--citron); outline-offset: 2px; }
+
+    /* En-tête */
+    .header {
+      background: var(--navy);
+      color: var(--white);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: var(--gutter);
+    }
+    .header-top { display: flex; align-items: center; gap: 12px; }
+    .logo-chip { background: var(--white); border-radius: 8px; padding: 6px 10px; display: flex; }
+    .logo-chip img { height: 28px; width: auto; display: block; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; }
+    .header p { margin: 8px 0 0; font-size: 14px; opacity: 0.85; }
+    .header .address { margin-top: 2px; font-size: 13px; opacity: 0.65; }
+
+    /* Navigation par catégorie : barre horizontale défilante sur mobile */
+    .category-nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: var(--gutter);
+      padding-bottom: 4px;
+    }
+    .category-nav a {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--navy);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .category-nav a:hover { background: var(--citron-light); }
+
+    /* Mois + légende */
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: var(--gutter); }
+    .month-nav { display: flex; align-items: center; gap: 8px; }
+    .month-nav button {
+      width: 44px; height: 44px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--white);
+      font-size: 16px;
+    }
+    .month-nav button:disabled { opacity: 0.3; cursor: default; }
+    .month-label { min-width: 150px; text-align: center; font-weight: 700; text-transform: capitalize; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-soft); }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 12px; height: 12px; border-radius: 3px; }
+    .dot.free { background: var(--free); }
+    .dot.busy { background: var(--busy); }
+    .dot.past { background: var(--gris-chaud); }
+
+    /* Catégories et cartes */
+    .category-title {
+      margin: 28px 0 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      background: var(--navy);
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      scroll-margin-top: var(--gutter);
+    }
+    .category-title:first-child { margin-top: 0; }
+    .spaces-grid { display: grid; grid-template-columns: 1fr; gap: var(--gutter); }
+    .space-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      border-top: 5px solid var(--space-color, var(--navy));
+      padding: 16px;
+    }
+    .space-photo {
+      width: 100%;
+      aspect-ratio: 16 / 7;
+      object-fit: cover;
+      border-radius: 8px;
+      background: var(--gris-chaud);
+      display: block;
+      margin-bottom: 12px;
+    }
+    .space-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .space-name { margin: 0; font-size: 16px; font-weight: 700; }
+    .badge { font-size: 11px; font-weight: 600; background: var(--citron-light); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+
+    /* Calendrier du mois */
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; transition: opacity 0.15s; }
+    .month-grid.loading { opacity: 0.4; pointer-events: none; }
+    .dow { text-align: center; font-size: 11px; font-weight: 600; color: var(--text-soft); padding-bottom: 2px; }
+    .day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 6px;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+    .day.available { background: var(--free); }
+    .day.available:hover { filter: brightness(0.93); }
+    .day.available:active { transform: scale(0.92); }
+    /* Demi-journée occupée : moitié gauche = matin, moitié droite = après-midi */
+    .day.am-busy { background: linear-gradient(to right, var(--busy) 50%, var(--free) 50%); }
+    .day.pm-busy { background: linear-gradient(to right, var(--free) 50%, var(--busy) 50%); }
+    .day.full { background: var(--busy); cursor: not-allowed; }
+    .day.past { background: var(--gris-chaud-light); color: var(--gris-chaud); cursor: default; }
+    .day.error { background: var(--citron-light); cursor: not-allowed; }
+    .day .remaining { font-size: 9px; font-weight: 500; }
+    .loading-mini { grid-column: 1 / -1; text-align: center; color: var(--text-soft); font-size: 13px; padding: 12px 0; }
+
+    /* Fenêtre de réservation : plein écran par le bas sur mobile */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 24, 71, 0.5);
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--white);
+      width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 20px var(--gutter);
+    }
+    .modal h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+    .modal-date { font-size: 13px; color: var(--text-soft); margin-bottom: 14px; text-transform: capitalize; }
+    .modal label, .field-label { display: block; margin-top: 12px; font-size: 13px; font-weight: 600; }
+    .modal input[type=text], .modal input[type=email], .modal input[type=number], .modal input[type=date],
+    .modal textarea, .modal select {
+      width: 100%;
+      min-height: 44px;
+      margin-top: 6px;
+      padding: 10px;
+      border: 1px solid var(--gris-chaud);
+      border-radius: 8px;
+      font-size: 16px; /* 16px minimum : évite le zoom automatique sur iPhone */
+      background: var(--white);
+    }
+    .modal textarea { min-height: 80px; resize: vertical; }
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 0 10px; }
+
+    .options { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .option-btn {
+      flex: 1 1 130px;
+      min-height: 44px;
+      padding: 10px;
+      border: 2px solid var(--navy);
+      border-radius: 8px;
+      background: var(--white);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .option-btn:hover { background: var(--citron-light); }
+    .option-btn.selected { background: var(--navy); color: var(--white); }
+    .option-btn:disabled { border-color: var(--gris-chaud); color: var(--gris-chaud); background: var(--gris-chaud-light); cursor: not-allowed; }
+
+    .inline-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; }
+    .inline-row select, .inline-row input[type=date] { flex: 1 1 100px; width: auto; margin-top: 0; }
+    .inline-row .option-btn { flex: 0 0 auto; }
+
+    .check-row { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; }
+    .check-row input[type=checkbox] { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); }
+    .check-row label { flex: 1; margin: 0; font-weight: 500; cursor: pointer; }
+    .check-row .price { font-size: 12px; color: var(--text-soft); }
+    .modal .check-row .qty { width: 70px; flex-shrink: 0; min-height: 36px; margin: 0; padding: 4px 8px; }
+
+    .divider { border: 0; border-top: 1px solid var(--gris-chaud); margin: 18px 0 12px; }
+    .slot-banner { background: var(--vert-eau-light); padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .price-summary { background: var(--menthe-light); padding: 12px; border-radius: 8px; font-size: 14px; margin-top: 14px; line-height: 1.6; }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+      position: sticky;
+      bottom: -20px;
+      background: var(--white);
+      padding: 12px 0 20px;
+    }
+    .modal-actions button { flex: 1; min-height: 48px; border: 0; border-radius: 8px; font-weight: 700; }
+    .btn-secondary { background: var(--gris-chaud-light); }
+    .btn-primary { background: var(--citron); }
+    .btn-primary:disabled { opacity: 0.6; cursor: wait; }
+
+    .toast {
+      position: fixed;
+      left: var(--gutter);
+      right: var(--gutter);
+      bottom: var(--gutter);
+      padding: 14px 18px;
+      border-radius: 8px;
+      background: var(--navy);
+      color: var(--white);
+      font-size: 14px;
+      text-align: center;
+      z-index: 200;
+    }
+
+    [hidden] { display: none !important; }
+
+    /* ===== Tablette ===== */
+    @media (min-width: 600px) {
+      body { padding: 24px; }
+      .spaces-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+      .field-row { grid-template-columns: 1fr 1fr; }
+      .overlay { align-items: center; padding: var(--gutter); }
+      .modal { max-width: 440px; border-radius: var(--radius); }
+      .toast { left: 50%; right: auto; transform: translateX(-50%); max-width: 90vw; }
+    }
+
+    /* ===== Ordinateur : navigation en colonne à gauche ===== */
+    @media (min-width: 960px) {
+      .layout { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: start; }
+      .category-nav {
+        flex-direction: column;
+        position: sticky;
+        top: 24px;
+        background: var(--white);
+        border-radius: var(--radius);
+        padding: 12px;
+        overflow: visible;
+      }
+      .category-nav a { border-radius: 8px; white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-top">
+      <div class="logo-chip"><img src="https://www.flitdesk.com/logos/Hiptown.png" alt="Hiptown"></div>
+      <h1>Bordeaux</h1>
+    </div>
+    <p>Réservation de salles de réunion chez Hiptown Bordeaux</p>
+    <p class="address">52 quai de Paludate</p>
+  </header>
+
+  <div class="layout">
+    <nav class="category-nav" id="categoryNav" aria-label="Catégories d'espaces"></nav>
+
+    <main>
+      <div class="toolbar">
+        <div class="month-nav">
+          <button id="prevMonth" aria-label="Mois précédent">◀</button>
+          <div class="month-label" id="monthLabel" aria-live="polite"></div>
+          <button id="nextMonth" aria-label="Mois suivant">▶</button>
+        </div>
+        <div class="legend">
+          <span><i class="dot free"></i> Disponible</span>
+          <span><i class="dot busy"></i> Complet</span>
+          <span><i class="dot past"></i> Passé</span>
+        </div>
+      </div>
+
+      <div id="spacesContainer"></div>
+    </main>
+  </div>
+
+  <!-- Fenêtre de réservation -->
+  <div class="overlay" id="modalOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle">Réserver</h2>
+      <div class="modal-date" id="modalDate"></div>
+
+      <!-- Étape 1 : choix du créneau -->
+      <div id="timeStep">
+        <div id="quantityBlock" hidden>
+          <span class="field-label">Nombre de postes</span>
+          <div class="options">
+            <button class="option-btn" data-qty="1">1 poste</button>
+            <button class="option-btn" data-qty="2">2 postes (privatif)</button>
+          </div>
+        </div>
+
+        <div id="multiDayBlock" hidden>
+          <div class="check-row">
+            <input type="checkbox" id="multiDayCheckbox">
+            <label for="multiDayCheckbox">Réserver sur plusieurs jours (journée complète chaque jour)</label>
+          </div>
+          <div class="inline-row" id="multiDayRange" hidden>
+            <span>Jusqu'au</span>
+            <input type="date" id="multiDayEnd" aria-label="Date de fin">
+            <button class="option-btn" id="multiDayConfirm">Valider</button>
+          </div>
+        </div>
+
+        <div id="singleDayBlock">
+          <div class="options" id="quickSlots">
+            <div class="loading-mini">Chargement des disponibilités...</div>
+          </div>
+          <div class="inline-row" id="customRange">
+            <span>Ou choisissez :</span>
+            <select id="customStart" aria-label="Heure de début"></select>
+            <span>→</span>
+            <select id="customEnd" aria-label="Heure de fin"></select>
+            <button class="option-btn" id="customConfirm">OK</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Étape 2 : coordonnées et services -->
+      <div id="formStep" hidden>
+        <hr class="divider">
+        <div class="slot-banner" id="slotBanner"></div>
+
+        <div class="field-row">
+          <div><label for="firstName">Prénom *</label><input type="text" id="firstName" autocomplete="given-name"></div>
+          <div><label for="lastName">Nom *</label><input type="text" id="lastName" autocomplete="family-name"></div>
+        </div>
+        <label for="company">Entreprise *</label>
+        <input type="text" id="company" autocomplete="organization">
+        <label for="requesterEmail">Email *</label>
+        <input type="email" id="requesterEmail" autocomplete="email" placeholder="prenom.nom@exemple.com">
+        <label for="numberOfPeople">Nombre de personnes *</label>
+        <input type="number" id="numberOfPeople" min="1" value="1" inputmode="numeric">
+        <label for="meetingTitle">Titre de la réunion</label>
+        <input type="text" id="meetingTitle" placeholder="Ex : Point client">
+
+        <span class="field-label">Services additionnels</span>
+        <div id="services">
+          <div class="check-row">
+            <input type="checkbox" id="wantsBreakfast">
+            <label for="wantsBreakfast">Petit déjeuner</label>
+            <span class="price" id="breakfastPriceLabel"></span>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="wantsLunch">
+            <label for="wantsLunch">Déjeuner</label>
+            <span class="price" id="lunchPriceLabel"></span>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="wantsParking">
+            <label for="wantsParking">Place(s) de parking</label>
+            <input type="number" id="parkingQuantity" class="qty" min="1" value="1" inputmode="numeric" aria-label="Nombre de places" hidden>
+            <span class="price" id="parkingPriceLabel"></span>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="wantsOther">
+            <label for="wantsOther">Autre (précisez dans la note)</label>
+          </div>
+        </div>
+
+        <div class="price-summary" id="priceSummary" hidden></div>
+
+        <label for="meetingNotes">Note / demande particulière (optionnel)</label>
+        <textarea id="meetingNotes" placeholder="Si vous réservez pour la première fois, merci de nous transmettre la raison sociale et l'adresse complète pour l'envoi de la facture"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancelBtn">Annuler</button>
+        <button class="btn-primary" id="submitBtn" hidden>Envoyer la demande</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <!-- BASE_URL, SPACES, START_HOUR, END_HOUR, PRICES et computeQuote() : écrits par Code.gs (source unique) -->
+  <script><?!= sharedScript ?></script>
+  <script>
+    const MIDDAY_HOUR = 13; // séparation matin / après-midi
+    const MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+    const $ = id => document.getElementById(id);
+
+    const today = new Date();
+    let currentYear = today.getFullYear();
+    let currentMonth = today.getMonth() + 1; // 1-12
+
+    // Demande en cours : { space, dateString, endDateString, startHour, endHour, spaceQuantity }
+    let pendingBooking = null;
+    let currentDayHours = [];
+
+    const monthCache = {};    // "AAAA-M" -> disponibilités de tous les espaces
+    let monthRequestToken = 0; // ignore les réponses réseau obsolètes (clics rapides)
+    let dayRequestToken = 0;
+
+    // ==================== OUTILS ====================
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    /** 249.5 -> "249,50 €HT" ; tax = 'HT' (par défaut), 'TTC' ou '' */
+    function formatEuro(n, tax = 'HT') {
+      return n.toFixed(2).replace('.', ',').replace(',00', '') + ' €' + tax;
+    }
+
+    /** "2026-10-12" -> "lundi 12 octobre 2026" */
+    function formatDate(dateString) {
+      const [y, m, d] = dateString.split('-').map(Number);
+      const weekday = new Date(y, m - 1, d).toLocaleDateString('fr-FR', { weekday: 'long' });
+      return weekday + ' ' + d + ' ' + MONTH_NAMES[m - 1] + ' ' + y;
+    }
+
+    function shiftMonth(year, month, delta) {
+      const d = new Date(year, month - 1 + delta, 1);
+      return { year: d.getFullYear(), month: d.getMonth() + 1 };
+    }
+
+    function getJson(params) {
+      return fetch(BASE_URL + '?' + new URLSearchParams(params)).then(r => r.json());
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      const toast = $('toast');
+      toast.textContent = message;
+      toast.hidden = false;
+      clearTimeout(toastTimer); // un nouveau message repart pour 4 s complètes
+      toastTimer = setTimeout(() => { toast.hidden = true; }, 4000);
+    }
+
+    // ==================== PAGE : CATÉGORIES ET CARTES ====================
+
+    function slugify(text) {
+      return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    function badgeText(space) {
+      if (space.badgeLabel) return space.badgeLabel;
+      if (space.maxPeople) return 'Jusqu\'à ' + space.maxPeople + ' personnes';
+      if (space.capacity > 1) return space.capacity + ' places simultanées';
+      return '';
+    }
+
+    function renderSkeleton() {
+      // Regroupe les espaces par catégorie, dans l'ordre de Config.gs
+      const byCategory = new Map();
+      SPACES.forEach(space => {
+        if (!byCategory.has(space.category)) byCategory.set(space.category, []);
+        byCategory.get(space.category).push(space);
+      });
+
+      let navHtml = '';
+      let pageHtml = '';
+      byCategory.forEach((spaces, category) => {
+        const catId = 'cat-' + slugify(category);
+        navHtml += '<a href="#' + catId + '">' + escapeHtml(category) + '</a>';
+        pageHtml += '<h2 class="category-title" id="' + catId + '">' + escapeHtml(category) + '</h2><div class="spaces-grid">';
+        spaces.forEach(space => {
+          const badge = badgeText(space);
+          pageHtml += '<article class="space-card" style="--space-color:' + space.color + '">'
+            + (space.photoUrl ? '<img class="space-photo" src="' + space.photoUrl + '" alt="' + escapeHtml(space.name) + '" loading="lazy">' : '')
+            + '<div class="space-header"><h3 class="space-name">' + escapeHtml(space.name) + '</h3>'
+            + (badge ? '<span class="badge">' + escapeHtml(badge) + '</span>' : '') + '</div>'
+            + '<div class="month-grid" id="grid-' + space.id + '" data-space-id="' + space.id + '">'
+            + '<div class="loading-mini">Chargement...</div></div>'
+            + '</article>';
+        });
+        pageHtml += '</div>';
+      });
+
+      $('categoryNav').innerHTML = navHtml;
+      $('spacesContainer').innerHTML = pageHtml;
+    }
+
+    // ==================== CALENDRIERS DU MOIS ====================
+
+    function updateMonthNav(enabled) {
+      $('monthLabel').textContent = MONTH_NAMES[currentMonth - 1] + ' ' + currentYear;
+      const isCurrentMonth = currentYear === today.getFullYear() && currentMonth === today.getMonth() + 1;
+      $('prevMonth').disabled = !enabled || isCurrentMonth; // pas de navigation dans les mois passés
+      $('nextMonth').disabled = !enabled;
+    }
+
+    function changeMonth(delta) {
+      ({ year: currentYear, month: currentMonth } = shiftMonth(currentYear, currentMonth, delta));
+      loadMonth();
+    }
+
+    function fetchMonth(year, month) {
+      const key = year + '-' + month;
+      if (monthCache[key]) return Promise.resolve(monthCache[key]);
+      return getJson({ action: 'getAllMonthsAvailability', year: year, month: month })
+        .then(data => (monthCache[key] = data));
+    }
+
+    function loadMonth() {
+      const requestId = ++monthRequestToken;
+      const year = currentYear, month = currentMonth;
+      const isCached = !!monthCache[year + '-' + month];
+
+      updateMonthNav(isCached);
+      if (!isCached) document.querySelectorAll('.month-grid').forEach(g => g.classList.add('loading'));
+
+      fetchMonth(year, month)
+        .then(data => {
+          if (requestId !== monthRequestToken) return; // l'utilisateur a déjà changé de mois
+          SPACES.forEach(space => { if (data[space.id]) renderMonthGrid(space.id, data[space.id]); });
+          updateMonthNav(true);
+          // Précharge le mois suivant en arrière-plan : navigation instantanée
+          const next = shiftMonth(year, month, 1);
+          fetchMonth(next.year, next.month).catch(() => {});
+        })
+        .catch(err => {
+          if (requestId !== monthRequestToken) return;
+          showToast('Erreur : ' + err.message);
+          updateMonthNav(true);
+        });
+    }
+
+    const STATUS_LABELS = { available: 'disponible', full: 'complet', past: 'passé', error: 'indisponible' };
+
+    function renderMonthGrid(spaceId, data) {
+      const grid = $('grid-' + spaceId);
+      const startOffset = (new Date(data.year, data.month - 1, 1).getDay() + 6) % 7; // 0 = lundi
+
+      let html = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => '<div class="dow" aria-hidden="true">' + l + '</div>').join('');
+      html += '<div></div>'.repeat(startOffset);
+
+      data.days.forEach(d => {
+        let cls = 'day ' + d.status;
+        if (d.status === 'available') {
+          if (!d.morningFree) cls += ' am-busy';
+          if (!d.afternoonFree) cls += ' pm-busy';
+        }
+        const remaining = (d.capacity > 1 && (d.status === 'available' || d.status === 'full'))
+          ? '<span class="remaining">' + Math.max(d.remaining, 0) + ' pl.</span>' : '';
+        const label = d.day + ' ' + MONTH_NAMES[data.month - 1] + ' : ' + STATUS_LABELS[d.status];
+        const dateString = data.year + '-' + pad(data.month) + '-' + pad(d.day);
+
+        html += '<button class="' + cls + '" data-date="' + dateString + '" aria-label="' + label + '"'
+          + (d.status === 'available' ? '' : ' disabled') + '>' + d.day + remaining + '</button>';
+      });
+
+      grid.innerHTML = html;
+      grid.classList.remove('loading');
+    }
+
+    // ==================== FENÊTRE DE RÉSERVATION ====================
+
+    function openDayModal(spaceId, dateString) {
+      const space = SPACES.find(s => s.id === spaceId);
+      pendingBooking = { space: space, dateString: dateString, endDateString: null, startHour: null, endHour: null, spaceQuantity: 1 };
+
+      $('modalTitle').textContent = 'Réserver ' + space.name;
+      $('modalDate').textContent = formatDate(dateString);
+      $('timeStep').hidden = false;
+      $('formStep').hidden = true;
+      $('submitBtn').hidden = true;
+      $('quickSlots').innerHTML = '<div class="loading-mini">Chargement des disponibilités...</div>';
+
+      // Nombre de postes (Bureau 2 postes uniquement)
+      $('quantityBlock').hidden = !space.quantitySelectable;
+      highlightQuantity(1);
+
+      // Plusieurs jours (salles de réunion uniquement)
+      $('multiDayBlock').hidden = !space.allowMultiDay;
+      $('multiDayCheckbox').checked = false;
+      $('multiDayEnd').value = dateString;
+      $('multiDayEnd').min = dateString;
+      toggleMultiDay();
+
+      $('modalOverlay').classList.add('open');
+
+      const requestId = ++dayRequestToken;
+      getJson({ action: 'getDayAvailability', spaceId: spaceId, dateString: dateString })
+        .then(data => {
+          if (requestId !== dayRequestToken) return; // une autre journée a été ouverte entre-temps
+          currentDayHours = data.hours;
+          renderTimeOptions();
+        })
+        .catch(err => {
+          if (requestId === dayRequestToken) showToast('Erreur : ' + err.message);
+        });
+    }
+
+    function closeModal() {
+      $('modalOverlay').classList.remove('open');
+      pendingBooking = null;
+    }
+
+    function highlightQuantity(qty) {
+      document.querySelectorAll('#quantityBlock [data-qty]').forEach(b => {
+        b.classList.toggle('selected', Number(b.dataset.qty) === qty);
+      });
+    }
+
+    function selectSpaceQuantity(qty) {
+      pendingBooking.spaceQuantity = qty;
+      highlightQuantity(qty);
+      renderTimeOptions(); // les créneaux libres dépendent du nombre de postes
+    }
+
+    function toggleMultiDay() {
+      const multi = $('multiDayCheckbox').checked;
+      $('multiDayRange').hidden = !multi;
+      $('singleDayBlock').hidden = multi;
+      // Horaires libres : seulement pour les espaces qui ne se louent pas à la demi-journée
+      $('customRange').hidden = multi || pendingBooking.space.onlyHalfOrFullDay;
+    }
+
+    /** Places restantes minimum sur [start, end) pour la journée affichée. */
+    function minRemainingInRange(start, end) {
+      const hours = currentDayHours.filter(h => h.hour >= start && h.hour < end);
+      return hours.length ? Math.min(...hours.map(h => h.remaining)) : 0;
+    }
+
+    function isRangeFree(start, end) {
+      return minRemainingInRange(start, end) >= pendingBooking.spaceQuantity;
+    }
+
+    function renderTimeOptions() {
+      const slots = [
+        { label: 'Matin (' + START_HOUR + 'h-' + MIDDAY_HOUR + 'h)', start: START_HOUR, end: MIDDAY_HOUR },
+        { label: 'Après-midi (' + MIDDAY_HOUR + 'h-' + END_HOUR + 'h)', start: MIDDAY_HOUR, end: END_HOUR },
+        { label: 'Journée complète', start: START_HOUR, end: END_HOUR }
+      ];
+      $('quickSlots').innerHTML = slots.map(s =>
+        '<button class="option-btn" data-start="' + s.start + '" data-end="' + s.end + '"'
+        + (isRangeFree(s.start, s.end) ? '' : ' disabled') + '>' + s.label + '</button>').join('');
+
+      const options = (from, to) => {
+        let html = '';
+        for (let h = from; h <= to; h++) html += '<option value="' + h + '">' + h + 'h</option>';
+        return html;
+      };
+      $('customStart').innerHTML = options(START_HOUR, END_HOUR - 1);
+      $('customEnd').innerHTML = options(START_HOUR + 1, END_HOUR);
+    }
+
+    function selectSlot(start, end) {
+      pendingBooking.startHour = start;
+      pendingBooking.endHour = end;
+      pendingBooking.endDateString = null;
+      showFormStep();
+    }
+
+    function selectCustomRange() {
+      const start = Number($('customStart').value);
+      const end = Number($('customEnd').value);
+      if (start >= end) return showToast('L\'heure de fin doit être après l\'heure de début.');
+      if (!isRangeFree(start, end)) return showToast('Ce créneau est complet, merci de choisir un autre horaire.');
+      selectSlot(start, end);
+    }
+
+    function selectMultiDay() {
+      const b = pendingBooking;
+      const endDate = $('multiDayEnd').value;
+      if (!endDate || endDate <= b.dateString) return showToast('Merci de choisir une date de fin après le ' + formatDate(b.dateString) + '.');
+
+      showToast('Vérification des disponibilités...');
+      getJson({ action: 'checkRangeAvailability', spaceId: b.space.id, dateString: b.dateString, endDateString: endDate, quantity: b.spaceQuantity })
+        .then(res => {
+          if (pendingBooking !== b) return; // la fenêtre a été fermée ou rouverte entre-temps
+          if (!res.available) return showToast('L\'espace n\'est pas libre sur toute cette période, merci de choisir d\'autres dates.');
+          b.endDateString = endDate;
+          b.startHour = START_HOUR;
+          b.endHour = END_HOUR;
+          showFormStep();
+        })
+        .catch(err => showToast('Erreur : ' + err.message));
+    }
+
+    // ==================== FORMULAIRE ET PRIX ====================
+
+    function numberOfDaysBooked() {
+      const b = pendingBooking;
+      if (!b.endDateString) return 1;
+      return Math.round((new Date(b.endDateString) - new Date(b.dateString)) / 86400000) + 1;
+    }
+
+    function showFormStep() {
+      const b = pendingBooking;
+      $('slotBanner').textContent = b.endDateString
+        ? 'Du ' + formatDate(b.dateString) + ' au ' + formatDate(b.endDateString) + ' (journée complète)'
+        : formatDate(b.dateString) + ', de ' + b.startHour + 'h à ' + b.endHour + 'h';
+
+      // La saisie (nom, email...) est conservée si le client change de créneau
+      $('numberOfPeople').max = b.space.maxPeople || '';
+      $('formStep').hidden = false;
+      $('submitBtn').hidden = false;
+      updatePriceSummary();
+      $('formStep').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function resetForm() {
+      document.querySelectorAll('#formStep input[type=text], #formStep input[type=email], #formStep textarea')
+        .forEach(field => { field.value = ''; });
+      document.querySelectorAll('#formStep input[type=checkbox]').forEach(box => { box.checked = false; });
+      $('numberOfPeople').value = 1;
+      $('parkingQuantity').value = 1;
+      $('parkingQuantity').hidden = true;
+    }
+
+    function updateParkingField() {
+      $('parkingQuantity').hidden = !$('wantsParking').checked;
+      updatePriceSummary();
+    }
+
+    function readServices() {
+      return {
+        numberOfPeople: parseInt($('numberOfPeople').value, 10) || 0,
+        wantsBreakfast: $('wantsBreakfast').checked,
+        wantsLunch: $('wantsLunch').checked,
+        parkingQuantity: $('wantsParking').checked ? (parseInt($('parkingQuantity').value, 10) || 0) : 0,
+        wantsOther: $('wantsOther').checked
+      };
+    }
+
+    function updatePriceSummary() {
+      const b = pendingBooking;
+      if (!b || b.startHour === null) return;
+      const services = readServices();
+      const days = numberOfDaysBooked();
+
+      // Même fonction que celle utilisée par le serveur pour facturer
+      const q = computeQuote(b.space, Object.assign({
+        startHour: b.startHour, endHour: b.endHour, numberOfDays: days, spaceQuantity: b.spaceQuantity
+      }, services));
+
+      const lines = q.lines.map(l => l.label + (l.qty > 1 ? ' × ' + l.qty : '') + ' : ' + formatEuro(l.total));
+
+      $('priceSummary').hidden = q.totalHT <= 0;
+      $('priceSummary').innerHTML = lines.map(escapeHtml).join('<br>')
+        + '<br><b>Total HT : ' + formatEuro(q.totalHT) + '</b>'
+        + '<br>TVA ' + Math.round(PRICES.vatRate * 100) + ' % : ' + formatEuro(q.totalVAT, '')
+        + '<br><b>Total TTC : ' + formatEuro(q.totalTTC, 'TTC') + '</b>';
+    }
+
+    function confirmBooking() {
+      const b = pendingBooking;
+      if (!b || b.startHour === null) return;
+
+      const payload = Object.assign({
+        spaceId: b.space.id,
+        dateString: b.dateString,
+        endDateString: b.endDateString,
+        startHour: b.startHour,
+        endHour: b.endHour,
+        spaceQuantity: b.spaceQuantity,
+        firstName: $('firstName').value.trim(),
+        lastName: $('lastName').value.trim(),
+        company: $('company').value.trim(),
+        requesterEmail: $('requesterEmail').value.trim(),
+        title: $('meetingTitle').value.trim(),
+        notes: $('meetingNotes').value.trim()
+      }, readServices());
+
+      // Vérifications rapides pour éviter un aller-retour inutile (le serveur revérifie tout)
+      if (!payload.firstName || !payload.lastName || !payload.company || !payload.requesterEmail) {
+        return showToast('Merci de renseigner prénom, nom, entreprise et email.');
+      }
+      if (!$('requesterEmail').checkValidity()) return showToast('Adresse email invalide.');
+      if (payload.numberOfPeople < 1) return showToast('Merci de renseigner le nombre de personnes.');
+      if (b.space.maxPeople && payload.numberOfPeople > b.space.maxPeople) {
+        return showToast(b.space.name + ' accueille au maximum ' + b.space.maxPeople + ' personnes.');
+      }
+
+      // La fenêtre reste ouverte pendant l'envoi : en cas d'erreur, rien n'est perdu
+      const submitBtn = $('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours...';
+
+      fetch(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // évite une requête préalable (CORS)
+        body: JSON.stringify({ action: 'bookRoom', payload: payload })
+      })
+        .then(r => r.json())
+        .then(res => {
+          showToast(res.message);
+          if (!res.success) return;
+          closeModal();
+          resetForm();
+          Object.keys(monthCache).forEach(k => delete monthCache[k]); // la disponibilité vient de changer
+          loadMonth();
+        })
+        .catch(err => showToast('Erreur : ' + err.message))
+        .finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Envoyer la demande';
+        });
+    }
+
+    // ==================== ÉVÉNEMENTS ====================
+    // Un seul écouteur par zone (délégation) plutôt qu'un onclick par bouton
+
+    $('prevMonth').addEventListener('click', () => changeMonth(-1));
+    $('nextMonth').addEventListener('click', () => changeMonth(1));
+
+    $('spacesContainer').addEventListener('click', e => {
+      const day = e.target.closest('.day.available');
+      if (day) openDayModal(day.closest('.month-grid').dataset.spaceId, day.dataset.date);
+    });
+
+    $('quantityBlock').addEventListener('click', e => {
+      const btn = e.target.closest('[data-qty]');
+      if (btn) selectSpaceQuantity(Number(btn.dataset.qty));
+    });
+    $('quickSlots').addEventListener('click', e => {
+      const btn = e.target.closest('[data-start]');
+      if (!btn) return;
+      document.querySelectorAll('#quickSlots .option-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      selectSlot(Number(btn.dataset.start), Number(btn.dataset.end));
+    });
+    $('customConfirm').addEventListener('click', selectCustomRange);
+    $('multiDayCheckbox').addEventListener('change', toggleMultiDay);
+    $('multiDayConfirm').addEventListener('click', selectMultiDay);
+
+    $('formStep').addEventListener('input', updatePriceSummary);
+    $('wantsParking').addEventListener('change', updateParkingField);
+
+    $('cancelBtn').addEventListener('click', closeModal);
+    $('submitBtn').addEventListener('click', confirmBooking);
+    $('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && pendingBooking) closeModal(); });
+
+    // ==================== DÉMARRAGE ====================
+
+    $('breakfastPriceLabel').textContent = formatEuro(PRICES.breakfast) + '/pers.';
+    $('lunchPriceLabel').textContent = formatEuro(PRICES.lunch) + '/pers.';
+    $('parkingPriceLabel').textContent = formatEuro(PRICES.parkingHalfDay) + ' demi-j. / ' + formatEuro(PRICES.parkingFullDay) + ' jour';
+
+    renderSkeleton();
+    loadMonth();
+  </script>
+</body>
+</html>
