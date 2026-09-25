@@ -30,6 +30,8 @@ function nextQuoteNumber() {
 
 /**
  * Crée le devis d'une demande approuvée : PDF + copie dans le dossier Drive.
+ * La copie Drive est un bonus : si elle échoue (autorisation Drive manquante...),
+ * le devis est quand même envoyé au client et l'erreur est remontée dans driveError.
  * Renvoie null pour une demande créée avant l'ajout des devis (détail non enregistré).
  */
 function createQuoteForEvent(event) {
@@ -41,8 +43,13 @@ function createQuoteForEvent(event) {
 
   const number = nextQuoteNumber();
   const pdf = buildQuotePdf(space, booking, number);
-  const file = getQuoteFolder().createFile(pdf);
-  return { number: number, pdf: pdf, url: file.getUrl() };
+  let driveError = null;
+  try {
+    getQuoteFolder().createFile(pdf);
+  } catch (err) {
+    driveError = err.message;
+  }
+  return { number: number, pdf: pdf, driveError: driveError };
 }
 
 /** Dossier Drive des devis, créé automatiquement au premier devis. */

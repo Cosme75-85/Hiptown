@@ -619,7 +619,9 @@ function applyApprovalAction(action, event) {
     try {
       quote = createQuoteForEvent(event);
       if (quote) {
-        quoteStatus = 'Devis n°' + quote.number + ' joint à l\'email (copie dans le dossier Drive « ' + DEVIS.driveFolderName + ' »).';
+        quoteStatus = 'Devis n°' + quote.number + ' joint à l\'email. ' + (quote.driveError
+          ? '⚠️ Copie Drive impossible (lancer testDevis dans Apps Script pour autoriser Drive) : ' + quote.driveError
+          : 'Copie dans le dossier Drive « ' + DEVIS.driveFolderName + ' ».');
         event.setDescription(event.getDescription() + '\nDevis : ' + quote.number);
       }
     } catch (err) {

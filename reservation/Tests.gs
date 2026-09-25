@@ -49,8 +49,10 @@ function testAttachment() {
 }
 
 /**
- * Génère un devis d'exemple (numéro « TEST », compteur non modifié)
- * et l'envoie à OWNER_EMAIL pour vérifier la mise en page.
+ * Génère un devis d'exemple (numéro « TEST », compteur non modifié),
+ * l'enregistre dans le dossier Drive des devis et l'envoie à OWNER_EMAIL.
+ * Au premier lancement, Google demande l'autorisation d'accéder à Drive :
+ * elle est indispensable pour ranger les copies des devis.
  */
 function testDevis() {
   const booking = {
@@ -60,6 +62,9 @@ function testDevis() {
     firstName: 'Jean', lastName: 'Dupont', company: 'Entreprise Exemple'
   };
   const pdf = buildQuotePdf(findSpace(booking.spaceId), booking, DEVIS.numberPrefix + 'TEST');
+  const folder = getQuoteFolder();
+  folder.createFile(pdf);
+  Logger.log('✅ Devis de test enregistré dans Drive : ' + folder.getUrl());
   MailApp.sendEmail({ to: OWNER_EMAIL, subject: 'Test devis', htmlBody: '<p>Devis d\'exemple en pièce jointe.</p>', attachments: [pdf] });
   Logger.log('✅ Devis de test envoyé à ' + OWNER_EMAIL);
 }
