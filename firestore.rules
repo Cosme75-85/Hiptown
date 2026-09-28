@@ -50,12 +50,16 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
 
       // Inscription : compte en attente, sans rôle, sans entreprise officielle ni tuiles imposées
-      allow create: if isOwner(userId)
-        && request.resource.data.status == 'pending'
-        && request.resource.data.role == null
-        && request.resource.data.get('companyId', null) == null
-        && !request.resource.data.keys().hasAny(['extraTiles', 'hiddenTiles', 'photo', 'nickname'])
-        && request.resource.data.email == request.auth.token.email;
+      // (l'e-mail est comparé en minuscules : Firebase Auth l'enregistre ainsi)
+      // Un admin peut aussi créer directement un compte déjà validé.
+      allow create: if isAdmin()
+        || (isOwner(userId)
+            && request.resource.data.status == 'pending'
+            && request.resource.data.role == null
+            && request.resource.data.get('companyId', null) == null
+            && !request.resource.data.keys().hasAny(['extraTiles', 'hiddenTiles', 'photo', 'nickname'])
+            && request.resource.data.email is string
+            && request.resource.data.email.lower() == request.auth.token.email.lower());
 
       // Un client ne peut modifier QUE sa photo, son surnom et son entreprise déclarée
       allow update: if isAdmin()

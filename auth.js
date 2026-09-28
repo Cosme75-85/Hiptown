@@ -36,7 +36,7 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
   }
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await setDoc(doc(db, "users", cred.user.uid), {
-    email,
+    email: email.toLowerCase(), // Firebase Auth enregistre l'e-mail en minuscules
     firstName,
     lastName,
     birthDate,
