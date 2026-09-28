@@ -1,0 +1,91 @@
+// Règles de sécurité Firestore du portail Hiptown.
+// Copie de référence : à coller dans la console Firebase
+// (Firestore Database > Règles > Publier).
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && myProfile().role == 'admin'
+        && myProfile().status == 'approved';
+    }
+
+    function isApprovedRole(r) {
+      return isSignedIn()
+        && myProfile().role == r
+        && myProfile().status == 'approved';
+    }
+
+    // Texte facultatif d'au plus max caractères
+    function isShortText(data, field, max) {
+      return !(field in data) || (data[field] is string && data[field].size() <= max);
+    }
+
+    // Champs de profil qu'un client peut modifier lui-même (page « Mon profil »)
+    function isValidProfile(data) {
+      return isShortText(data, 'nickname', 30)
+        && isShortText(data, 'companyNameHint', 100)
+        && (!('photo' in data) || data.photo == ''
+            || (data.photo is string
+                && data.photo.size() <= 150000
+                && data.photo.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')));
+    }
+
+    // Comptes utilisateurs
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Inscription : compte en attente, sans rôle, sans entreprise officielle ni tuiles imposées
+      allow create: if isOwner(userId)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == null
+        && request.resource.data.get('companyId', null) == null
+        && !request.resource.data.keys().hasAny(['extraTiles', 'hiddenTiles', 'photo', 'nickname'])
+        && request.resource.data.email == request.auth.token.email;
+
+      // Un client ne peut modifier QUE sa photo, son surnom et son entreprise déclarée
+      allow update: if isAdmin()
+        || (isOwner(userId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['nickname', 'photo', 'companyNameHint'])
+            && isValidProfile(request.resource.data));
+
+      allow delete: if isAdmin();
+    }
+
+    // Entreprises (coworking)
+    match /companies/{companyId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Reservations de salles
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn();
+      allow create: if isApprovedRole('salle') || isApprovedRole('coworking') || isAdmin();
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.createdBy == request.auth.uid);
+    }
+
+    // Commandes petit-dejeuner
+    match /breakfastOrders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

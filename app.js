@@ -247,13 +247,23 @@
   choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
 
   // ── Dashboard ─────────────────────────────────────────
+  /**
+   * En-tête du tableau de bord : photo (ou initiales), nom de la personne,
+   * entreprise et espace. Rappelée par app-auth.js après une modification du profil.
+   * client.photo est déjà vérifiée (isSafePhoto) par app-auth.js.
+   */
+  function renderIdentity(client) {
+    companyBadge.style.backgroundColor = client.color;
+    companyBadge.style.color           = client.textColor;
+    companyBadge.style.backgroundImage = client.photo ? 'url("' + client.photo + '")' : "";
+    companyBadge.textContent           = client.photo ? "" : client.initials;
+    welcomeTitle.textContent           = client.displayName;
+    welcomeSub.textContent             = client.subtitle;
+  }
+
   function showDashboard(client) {
     currentClientId = client.id;
-    companyBadge.style.background = client.color;
-    companyBadge.style.color      = client.textColor;
-    companyBadge.textContent      = client.initials;
-    welcomeTitle.textContent      = client.name;
-    welcomeSub.textContent        = client.personName || "Bienvenue sur votre espace Hiptown";
+    renderIdentity(client);
     buildTiles(currentSpace, client.id);
     hideAll(); stepDashboard.hidden = false;
     if (PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
@@ -501,6 +511,7 @@
 
   // ── Pont vers app-auth.js ──────────────────────────────
   window.hideAll = hideAll;
+  window.renderIdentity = renderIdentity;
   window.showDashboardFromAuth = function (client, space) {
     currentSpace       = space;
     currentExtraTiles  = client.extraTiles  || [];
