@@ -361,6 +361,12 @@
         <hr class="divider">
         <div class="slot-banner" id="slotBanner"></div>
 
+        <label for="civility">Civilité *</label>
+        <select id="civility" autocomplete="honorific-prefix">
+          <option value="">Choisir…</option>
+          <option value="Madame">Madame</option>
+          <option value="Monsieur">Monsieur</option>
+        </select>
         <div class="field-row">
           <div><label for="firstName">Prénom *</label><input type="text" id="firstName" autocomplete="given-name"></div>
           <div><label for="lastName">Nom *</label><input type="text" id="lastName" autocomplete="family-name"></div>
@@ -740,6 +746,7 @@
       document.querySelectorAll('#formStep input[type=text], #formStep input[type=email], #formStep textarea')
         .forEach(field => { field.value = ''; });
       document.querySelectorAll('#formStep input[type=checkbox]').forEach(box => { box.checked = false; });
+      $('civility').value = '';
       $('numberOfPeople').value = 1;
       $('parkingQuantity').value = 1;
       $('parkingQuantity').hidden = true;
@@ -791,6 +798,7 @@
         startHour: b.startHour,
         endHour: b.endHour,
         spaceQuantity: b.spaceQuantity,
+        civility: $('civility').value,
         firstName: $('firstName').value.trim(),
         lastName: $('lastName').value.trim(),
         company: $('company').value.trim(),
@@ -800,8 +808,8 @@
       }, readServices());
 
       // Vérifications rapides pour éviter un aller-retour inutile (le serveur revérifie tout)
-      if (!payload.firstName || !payload.lastName || !payload.company || !payload.requesterEmail) {
-        return showToast('Merci de renseigner prénom, nom, entreprise et email.');
+      if (!payload.civility || !payload.firstName || !payload.lastName || !payload.company || !payload.requesterEmail) {
+        return showToast('Merci de renseigner civilité, prénom, nom, entreprise et email.');
       }
       if (!$('requesterEmail').checkValidity()) return showToast('Adresse email invalide.');
       if (payload.numberOfPeople < 1) return showToast('Merci de renseigner le nombre de personnes.');

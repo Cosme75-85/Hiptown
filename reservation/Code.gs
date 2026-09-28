@@ -269,6 +269,7 @@ function validateBooking(raw) {
 
   const b = {
     space: space,
+    civility: CIVILITIES.indexOf(raw.civility) !== -1 ? raw.civility : '',
     firstName: cleanText(raw.firstName, MAX_TEXT_LENGTH),
     lastName: cleanText(raw.lastName, MAX_TEXT_LENGTH),
     company: cleanText(raw.company, MAX_TEXT_LENGTH),
@@ -287,8 +288,8 @@ function validateBooking(raw) {
     endHour: toInt(raw.endHour)
   };
 
-  if (!b.firstName || !b.lastName || !b.company || !b.requesterEmail) {
-    return { error: 'Merci de renseigner prénom, nom, entreprise et email.' };
+  if (!b.civility || !b.firstName || !b.lastName || !b.company || !b.requesterEmail) {
+    return { error: 'Merci de renseigner civilité, prénom, nom, entreprise et email.' };
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.requesterEmail)) {
     return { error: 'Adresse email invalide.' };
@@ -414,6 +415,7 @@ function bookingForQuote(b) {
     wantsBreakfast: b.wantsBreakfast,
     wantsLunch: b.wantsLunch,
     parkingQuantity: b.parkingQuantity,
+    civility: b.civility,
     firstName: b.firstName,
     lastName: b.lastName,
     company: b.company
@@ -445,6 +447,7 @@ function summarizeBooking(b, quote, title) {
     ['Titre', title],
     // « Demandé par », « Email » et « Postes réservés » sont aussi relus par readEventData (anciennes demandes)
     ['Demandé par', b.firstName + ' ' + b.lastName + ' (' + b.company + ')'],
+    ['Civilité', b.civility],
     ['Email', b.requesterEmail],
     ['Nombre de personnes', b.numberOfPeople],
     b.space.quantitySelectable && ['Postes réservés', b.spaceQuantity],
