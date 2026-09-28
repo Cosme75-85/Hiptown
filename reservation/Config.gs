@@ -87,3 +87,68 @@ const TAG_EMAIL = 'requesterEmail';
 const TAG_FIRST_NAME = 'firstName';
 const TAG_QUANTITY = 'quantity';
 const TAG_BOOKING = 'booking';   // détail de la demande (JSON), relu pour éditer le devis
+const TAG_THANKS_SENT = 'thanksSent'; // date d'envoi de l'email de remerciement (évite les doublons)
+
+// Civilités proposées dans le formulaire (utilisées dans « Bonjour Madame Dupont, »)
+const CIVILITIES = ['Madame', 'Monsieur'];
+
+// ==================== EMAIL DE REMERCIEMENT (voir Remerciement.gs) ====================
+// Envoyé automatiquement X jours après la fin de chaque réservation CONFIRMÉE.
+// Dans les textes : {date} est remplacé par « le lundi 6 octobre 2026 »
+// (ou « du lundi 6 au mercredi 8 octobre 2026 » pour plusieurs jours).
+// Les textes acceptent le HTML simple (<b>gras</b>). Un espace absent de `bySpace`
+// ne reçoit pas d'email de remerciement.
+const THANKS = {
+  delayDays: 3,     // jours après la réservation
+  sendHour: 10,     // heure d'envoi (entre 10h et 11h)
+  reviewUrl: 'https://g.page/r/CU4ouN9TY1R8EBM/review',
+  reviewButton: '★ Aidez-nous pour le référencement !! ★',
+  reviewText: 'Aidez-nous à gagner en visibilité et à améliorer nos services en prenant un instant pour nous laisser '
+    + 'un avis sur Google !! Cela ne prendra qu\'une minute et nous serait d\'une grande aide.',
+  closing: [
+    'Votre opinion compte beaucoup pour nous, et nous sommes toujours à l\'écoute de vos suggestions pour rendre '
+      + 'votre expérience encore meilleure.',
+    'Encore un grand merci pour votre confiance. Nous serions ravis de vous accueillir à nouveau prochainement !'
+  ],
+  signOff: 'À très bientôt',
+
+  // Un texte par espace (clé = id de l'espace dans SPACES)
+  bySpace: {
+    salleCanele: {
+      subject: 'Merci d\'avoir choisi la salle Canelé — Hiptown',
+      intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre salle de réunion <b>Canelé</b> {date}. '
+        + 'Nous espérons que tout s\'est déroulé comme vous le souhaitiez et que notre espace a répondu à vos attentes.',
+      topics: ['La salle de réunion Canelé', 'L\'espace détente', 'L\'emplacement']
+    },
+    salleBouchon: {
+      subject: 'Merci d\'avoir choisi la salle Bouchon — Hiptown',
+      intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre salle de réunion <b>Bouchon</b> {date}. '
+        + 'Nous espérons que tout s\'est déroulé comme vous le souhaitiez et que notre espace a répondu à vos attentes.',
+      topics: ['La salle de réunion Bouchon', 'L\'espace détente', 'L\'emplacement']
+    },
+    salleDuneblanche: {
+      subject: 'Merci d\'avoir choisi la salle Dune Blanche — Hiptown',
+      intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre salle de réunion <b>Dune Blanche</b> {date}. '
+        + 'Nous espérons que tout s\'est déroulé comme vous le souhaitiez et que notre espace a répondu à vos attentes.',
+      topics: ['La salle de réunion Dune Blanche', 'L\'espace détente', 'L\'emplacement']
+    },
+    sallePuitsdamour: {
+      subject: 'Merci d\'avoir choisi la salle Puits d\'Amour — Hiptown',
+      intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre salle de réunion <b>Puits d\'Amour</b> {date}. '
+        + 'Nous espérons que tout s\'est déroulé comme vous le souhaitiez et que notre espace a répondu à vos attentes.',
+      topics: ['La salle de réunion Puits d\'Amour', 'L\'espace détente', 'L\'emplacement']
+    },
+    bureau2postes: {
+      subject: 'Merci d\'avoir choisi notre bureau privatif — Hiptown',
+      intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre <b>bureau privatif</b> {date}. '
+        + 'Nous espérons que vous avez pu travailler au calme et que cet espace a répondu à vos attentes.',
+      topics: ['Le bureau privatif', 'L\'espace détente', 'L\'emplacement']
+    },
+    cafecowork: {
+      subject: 'Merci d\'avoir choisi le Café Cowork — Hiptown',
+      intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre <b>Café Cowork</b> pour travailler {date}. '
+        + 'Nous espérons que vous avez passé une journée agréable et productive, et que l\'ambiance du lieu vous a plu.',
+      topics: ['Le Café Cowork', 'L\'ambiance et le confort', 'L\'emplacement']
+    }
+  }
+};

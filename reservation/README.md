@@ -8,6 +8,7 @@ ouvert depuis la tuile « Réserver une salle » du portail client (`app.js`).
 | `Config.gs` | **Tout ce qui se règle** : espaces, agendas, horaires, tarifs, emails | ✅ |
 | `Code.gs` | La logique : disponibilités, demandes, emails, approbation | ✅ |
 | `Devis.gs` | Devis PDF joint à l'email de confirmation | ✅ |
+| `Remerciement.gs` | Email de remerciement envoyé 3 jours après la réservation | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
@@ -19,10 +20,10 @@ Le code qui tourne est celui de script.google.com : ce dossier en est la copie
 de référence (historique, retour arrière possible). Après chaque modification :
 
 1. Ouvrir le projet sur script.google.com.
-2. Pour chacun des 5 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
+2. Pour chacun des 6 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
    dans Apps Script (le créer avec **+ > Script** s'il n'existe pas, sans taper « .gs »),
    tout sélectionner (Ctrl+A), supprimer, coller le contenu du fichier GitHub.
-3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ces quatre-là : deux fichiers qui
+3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ces cinq-là : deux fichiers qui
    déclarent la même constante provoquent l'erreur « already been declared ».
 4. Enregistrer (Ctrl+S).
 5. **Déployer > Gérer les déploiements > ✏️ (crayon) > Version : Nouvelle version > Déployer**
@@ -59,3 +60,16 @@ du client et copié dans le dossier Drive « Devis réservations Hiptown » (cr�
 - Aperçu : lancer `testDevis` (fichier `Tests.gs`) — un devis d'exemple arrive par email.
 - Les demandes créées avant cette version n'ont pas de devis automatique.
 
+
+## Email de remerciement (3 jours après)
+
+Chaque matin vers 10h, les clients dont la réservation **confirmée** s'est terminée
+il y a 3 jours reçoivent un email de remerciement avec un bouton vers les avis Google.
+Un texte par espace, modifiable dans `Config.gs` (objet `THANKS`) ; le délai, l'heure
+et le lien d'avis s'y règlent aussi. Formule d'appel : « Bonjour Madame Dupont, »
+(civilité demandée dans le formulaire), ou « Bonjour Marie, » pour les demandes plus anciennes.
+
+Mise en route, **une seule fois**, dans le menu déroulant des fonctions (▶ Exécuter) :
+1. `testThankYouEmails` : un exemple de chaque texte arrive sur votre adresse (aucun client contacté).
+2. `previewThankYouEmails` : le journal liste les clients qui recevraient l'email aujourd'hui, sans rien envoyer.
+3. `installThanksTrigger` : l'envoi automatique démarre. `uninstallThanksTrigger` l'arrête.
