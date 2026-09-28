@@ -189,6 +189,9 @@
         { cat: "❤️ Ticketing", items: [
           { label: "Ticketing", url: "https://app.notion.com/p/2c3924b0918981b3b238f0caae907739?v=380924b0918980cc9ff1000c09a3e59e" },
         ]},
+        { cat: "⚠️ Incident", items: [
+          { label: "Signaler un incident", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
+        ]},
         { cat: "🪪 Badges", items: [
           { label: "Scaleway",  url: "https://docs.google.com/spreadsheets/d/1ABaAxGiDw2IT9CcrVjlalasT3DszaVrQ0IYWUT7q28g/edit?gid=0#gid=0" },
           { label: "Coworking", url: "https://docs.google.com/spreadsheets/d/1inKYBGIAUy2B8HWuBZgRIKz1u8CtEYzasQExHmBgyJE/edit?gid=0#gid=0" },
