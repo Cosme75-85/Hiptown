@@ -11,7 +11,7 @@ import {
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  doc, setDoc, getDoc, serverTimestamp
+  doc, setDoc, getDoc, updateDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /**
@@ -22,7 +22,7 @@ import {
  * @param {string} email
  * @param {string} password
  * @param {"salle"|"coworking"} requestedRole
- * @param {string} [companyNameHint] - nom d'entreprise indiqué par le client (aide l'admin à valider, pas encore officiel)
+ * @param {string} companyNameHint - nom de l'entreprise du client (obligatoire, affiché sur son profil)
  * @param {string} firstName
  * @param {string} lastName
  * @param {string} birthDate - format YYYY-MM-DD (issu d'un <input type="date">)
@@ -31,9 +31,12 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
   if (requestedRole !== "salle" && requestedRole !== "coworking") {
     throw new Error("Rôle d'inscription invalide.");
   }
+  if (!companyNameHint.trim()) {
+    throw new Error("Le nom de l'entreprise est obligatoire.");
+  }
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await setDoc(doc(db, "users", cred.user.uid), {
-    email,
+    email: email.toLowerCase(), // Firebase Auth enregistre l'e-mail en minuscules
     firstName,
     lastName,
     birthDate,
@@ -45,6 +48,17 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     createdAt: serverTimestamp()
   });
   return cred.user;
+}
+
+/**
+ * Met à jour le profil personnalisable de l'utilisateur connecté.
+ * Les règles Firestore n'autorisent que ces champs (voir firestore.rules).
+ *
+ * @param {string} uid
+ * @param {{ nickname?: string, photo?: string, companyNameHint?: string }} fields
+ */
+export async function updateMyProfile(uid, fields) {
+  await updateDoc(doc(db, "users", uid), fields);
 }
 
 /**

@@ -117,7 +117,7 @@
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)" required minlength="6"
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="text" id="signup-company" placeholder="Nom de votre entreprise (si coworking)"
+        <input type="text" id="signup-company" placeholder="Nom de votre entreprise" required maxlength="100"
                style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
         <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
@@ -167,13 +167,41 @@
     <div class="info-grid" id="admin-all-list"></div>
   </section>
 
+  <!-- MON PROFIL -->
+  <section id="step-profile" hidden>
+    <button class="back-btn" id="back-from-profile">← Retour</button>
+    <h2 class="step-title">Mon profil</h2>
+    <div class="pin-box" style="text-align:left;">
+      <div class="profile-photo-row">
+        <div class="company-badge profile-avatar" id="profile-avatar" aria-hidden="true"></div>
+        <div>
+          <label class="direct-btn profile-photo-btn" for="profile-photo-input">📷 Choisir une photo</label>
+          <input type="file" id="profile-photo-input" accept="image/*" hidden/>
+          <button class="profile-link" id="profile-photo-remove" type="button" hidden>Retirer la photo</button>
+        </div>
+      </div>
+
+      <label class="profile-label" for="profile-nickname">Surnom <span style="font-weight:400;">(facultatif)</span></label>
+      <input type="text" id="profile-nickname" class="profile-input" placeholder="Ex : Max"/>
+      <p class="profile-help">S'il est rempli, il remplace votre prénom et nom sur votre espace.</p>
+
+      <label class="profile-label" for="profile-company">Entreprise</label>
+      <input type="text" id="profile-company" class="profile-input"/>
+      <p class="profile-help" id="profile-company-note" hidden></p>
+
+      <p id="profile-message" class="profile-help" role="status" hidden></p>
+      <button class="direct-btn" id="profile-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer</button>
+    </div>
+  </section>
+
   <!-- TABLEAU DE BORD -->
   <section id="step-dashboard" hidden>
     <div class="dashboard-header">
-      <div class="company-badge" id="company-badge"></div>
-      <div style="flex:1;">
+      <button class="company-badge" id="company-badge" type="button" title="Modifier mon profil" aria-label="Modifier mon profil"></button>
+      <div style="flex:1;min-width:0;">
         <h1 class="welcome-title" id="welcome-title"></h1>
         <p class="welcome-sub" id="welcome-sub">Bienvenue sur votre espace Hiptown</p>
+        <button class="profile-link" id="profile-link" type="button">✏️ Mon profil</button>
       </div>
       <div id="notif-bell-wrap" style="position:relative;" hidden>
         <button id="notif-bell-btn" style="background:none;border:none;font-size:22px;cursor:pointer;position:relative;padding:4px;">

@@ -4,7 +4,8 @@
 //  APRÈS config.js et app.js dans index.html
 // ═══════════════════════════════════════════════════════
 
-import { signUp, logIn, logOut, resetPassword, watchAuthState } from "./auth.js";
+import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile } from "./auth.js";
+import { initProfilePage, isSafePhoto, initialsOf, displayNameOf } from "./profile.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUserAccess, adminCreateAccount, listCompanies,
@@ -14,6 +15,7 @@ import {
 const stepAuth    = document.getElementById("step-auth");
 const stepPending = document.getElementById("step-pending");
 const stepAdmin   = document.getElementById("step-admin");
+const stepProfile = document.getElementById("step-profile");
 const authError   = document.getElementById("auth-error");
 
 let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
@@ -23,7 +25,7 @@ let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'é
 // masque en plus les 3 nouvelles sections.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -112,6 +114,7 @@ function showAuthError(msg) {
 
 function friendlyError(err) {
   const code = err.code || "";
+  if (!code && err.message) return err.message; // erreurs écrites par nous (ex. entreprise manquante)
   if (code.includes("email-already-in-use")) return "Un compte existe déjà avec cet email.";
   if (code.includes("wrong-password") || code.includes("invalid-credential")) return "Email ou mot de passe incorrect.";
   if (code.includes("user-not-found")) return "Aucun compte avec cet email.";
@@ -128,7 +131,7 @@ document.getElementById("pending-logout")?.addEventListener("click", async () =>
 
 // ── Routage automatique selon l'état de connexion ──
 watchAuthState(async (user, profile) => {
-  if (!user) return; // reste sur l'écran de choix / auth, rien à faire
+  if (!user) { session = null; return; } // reste sur l'écran de choix / auth, rien à faire
 
   if (!profile || profile.status === "pending") {
     hideAllAuth();
@@ -143,24 +146,73 @@ watchAuthState(async (user, profile) => {
   }
 
   // status === "approved"
-  const personName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
-  const tilePrefs  = {
+  const space = profile.role === "admin" ? "hiptown" : profile.role;
+  if (!SPACE_STYLES[space]) return; // rôle inconnu : on ne route nulle part
+  let company = null;
+  if (space === "coworking") {
+    const companies = await listCompanies();
+    company = companies.find(c => c.id === profile.companyId) || null;
+  }
+  session = { uid: user.uid, profile, space, company };
+  routeToDashboard(buildClient(), space);
+
+  // Compte sans entreprise (créé avant qu'elle soit obligatoire) : on invite à la renseigner
+  if (space === "salle" && !profile.companyNameHint) {
+    profilePage.open("Merci de renseigner le nom de votre entreprise.");
+  }
+});
+
+// Utilisateur connecté : { uid, profile, space, company } (company = entreprise coworking officielle)
+let session = null;
+
+// Couleurs de l'avatar (quand il n'y a pas de photo) selon l'espace
+const SPACE_STYLES = {
+  hiptown:   { id: "hiptown",       label: "Équipe",           color: "#1e1847", textColor: "#ffe700" },
+  coworking: { id: "coworking",     label: "Coworking",        color: "#e0f2fe", textColor: "#0369a1" },
+  salle:     { id: "salle-reunion", label: "Salle de réunion", color: "#0369a1", textColor: "#ffffff" }
+};
+
+/** Nom d'entreprise affiché : officiel (coworking), saisi par le client (salle), ou Hiptown (équipe). */
+function companyNameOf({ profile, space, company }) {
+  if (space === "hiptown") return "Hiptown";
+  if (company) return company.name;
+  return profile.companyNameHint || "";
+}
+
+/** Données attendues par app.js pour l'en-tête et les tuiles du tableau de bord. */
+function buildClient() {
+  const { profile, space, company } = session;
+  const style = SPACE_STYLES[space];
+  const companyName = companyNameOf(session);
+  return {
+    // L'id sert à mémoriser l'ordre des tuiles : on garde celui de l'entreprise en coworking
+    id: company ? company.id : style.id,
+    color: company && company.color ? company.color : style.color,
+    textColor: company && company.textColor ? company.textColor : style.textColor,
+    initials: initialsOf(profile),
+    photo: isSafePhoto(profile.photo) ? profile.photo : "",
+    displayName: displayNameOf(profile),
+    subtitle: (companyName || "Entreprise à renseigner") + " · " + style.label,
     extraTiles:  Array.isArray(profile.extraTiles)  ? profile.extraTiles  : [],
     hiddenTiles: Array.isArray(profile.hiddenTiles) ? profile.hiddenTiles : []
   };
+}
 
-  if (profile.role === "admin") {
-    routeToDashboard({ id: "hiptown", name: "Hiptown", color: "#1e1847", textColor: "#ffe700", initials: "HT", personName, ...tilePrefs }, "hiptown");
-  } else if (profile.role === "coworking") {
-    const companies = await listCompanies();
-    const company = companies.find(c => c.id === profile.companyId) || {
-      id: profile.companyId || "inconnu", name: profile.companyNameHint || "Votre entreprise",
-      color: "#e0f2fe", textColor: "#0369a1", initials: "CW"
-    };
-    routeToDashboard({ ...company, personName, ...tilePrefs }, "coworking");
-  } else if (profile.role === "salle") {
-    routeToDashboard({ id: "salle-reunion", name: "Salle de réunion", color: "#0369a1", textColor: "#ffffff", initials: "SR", personName, ...tilePrefs }, "salle");
+// ── Page « Mon profil » ──
+const profilePage = initProfilePage({
+  getContext: () => ({ profile: session.profile, space: session.space, companyName: companyNameOf(session) }),
+  save: async (fields) => {
+    await updateMyProfile(session.uid, fields);
+    Object.assign(session.profile, fields);
+    window.renderIdentity(buildClient());
+  },
+  onClose: () => {
+    hideAllAuth();
+    document.getElementById("step-dashboard").hidden = false;
   }
+});
+["company-badge", "profile-link"].forEach(id => {
+  document.getElementById(id)?.addEventListener("click", () => { if (session) profilePage.open(); });
 });
 
 function routeToDashboard(client, space) {
@@ -188,17 +240,37 @@ document.getElementById("back-from-admin")?.addEventListener("click", () => {
   document.getElementById("step-dashboard").hidden = false;
 });
 
+/**
+ * Neutralise le HTML d'un texte saisi par un client avant de l'insérer dans la page.
+ * Sans ça, un prénom comme « <img onerror=...> » exécuterait du code dans la session admin.
+ */
+function escapeHtml(text) {
+  return String(text ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+/** Mini avatar (photo ou initiales) pour les listes admin. */
+function avatarHtml(u) {
+  const photo = isSafePhoto(u.photo) ? `background-image:url('${u.photo}');` : "";
+  return `<span class="company-badge" style="width:32px;height:32px;font-size:11px;background-color:#1e1847;color:#ffe700;${photo}">${photo ? "" : escapeHtml(initialsOf(u))}</span>`;
+}
+
+/** « Prénom Nom (surnom) » pour l'admin, qui a besoin du vrai nom. */
+function adminNameOf(u) {
+  const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+  return u.nickname ? `${fullName} (${u.nickname})` : fullName;
+}
+
 // Carte de demande en attente, réutilisée dans le panneau admin ET la cloche de notifications
 function createPendingCard(u, companies, onDone) {
   const card = document.createElement("div");
   card.className = "info-card";
   card.innerHTML = `
     <div style="padding:14px 16px;">
-      <p style="font-weight:600;font-size:13px;">${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email}</p>
-      <p style="font-size:11px;color:#94a3b8;">${u.email}</p>
+      <p style="font-weight:600;font-size:13px;">${escapeHtml(adminNameOf(u))}</p>
+      <p style="font-size:11px;color:#94a3b8;">${escapeHtml(u.email)}</p>
       <p style="font-size:12px;color:#64748b;">
         Demandé : ${u.requestedRole === "coworking" ? "Coworking" : "Salle de réunion"}
-        ${u.companyNameHint ? " — " + u.companyNameHint : ""}
+        ${u.companyNameHint ? " — " + escapeHtml(u.companyNameHint) : ""}
       </p>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
         <select class="approve-role" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
@@ -207,7 +279,7 @@ function createPendingCard(u, companies, onDone) {
         </select>
         <select class="approve-company" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
           <option value="">— Entreprise —</option>
-          ${companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
+          ${companies.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join("")}
         </select>
         <button class="direct-btn approve-btn" style="margin-top:0;width:auto;padding:6px 12px;background:#166534;color:#fff;border:none;font-size:12px;">Valider</button>
         <button class="direct-btn reject-btn" style="margin-top:0;width:auto;padding:6px 12px;border-color:#dc2626;color:#dc2626;font-size:12px;">Refuser</button>
@@ -245,11 +317,17 @@ export async function renderAdminPanel() {
 
   const all = await listAllUsers();
   allList.innerHTML = "";
+  const companyNames = Object.fromEntries(companies.map(c => [c.id, c.name]));
   all.forEach(u => {
     const row = document.createElement("div");
     row.className = "info-item";
-    row.style.justifyContent = "space-between";
-    row.innerHTML = `<span>${u.email} — ${u.role || "—"} (${u.status})</span>`;
+    row.style.gap = "10px";
+    const companyName = companyNames[u.companyId] || u.companyNameHint || "Entreprise non renseignée";
+    row.innerHTML = `${avatarHtml(u)}
+      <span style="flex:1;min-width:0;">
+        <b>${escapeHtml(adminNameOf(u))}</b> — ${escapeHtml(companyName)}<br>
+        <span style="font-size:11px;color:#94a3b8;">${escapeHtml(u.email)} — ${escapeHtml(u.role || "—")} (${escapeHtml(u.status)})</span>
+      </span>`;
     allList.appendChild(row);
   });
 }
@@ -312,8 +390,8 @@ async function renderNotifDropdown() {
         : "";
       card.innerHTML = `
         <div style="padding:10px 14px;">
-          <p style="font-weight:600;font-size:13px;">${o.name || o.email}${o.companyName ? " — " + o.companyName : ""}</p>
-          <p style="font-size:12px;color:#64748b;">${dateFmt} · ${o.people} pers. · ${o.price} €</p>
+          <p style="font-weight:600;font-size:13px;">${escapeHtml(o.name || o.email)}${o.companyName ? " — " + escapeHtml(o.companyName) : ""}</p>
+          <p style="font-size:12px;color:#64748b;">${dateFmt} · ${escapeHtml(o.people)} pers. · ${escapeHtml(o.price)} €</p>
         </div>`;
       notifDropdown.appendChild(card);
     });
