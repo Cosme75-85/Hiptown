@@ -34,7 +34,7 @@ function getCoworkingSpaces() {
         credits: COWORKING.credits[s.id] || null
       })),
     // Repas en option, facturés (devis envoyé dès qu'un repas est choisi)
-    meals: { breakfast: PRICES.breakfast, lunch: PRICES.lunch, vatRate: PRICES.vatRate }
+    meals: { breakfast: PRICES.breakfast, lunch: PRICES.lunch, vatRate: PRICES.vatRate, noticeHours: COWORKING.mealsNoticeHours || 0 }
   };
 }
 
@@ -48,6 +48,9 @@ function bookCoworkingRoom(idToken, rawBooking) {
 
   const booking = validateCoworkingBooking(rawBooking);
   if (booking.error) return { success: false, message: booking.error };
+  if (hasMeals(booking) && mealsTooLate(setTime(booking.startDate, booking.startHour))) {
+    return { success: false, message: mealsTooLateMessage() };
+  }
 
   const lock = LockService.getScriptLock();
   try {
@@ -614,6 +617,13 @@ function applyCoworkingChange(user, booking, raw, start, end) {
       && oldPeople === booking.numberOfPeople && mealsTag(oldMeals) === mealsTag(booking)) {
     return { success: false, message: 'Rien n\'a changé : modifiez l\'horaire, le nombre de personnes ou la restauration.' };
   }
+  // Repas à commander à l'avance : pas de nouvelle commande ni de changement (horaire, personnes,
+  // repas) trop près de la réunion. Retirer les repas ou annuler reste possible (l'équipe est prévenue).
+  const mealsChanged = mealsTag(oldMeals) !== mealsTag(booking) || oldPeople !== booking.numberOfPeople
+    || oldStart.getTime() !== start.getTime();
+  if (hasMeals(booking) && mealsChanged && mealsTooLate(start)) {
+    return { success: false, message: mealsTooLateMessage() };
+  }
 
   if (maxOverlapInRange(getBookedSlots(space, start, end, eventId), start, end) + 1 > space.capacity) {
     return { success: false, message: 'Ce créneau est déjà pris, merci de choisir un autre horaire.' };
@@ -702,6 +712,16 @@ function withDescriptionFields(description, fields) {
 // Les coworkers ne paient pas la salle (crédits) mais peuvent commander des repas :
 // dès qu'un repas est choisi, un devis (repas seuls, tarifs PRICES) leur est envoyé
 // et l'équipe est prévenue pour préparer la commande.
+
+/** Vrai si la réunion commence dans moins de COWORKING.mealsNoticeHours : trop tard pour commander. */
+function mealsTooLate(start) {
+  return start.getTime() - Date.now() < (COWORKING.mealsNoticeHours || 0) * 60 * 60 * 1000;
+}
+
+function mealsTooLateMessage() {
+  return 'Les repas se commandent au moins ' + COWORKING.mealsNoticeHours + 'h avant la réunion : décochez '
+    + 'petit déjeuner et déjeuner, ou choisissez un créneau plus tard.';
+}
 
 function hasMeals(m) {
   return !!(m && (m.wantsBreakfast || m.wantsLunch));

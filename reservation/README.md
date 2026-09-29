@@ -72,7 +72,7 @@ Un texte par espace, modifiable dans `Config.gs` (objet `THANKS`) ; le délai, l
 et le lien d'avis s'y règlent aussi. Formule d'appel : « Bonjour Madame Dupont, »
 (civilité demandée dans le formulaire), ou « Bonjour Marie, » pour les demandes plus anciennes.
 
-**Restauration** : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
+**Restauration** (à commander au moins `COWORKING.mealsNoticeHours` = 24h avant) : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
 déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un repas est choisi, un devis « repas seuls »
 (la salle reste sur crédits) est joint à son email et copié dans le dossier Drive des devis,
 et l'équipe (`OWNER_EMAIL`) reçoit un email pour préparer la commande, puis à chaque
@@ -112,7 +112,7 @@ et que les crédits suffisent (ceux de l'ancien créneau sont rendus d'abord). U
 confirme chaque annulation ou modification. La salle reste la même : pour changer de salle,
 on annule puis on réserve à nouveau.
 
-**Restauration** : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
+**Restauration** (à commander au moins `COWORKING.mealsNoticeHours` = 24h avant) : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
 déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un repas est choisi, un devis « repas seuls »
 (la salle reste sur crédits) est joint à son email et copié dans le dossier Drive des devis,
 et l'équipe (`OWNER_EMAIL`) reçoit un email pour préparer la commande, puis à chaque

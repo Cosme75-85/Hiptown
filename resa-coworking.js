@@ -97,6 +97,23 @@ function updateMealsTotal(prefix) {
     + " TTC). Le devis vous est envoyé par email avec la confirmation.";
 }
 
+/**
+ * Repas à commander au moins MEALS.noticeHours avant la réunion : trop tard, on ne peut plus
+ * en ajouter (on peut toujours décocher ceux déjà commandés). Le serveur revérifie.
+ */
+function applyMealsDeadline(prefix, dateString, startHour) {
+  if (!MEALS || !dateString) return;
+  const [y, m, d] = dateString.split("-").map(Number);
+  const late = new Date(y, m - 1, d, startHour).getTime() - Date.now() < (MEALS.noticeHours || 0) * 3600000;
+  ["breakfast", "lunch"].forEach(meal => {
+    const box = $(prefix + "-" + meal);
+    box.disabled = late && !box.checked;
+  });
+  const hint = $(prefix + "-meals-late");
+  hint.hidden = !late;
+  hint.textContent = "Les repas se commandent au moins " + MEALS.noticeHours + "h avant la réunion.";
+}
+
 function mealsText(b) {
   return [b.wantsBreakfast && "Petit déjeuner", b.wantsLunch && "Déjeuner"].filter(Boolean).join(" + ");
 }
@@ -355,6 +372,7 @@ function showFormStep() {
       ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
       : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
   $("rc-meals").hidden = !MEALS;
+  applyMealsDeadline("rc", b.dateString, b.startHour);
   updateMealsTotal("rc");
   $("rc-form-step").hidden = false;
   $("rc-submit").hidden = false;
@@ -692,6 +710,7 @@ function updateEditForm() {
   const p = editPayload();
   $("rc-edit-end-date").min = p.dateString;
   $("rc-edit-hours-block").hidden = !!p.endDateString;
+  applyMealsDeadline("rc-edit", p.dateString, p.startHour);
   updateMealsTotal("rc-edit");
   const space = SPACES.find(s => s.id === editing.spaceId);
   const costEl = $("rc-edit-cost");

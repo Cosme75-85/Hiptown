@@ -102,7 +102,8 @@ const COWORKING = {
   titlePrefix: '[COWORKING] ',            // début du titre de l'événement dans l'agenda
   // Lieu indiqué quand un coworker ajoute sa réservation à son propre agenda (Google, Apple, Outlook).
   // Mettez l'adresse complète pour que le GPS la trouve.
-  address: 'Hiptown Émergence, Bordeaux',
+  address: 'Hiptown Emergence, 52 quai de Paludate, 33800 Bordeaux',
+  mealsNoticeHours: 24,                   // repas à commander au moins 24h avant le début de la réunion
 
   // Barème en crédits, par salle (même découpage que les tarifs : à l'heure,
   // demi-journée = 5h, journée = plus de 5h). Sans demi-journée ou journée
