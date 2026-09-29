@@ -97,6 +97,9 @@ const COWORKING = {
   allowedRoles: ['coworking', 'admin'],   // rôles du portail autorisés à réserver
   firebaseProjectId: 'erp-hiptown',       // projet Firebase du portail (firebase-config.js)
   titlePrefix: '[COWORKING] ',            // début du titre de l'événement dans l'agenda
+  // Lieu indiqué quand un coworker ajoute sa réservation à son propre agenda (Google, Apple, Outlook).
+  // Mettez l'adresse complète pour que le GPS la trouve.
+  address: 'Hiptown Émergence, Bordeaux',
 
   // Barème en crédits, par salle (même découpage que les tarifs : à l'heure,
   // demi-journée = 5h, journée = plus de 5h). Sans demi-journée ou journée

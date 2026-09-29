@@ -577,7 +577,17 @@
     <!-- Mes réservations à venir : annuler ou modifier sans passer par l'équipe -->
     <div class="rc-mine" id="rc-mine" hidden>
       <h3 class="rc-mine-title">Mes réservations à venir</h3>
-      <div id="rc-mine-list"></div>
+      <div class="rc-mine-layout">
+        <div class="rc-mine-cal">
+          <div class="rc-month-nav">
+            <button type="button" id="rc-mine-prev" aria-label="Mois précédent">◀</button>
+            <div class="rc-month-label" id="rc-mine-month" aria-live="polite"></div>
+            <button type="button" id="rc-mine-next" aria-label="Mois suivant">▶</button>
+          </div>
+          <div class="rc-mine-grid" id="rc-mine-grid"></div>
+        </div>
+        <div class="rc-mine-list" id="rc-mine-list"></div>
+      </div>
     </div>
 
     <div class="rc-spaces" id="rc-spaces"><div class="rc-loading">Chargement des salles...</div></div>

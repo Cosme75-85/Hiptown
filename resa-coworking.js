@@ -412,17 +412,172 @@ async function loadMine() {
 }
 
 function renderMine() {
-  const box = $("rc-mine");
-  box.hidden = myBookings.length === 0;
-  $("rc-mine-list").innerHTML = myBookings.map((b, i) =>
-    '<div class="rc-mine-item"><div class="rc-mine-info"><b>' + escapeHtml(b.spaceName) + "</b> — " + escapeHtml(b.title)
-    + '<span class="rc-mine-when">' + escapeHtml(describeSlot(b)) + " · " + b.numberOfPeople + " pers."
-    + (b.credits ? " · " + b.credits + " crédit(s)" : "") + "</span></div>"
-    + '<div class="rc-mine-actions">'
+  $("rc-mine").hidden = myBookings.length === 0;
+  if (!myBookings.length) return;
+  // Mini-calendrier : on reste sur le mois affiché, sinon celui de la prochaine réservation
+  const first = myBookings[0].dateString.split("-").map(Number);
+  if (!mineMonth || monthIndex(mineMonth) < monthIndex(currentMonthRef()) || monthIndex(mineMonth) > monthIndex(lastBookingMonth())) {
+    mineMonth = { year: first[0], month: first[1] };
+  }
+  renderMineCalendar();
+  $("rc-mine-list").innerHTML = myBookings.map(bookingCard).join("");
+}
+
+// ---------- Mini-calendrier des réservations ----------
+
+let mineMonth = null; // { year, month } affiché dans le mini-calendrier
+
+function monthIndex(m) { return m.year * 12 + m.month; }
+function currentMonthRef() { return { year: today.getFullYear(), month: today.getMonth() + 1 }; }
+function lastBookingMonth() {
+  const last = myBookings[myBookings.length - 1];
+  const [y, m] = (last.endDateString || last.dateString).split("-").map(Number);
+  return { year: y, month: m };
+}
+
+/** "AAAA-MM-JJ" de chaque jour couvert par une réservation -> réservations de ce jour. */
+function bookingsByDay() {
+  const days = {};
+  myBookings.forEach(b => {
+    const [y, m, d] = b.dateString.split("-").map(Number);
+    const day = new Date(y, m - 1, d);
+    const last = b.endDateString || b.dateString;
+    for (let key = b.dateString; key <= last; ) {
+      (days[key] = days[key] || []).push(b);
+      day.setDate(day.getDate() + 1);
+      key = day.getFullYear() + "-" + pad(day.getMonth() + 1) + "-" + pad(day.getDate());
+    }
+  });
+  return days;
+}
+
+function renderMineCalendar() {
+  const { year, month } = mineMonth;
+  $("rc-mine-month").textContent = MONTH_NAMES[month - 1] + " " + year;
+  $("rc-mine-prev").disabled = monthIndex(mineMonth) <= monthIndex(currentMonthRef());
+  $("rc-mine-next").disabled = monthIndex(mineMonth) >= monthIndex(lastBookingMonth());
+
+  const byDay = bookingsByDay();
+  const todayKey = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const startOffset = (new Date(year, month - 1, 1).getDay() + 6) % 7; // 0 = lundi
+
+  let html = ["L", "M", "M", "J", "V", "S", "D"].map(l => '<div class="rc-dow" aria-hidden="true">' + l + "</div>").join("");
+  html += "<div></div>".repeat(startOffset);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = year + "-" + pad(month) + "-" + pad(d);
+    const list = byDay[key] || [];
+    let cls = "rc-mine-day" + (list.length ? " rc-has" : "") + (key === todayKey ? " rc-today" : "");
+    const label = d + " " + MONTH_NAMES[month - 1] + (list.length
+      ? " : " + list.map(b => b.spaceName + " " + b.startHour + "h-" + b.endHour + "h").join(", ")
+      : "");
+    html += '<button type="button" class="' + cls + '" data-day="' + key + '" aria-label="' + escapeHtml(label) + '"'
+      + ' title="' + escapeHtml(label) + '"' + (list.length ? "" : " disabled") + ">" + d
+      + (list.length ? '<span class="rc-mine-dots">' + list.slice(0, 3).map(b =>
+        '<i style="--dot:' + escapeHtml(b.color || "#67DFCB") + '"></i>').join("") + "</span>" : "")
+      + "</button>";
+  }
+  $("rc-mine-grid").innerHTML = html;
+}
+
+/** Clic sur un jour : on montre la (première) réservation de ce jour dans la liste. */
+function showDay(key) {
+  const b = (bookingsByDay()[key] || [])[0];
+  const card = b && document.querySelector('.rc-bk[data-event="' + CSS.escape(b.eventId) + '"]');
+  if (!card) return;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.add("rc-flash");
+  setTimeout(() => card.classList.remove("rc-flash"), 1500);
+}
+
+// ---------- Fiche d'une réservation ----------
+
+function bookingCard(b, i) {
+  const [y, m, d] = b.dateString.split("-").map(Number);
+  const dow = new Date(y, m - 1, d).toLocaleDateString("fr-FR", { weekday: "short" });
+  const monthShort = new Date(y, m - 1, d).toLocaleDateString("fr-FR", { month: "short" });
+  let dayHtml = '<span class="rc-bk-day">' + d + "</span>";
+  if (b.endDateString) {
+    const endDay = Number(b.endDateString.split("-")[2]);
+    dayHtml = '<span class="rc-bk-day rc-bk-range">' + d + " → " + endDay + "</span>";
+  }
+  const hours = b.endDateString
+    ? "🕘 " + b.startHour + "h – " + b.endHour + "h chaque jour"
+    : "🕘 " + b.startHour + "h – " + b.endHour + "h";
+  const when = b.endDateString
+    ? "du " + formatDate(b.dateString) + " au " + formatDate(b.endDateString)
+    : formatDate(b.dateString);
+  return '<article class="rc-bk" data-event="' + escapeHtml(b.eventId) + '" style="--space-color:' + escapeHtml(b.color || "#67DFCB") + '">'
+    + '<div class="rc-bk-date" aria-hidden="true"><span class="rc-bk-dow">' + escapeHtml(dow) + "</span>" + dayHtml
+    + '<span class="rc-bk-month">' + escapeHtml(monthShort) + "</span></div>"
+    + '<div class="rc-bk-body">'
+    + '<div class="rc-bk-room">' + escapeHtml(b.spaceName) + "</div>"
+    + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(when) + "</div>"
+    + '<ul class="rc-bk-facts"><li>' + hours + "</li><li>👥 " + b.numberOfPeople + " personne(s)</li>"
+    + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "") + "</ul>"
+    + (b.notes ? '<p class="rc-bk-note">📝 ' + escapeHtml(b.notes) + "</p>" : "")
+    + '<div class="rc-bk-actions">'
+    + '<details class="rc-addcal"><summary class="rc-option">📅 Ajouter à mon agenda</summary><div class="rc-addcal-menu">'
+    + '<a href="' + escapeHtml(googleCalendarUrl(b)) + '" target="_blank" rel="noopener">Google Agenda</a>'
+    + '<button type="button" data-ics="' + i + '">Apple, Outlook… (fichier .ics)</button>'
+    + "</div></details>"
     + '<button type="button" class="rc-option" data-edit="' + i + '">Modifier</button>'
     + '<button type="button" class="rc-option rc-danger" data-cancel="' + i + '">Annuler</button>'
-    + "</div></div>"
-  ).join("");
+    + "</div></div></article>";
+}
+
+// ---------- Ajouter à mon agenda ----------
+
+/** 20261012T070000Z (heure universelle, comprise par tous les agendas) */
+function utcStamp(ms) {
+  return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+function calendarTitle(b) { return b.title + " — " + b.spaceName; }
+
+function calendarDetails(b) {
+  return [
+    "Réservation Hiptown : " + b.spaceName,
+    b.endDateString ? "Journée complète chaque jour (" + b.startHour + "h – " + b.endHour + "h)" : "",
+    "Nombre de personnes : " + b.numberOfPeople,
+    b.notes ? "Note : " + b.notes : "",
+    "Pour annuler ou modifier : votre espace client Hiptown."
+  ].filter(Boolean).join("\n");
+}
+
+function googleCalendarUrl(b) {
+  return "https://calendar.google.com/calendar/render?" + new URLSearchParams({
+    action: "TEMPLATE",
+    text: calendarTitle(b),
+    dates: utcStamp(b.start) + "/" + utcStamp(b.end),
+    details: calendarDetails(b),
+    location: b.address || "Hiptown"
+  });
+}
+
+/** Fichier .ics (Apple Calendrier, Outlook…). Même UID à chaque fois : réimporter met à jour. */
+function downloadIcs(b) {
+  const esc = t => String(t).replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Hiptown//Portail//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    "UID:" + esc(b.eventId).replace(/@/g, "-") + "@portail.hiptown",
+    "DTSTAMP:" + utcStamp(Date.now()),
+    "DTSTART:" + utcStamp(b.start),
+    "DTEND:" + utcStamp(b.end),
+    "SUMMARY:" + esc(calendarTitle(b)),
+    "LOCATION:" + esc(b.address || "Hiptown"),
+    "DESCRIPTION:" + esc(calendarDetails(b)),
+    "END:VEVENT", "END:VCALENDAR"
+  ].join("\r\n");
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "reservation-hiptown-" + b.dateString + ".ics";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 async function cancelMine(b, btn) {
@@ -588,10 +743,35 @@ document.addEventListener("keydown", e => {
 });
 
 $("rc-mine-list").addEventListener("click", e => {
+  const icsBtn = e.target.closest("[data-ics]");
+  if (icsBtn) {
+    icsBtn.closest("details").open = false;
+    return downloadIcs(myBookings[Number(icsBtn.dataset.ics)]);
+  }
+  if (e.target.closest(".rc-addcal-menu a")) {
+    e.target.closest("details").open = false;
+    return;
+  }
   const editBtn = e.target.closest("[data-edit]");
   if (editBtn) return openEditModal(myBookings[Number(editBtn.dataset.edit)]);
   const cancelBtn = e.target.closest("[data-cancel]");
   if (cancelBtn) cancelMine(myBookings[Number(cancelBtn.dataset.cancel)], cancelBtn);
+});
+$("rc-mine-grid").addEventListener("click", e => {
+  const day = e.target.closest(".rc-has");
+  if (day) showDay(day.dataset.day);
+});
+$("rc-mine-prev").addEventListener("click", () => {
+  mineMonth = shiftMonth(mineMonth.year, mineMonth.month, -1);
+  renderMineCalendar();
+});
+$("rc-mine-next").addEventListener("click", () => {
+  mineMonth = shiftMonth(mineMonth.year, mineMonth.month, 1);
+  renderMineCalendar();
+});
+// Un seul menu « Ajouter à mon agenda » ouvert à la fois, fermé par un clic ailleurs
+document.addEventListener("click", e => {
+  document.querySelectorAll("#rc-mine-list .rc-addcal[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
 });
 ["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end"].forEach(id => $(id).addEventListener("change", updateEditForm));
 $("rc-edit-close").addEventListener("click", closeEditModal);

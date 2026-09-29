@@ -173,6 +173,21 @@ function hourLine(b) {
   return ['Horaire', b.startHour + 'h - ' + b.endHour + 'h' + (b.isMultiDay ? ' (chaque jour)' : '')];
 }
 
+/**
+ * Lien « Ajouter à mon agenda Google » pour les emails. Pour Apple ou Outlook, le portail
+ * propose aussi un fichier .ics (rubrique « Mes réservations à venir »).
+ */
+function addToCalendarLink(title, space, start, end) {
+  const stamp = d => Utilities.formatDate(d, 'UTC', "yyyyMMdd'T'HHmmss'Z'");
+  const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(title + ' — ' + space.name)
+    + '&dates=' + stamp(start) + '/' + stamp(end)
+    + '&details=' + encodeURIComponent('Réservation Hiptown : ' + space.name
+      + '\nPour annuler ou modifier : votre espace client Hiptown.')
+    + '&location=' + encodeURIComponent(COWORKING.address || 'Hiptown');
+  return '📅 <a href="' + escapeHtml(url) + '">Ajouter à mon agenda Google</a>';
+}
+
 /** « le lundi 6 octobre 2026, de 9h à 12h » */
 function frenchWhen(b, start, end) {
   return frenchDateRange(start, end) + (b.isMultiDay
@@ -187,6 +202,7 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits) {
       + '</b>, ' + when + ', pour ' + booking.numberOfPeople + ' personne(s).',
     credits && ('Crédits utilisés : <b>' + credits.cost + '</b>. Il reste <b>' + credits.remaining
       + '</b> crédit(s) à votre entreprise pour ' + credits.monthLabel + '.'),
+    addToCalendarLink(title, booking.space, start, end),
     'Merci d\'avoir réservé avec votre espace client Hiptown. Nous vous souhaitons une excellente réunion !',
     'Un empêchement ou un changement d\'horaire ? Vous pouvez annuler ou modifier cette réservation vous-même '
       + 'jusqu\'à son début, depuis la tuile « Réserver une salle de réunion » de votre espace client '
@@ -295,18 +311,24 @@ function getMyCoworkingBookings(idToken) {
         if (ev.title.indexOf(COWORKING.titlePrefix) !== 0 || ev.start <= now) return;
         const slot = eventSlot(ev.start, ev.end);
         const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
+        // La note va jusqu'à la ligne « Dernière modification » ou « Statut » (elle peut faire plusieurs lignes)
+        const note = (ev.description.match(/\nNote : ([\s\S]*?)(?=\n(?:Dernière modification|Statut) : |$)/) || [])[1];
         bookings.push({
           spaceId: space.id,
           spaceName: space.name,
+          color: space.color,
+          address: COWORKING.address || '',
           allowMultiDay: !!space.allowMultiDay,
           eventId: ev.id,
           title: ev.title.slice(COWORKING.titlePrefix.length),
           start: ev.start.getTime(),
+          end: ev.end.getTime(),
           dateString: slot.dateString,
           endDateString: slot.isMultiDay ? slot.endDateString : null,
           startHour: slot.startHour,
           endHour: slot.endHour,
           numberOfPeople: people ? Number(people) : 1,
+          notes: note ? note.trim() : '',
           credits: user.chargesCredits ? (Number(ev.credits) || 0) : null
         });
       });
@@ -537,6 +559,8 @@ function modifyCoworkingBooking(idToken, raw) {
         'Votre réservation <b>"' + escapeHtml(title) + '"</b> a bien été modifiée. Nouveau créneau : <b>'
           + escapeHtml(space.name) + '</b>, ' + frenchWhen(booking, start, end) + ', pour '
           + booking.numberOfPeople + ' personne(s).',
+        addToCalendarLink(title, space, start, end)
+          + ' (pensez à supprimer l\'ancien créneau de votre agenda si vous l\'y aviez ajouté)',
         'Ancien créneau (libéré) : ' + frenchWhen(eventSlot(oldStart, oldEnd), oldStart, oldEnd) + '.',
         balance && ('Crédits utilisés : <b>' + cost + '</b> (au lieu de ' + oldCost + '). Il reste <b>'
           + (balance.remaining - cost) + '</b> crédit(s) à votre entreprise pour ' + balance.monthLabel + '.'),
