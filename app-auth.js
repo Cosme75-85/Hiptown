@@ -223,6 +223,8 @@ function routeToDashboard(client, space) {
   if (window.showDashboardFromAuth) {
     window.showDashboardFromAuth(client, space);
   }
+  // Prévient les autres modules (ex. crédits coworking dans le bandeau, resa-coworking.js)
+  document.dispatchEvent(new CustomEvent("hiptown-dashboard", { detail: { space } }));
   if (notifBellWrap) {
     const isAdmin = space === "hiptown";
     notifBellWrap.hidden = !isAdmin;
