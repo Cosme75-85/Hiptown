@@ -102,7 +102,7 @@ function buildQuoteHtml(space, booking, number) {
     '<td class="num">' + euros(l.total * (1 + vatRate)) + '</td>' +
     '</tr>').join('');
 
-  const remarks = DEVIS.remarksByCategory[space.category];
+  const remarks = booking.mealsOnly ? DEVIS.coworkingMealsRemark : DEVIS.remarksByCategory[space.category];
 
   return '<html><head><meta charset="utf-8"><style>' +
     'body { font-family: Montserrat, Arial, sans-serif; color: #1C1748; font-size: 10pt; margin: 0; }' +
@@ -138,7 +138,8 @@ function buildQuoteHtml(space, booking, number) {
     '<td style="text-align:right"><span class="label">Date d\'échéance</span><br>' + frDate(dueDate) + '</td>' +
     '</tr></table>' +
 
-    '<p><span class="label">Objet :</span> Réservation ' + e(space.name) + ' ' + period + '</p>' +
+    '<p><span class="label">Objet :</span> ' + (booking.mealsOnly ? 'Restauration – réunion en ' : 'Réservation ')
+      + e(space.name) + ' ' + period + '</p>' +
 
     // Lignes du devis
     '<table class="lines"><tr>' +

@@ -52,6 +52,9 @@ const DEVIS = {
       + 'Ce prix comprend l\'accès à l\'espace commun, café et thé. '
       + 'Nous proposons une option « viennoiserie » disponible sur demande.'
   },
+  // Remarque des devis « repas seuls » des coworkers (la salle est réservée sur leurs crédits)
+  coworkingMealsRemark: 'Salle de réunion réservée sur les crédits coworking de votre entreprise : '
+    + 'ce devis concerne uniquement la restauration commandée.',
   paymentMethod: 'Par virement bancaire',
   paymentTerms: 'Conditions de règlement : A réception de facture. A défaut et conformément à la loi, des pénalités de retard '
     + 'égales à trois fois le taux de d\'intérêt légal, et une indemnité forfaitaire de 40 € sont dues, le jour suivant la date '
@@ -99,7 +102,8 @@ const COWORKING = {
   titlePrefix: '[COWORKING] ',            // début du titre de l'événement dans l'agenda
   // Lieu indiqué quand un coworker ajoute sa réservation à son propre agenda (Google, Apple, Outlook).
   // Mettez l'adresse complète pour que le GPS la trouve.
-  address: 'Hiptown Émergence, Bordeaux',
+  address: 'Hiptown Emergence, 52 quai de Paludate, 33800 Bordeaux',
+  mealsNoticeHours: 24,                   // repas à commander au moins 24h avant le début de la réunion
 
   // Barème en crédits, par salle (même découpage que les tarifs : à l'heure,
   // demi-journée = 5h, journée = plus de 5h). Sans demi-journée ou journée
@@ -116,6 +120,7 @@ const COWORKING = {
 const TAG_PORTAL_UID = 'portalUid';       // compte du portail qui a réservé
 const TAG_COMPANY = 'portalCompanyId';    // entreprise coworking dont les crédits sont utilisés
 const TAG_CREDITS = 'credits';            // crédits utilisés par la réservation
+const TAG_MEALS = 'meals';                // repas commandés par un coworker (JSON), facturés sur devis
 
 // Civilités proposées dans le formulaire (utilisées dans « Bonjour Madame Dupont, »)
 const CIVILITIES = ['Madame', 'Monsieur'];

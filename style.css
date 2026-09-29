@@ -967,6 +967,10 @@ footer {
 .rc-booker { font-size: 13px; color: var(--text-soft); margin-top: 10px; }
 .rc-credits { background: #e0f2fe; color: #0369a1; padding: 10px 14px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; }
 .rc-cost { font-size: 14px; font-weight: 600; margin-top: 8px; }
+.rc-meals { border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px 8px; margin-top: 14px; }
+.rc-meals legend { font-size: 13px; font-weight: 700; padding: 0 4px; }
+#rc-edit-current { text-transform: none; }
+.rc-meals-total { font-size: 13px; color: var(--text-soft); margin-top: 4px; }
 .rc-mine { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
 .rc-mine-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
 .rc-mine-layout { display: grid; grid-template-columns: 1fr; gap: 16px; }

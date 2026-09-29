@@ -887,9 +887,11 @@ function computeQuote(space, q) {
     if (qty > 0 && unitPrice > 0) lines.push({ type: type, label: label, qty: qty, unitPrice: unitPrice, total: round(qty * unitPrice) });
   };
 
-  // Location de l'espace
+  // Location de l'espace (sauf devis « repas seuls » des coworkers, dont la salle est sur crédits)
   const spaceLabel = space.name + (space.maxPeople ? ' (' + space.maxPeople + ' pers.)' : '');
-  if (space.quantitySelectable) {
+  if (q.mealsOnly) {
+    // rien : seulement les repas
+  } else if (space.quantitySelectable) {
     const deskPrices = isFullDay ? PRICES.deskFullDay : PRICES.deskHalfDay;
     addLine('room', spaceLabel + ' – ' + q.spaceQuantity + ' poste(s) – ' + period, 1, deskPrices[q.spaceQuantity >= 2 ? 1 : 0]);
   } else if (space.hourlyPrice) {
@@ -903,7 +905,7 @@ function computeQuote(space, q) {
   addLine('breakfast', 'Petit déjeuner', q.wantsBreakfast ? q.numberOfPeople : 0, PRICES.breakfast);
   addLine('lunch', 'Déjeuner', q.wantsLunch ? q.numberOfPeople : 0, PRICES.lunch);
   addLine('parking', 'Place de parking – ' + (isFullDay ? 'journée' : 'demi-journée'),
-    q.parkingQuantity * days, isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
+    (q.parkingQuantity || 0) * days, isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
 
   const totalOf = type => round(lines.filter(l => l.type === type).reduce((sum, l) => sum + l.total, 0));
   const totalHT = round(lines.reduce((sum, l) => sum + l.total, 0));

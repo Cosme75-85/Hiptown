@@ -634,6 +634,13 @@
           <input type="text" id="rc-title" maxlength="100" placeholder="Ex : Point client"/>
           <label for="rc-notes">Note (optionnel)</label>
           <textarea id="rc-notes" maxlength="2000"></textarea>
+          <fieldset class="rc-meals" id="rc-meals" hidden>
+            <legend>Restauration (en option, facturée)</legend>
+            <div class="rc-check-row"><input type="checkbox" id="rc-breakfast"/><label for="rc-breakfast" id="rc-breakfast-label">Petit déjeuner</label></div>
+            <div class="rc-check-row"><input type="checkbox" id="rc-lunch"/><label for="rc-lunch" id="rc-lunch-label">Déjeuner</label></div>
+            <p class="rc-meals-total" id="rc-meals-total" hidden></p>
+            <p class="rc-meals-total" id="rc-meals-late" hidden></p>
+          </fieldset>
         </div>
 
         <div class="rc-modal-actions">
@@ -665,6 +672,13 @@
         </div>
         <label for="rc-edit-people">Nombre de personnes *</label>
         <input type="number" id="rc-edit-people" min="1" inputmode="numeric"/>
+        <fieldset class="rc-meals" id="rc-edit-meals" hidden>
+          <legend>Restauration (en option, facturée)</legend>
+          <div class="rc-check-row"><input type="checkbox" id="rc-edit-breakfast"/><label for="rc-edit-breakfast" id="rc-edit-breakfast-label">Petit déjeuner</label></div>
+          <div class="rc-check-row"><input type="checkbox" id="rc-edit-lunch"/><label for="rc-edit-lunch" id="rc-edit-lunch-label">Déjeuner</label></div>
+          <p class="rc-meals-total" id="rc-edit-meals-total" hidden></p>
+          <p class="rc-meals-total" id="rc-edit-meals-late" hidden></p>
+        </fieldset>
         <p class="rc-cost" id="rc-edit-cost" hidden></p>
 
         <div class="rc-modal-actions">
