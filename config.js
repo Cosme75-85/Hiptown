@@ -7,7 +7,7 @@ const PORTAIL = {
   // Outil de réservation des salles (Google Apps Script, dossier reservation/ du dépôt).
   // Sert à la tuile « Réserver une salle » (clients salle de réunion) et à la
   // réservation intégrée de l'espace coworking (resa-coworking.js).
-  reservationUrl: "https://script.google.com/macros/s/AKfycbz2lt2umtwfuUdn67o0HJHTBFBDa_J3ROt2JWW_YzoMoFyBjHUuxQ4Plb342Bj_LMp47A/exec",
+  reservationUrl: "https://script.google.com/macros/s/AKfycbxQi0MRfoJZ4YVroQfKe3l6mUBKwBZH8fMlMCLQa5YavhnKiZMsn6ULtb4-DHth47GsOw/exec",
 
   // ── Sites Hiptown (villes) ────────────────────────────
   // Chaque compte est rattaché à un site. Un admin ne voit et ne modifie
