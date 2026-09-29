@@ -89,3 +89,18 @@ function testPerformance() {
   Logger.log('TOTAL pour le mois : ' + total + ' ms');
 }
 
+
+/**
+ * Réservation depuis l'espace coworking : à lancer UNE FOIS après la mise à jour,
+ * pour accepter la nouvelle autorisation (« se connecter à un service externe »),
+ * nécessaire pour vérifier les comptes du portail dans Firestore.
+ */
+function testCoworkingSetup() {
+  getCoworkingSpaces().spaces.forEach(s => Logger.log('✅ Salle proposée aux coworkers : ' + s.name));
+  const res = UrlFetchApp.fetch('https://firestore.googleapis.com/v1/projects/' + COWORKING.firebaseProjectId
+    + '/databases/(default)/documents/users/test', { muteHttpExceptions: true });
+  const code = res.getResponseCode();
+  Logger.log(code === 403 || code === 401
+    ? '✅ Firestore joignable (accès refusé sans compte, c\'est normal).'
+    : '⚠️ Réponse inattendue de Firestore (code ' + code + ') : vérifier COWORKING.firebaseProjectId.');
+}

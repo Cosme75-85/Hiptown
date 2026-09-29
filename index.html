@@ -520,6 +520,80 @@
     </div>
   </section>
 
+  <!-- PAGE RÉSERVATION DES SALLES (ESPACE COWORKING) — logique dans resa-coworking.js -->
+  <section id="step-resa-cowork" hidden>
+    <button class="back-btn" id="back-from-resa-cowork">← Retour</button>
+    <h2 class="step-title">📅 Réserver une salle de réunion</h2>
+    <p class="rc-intro">Choisissez une salle et un jour libre. Votre réservation est confirmée tout de suite et vous recevez un email récapitulatif.</p>
+
+    <div class="rc-toolbar">
+      <div class="rc-month-nav">
+        <button type="button" id="rc-prev-month" aria-label="Mois précédent">◀</button>
+        <div class="rc-month-label" id="rc-month-label" aria-live="polite"></div>
+        <button type="button" id="rc-next-month" aria-label="Mois suivant">▶</button>
+      </div>
+      <div class="rc-legend">
+        <span><i class="rc-dot rc-free"></i> Disponible</span>
+        <span><i class="rc-dot rc-busy"></i> Complet</span>
+        <span><i class="rc-dot rc-past"></i> Passé</span>
+      </div>
+    </div>
+
+    <div class="rc-spaces" id="rc-spaces"><div class="rc-loading">Chargement des salles...</div></div>
+
+    <!-- Fenêtre de réservation -->
+    <div class="rc-overlay" id="rc-overlay">
+      <div class="rc-modal" role="dialog" aria-modal="true" aria-labelledby="rc-modal-title">
+        <h2 id="rc-modal-title">Réserver</h2>
+        <div class="rc-modal-date" id="rc-modal-date"></div>
+
+        <!-- Étape 1 : choix du créneau -->
+        <div id="rc-multiday-block" hidden>
+          <div class="rc-check-row">
+            <input type="checkbox" id="rc-multiday"/>
+            <label for="rc-multiday">Réserver sur plusieurs jours (journée complète chaque jour)</label>
+          </div>
+          <div class="rc-inline-row" id="rc-multiday-range" hidden>
+            <span>Jusqu'au</span>
+            <input type="date" id="rc-multiday-end" aria-label="Date de fin"/>
+            <button type="button" class="rc-option" id="rc-multiday-confirm">Valider</button>
+          </div>
+        </div>
+
+        <div id="rc-singleday-block">
+          <div class="rc-options" id="rc-quick-slots"></div>
+          <div class="rc-inline-row">
+            <span>Ou choisissez :</span>
+            <select id="rc-custom-start" aria-label="Heure de début"></select>
+            <span>→</span>
+            <select id="rc-custom-end" aria-label="Heure de fin"></select>
+            <button type="button" class="rc-option" id="rc-custom-confirm">OK</button>
+          </div>
+        </div>
+
+        <!-- Étape 2 : détails de la réunion -->
+        <div id="rc-form-step" hidden>
+          <hr class="rc-divider"/>
+          <div class="rc-slot-banner" id="rc-slot-banner"></div>
+          <p class="rc-booker" id="rc-booker"></p>
+          <label for="rc-people">Nombre de personnes *</label>
+          <input type="number" id="rc-people" min="1" value="1" inputmode="numeric"/>
+          <label for="rc-title">Titre de la réunion</label>
+          <input type="text" id="rc-title" maxlength="100" placeholder="Ex : Point client"/>
+          <label for="rc-notes">Note (optionnel)</label>
+          <textarea id="rc-notes" maxlength="2000"></textarea>
+        </div>
+
+        <div class="rc-modal-actions">
+          <button type="button" class="rc-btn-secondary" id="rc-cancel">Annuler</button>
+          <button type="button" class="rc-btn-primary" id="rc-submit" hidden>Confirmer la réservation</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rc-toast" id="rc-toast" role="status" hidden></div>
+  </section>
+
   <!-- PAGE DÉTAIL SITE -->
   <section id="step-site-detail" hidden>
     <button class="back-btn" id="back-from-site-detail">← Retour aux sites</button>
@@ -537,5 +611,6 @@
 <script src="app.js"></script>
 <script type="module" src="app-auth.js"></script>
 <script type="module" src="breakfast.js"></script>
+<script type="module" src="resa-coworking.js"></script>
 </body>
 </html>
