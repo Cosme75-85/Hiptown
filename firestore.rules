@@ -24,6 +24,22 @@ service cloud.firestore {
         && myProfile().status == 'approved';
     }
 
+    // Site géré par l'admin connecté (ex. "bordeaux").
+    // Un admin SANS site est un super-admin : il gère tous les sites.
+    function mySite() {
+      return myProfile().get('site', null);
+    }
+
+    function isSuperAdmin() {
+      return isAdmin() && mySite() == null;
+    }
+
+    // L'admin connecté peut-il gérer ce compte ? (super-admin, ou même site que lui)
+    function canManageUser(data) {
+      return isSuperAdmin()
+        || (isAdmin() && data.site == mySite());
+    }
+
     function isApprovedRole(r) {
       return isSignedIn()
         && myProfile().role == r
@@ -47,28 +63,31 @@ service cloud.firestore {
 
     // Comptes utilisateurs
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      // Un admin ne voit que les comptes de son site (le super-admin voit tout)
+      allow read: if isOwner(userId) || canManageUser(resource.data);
 
       // Inscription : compte en attente, sans rôle, sans entreprise officielle ni tuiles imposées
       // (l'e-mail est comparé en minuscules : Firebase Auth l'enregistre ainsi)
-      // Un admin peut aussi créer directement un compte déjà validé.
-      allow create: if isAdmin()
+      // Un admin peut aussi créer directement un compte déjà validé, sur son site.
+      allow create: if canManageUser(request.resource.data)
         || (isOwner(userId)
             && request.resource.data.status == 'pending'
             && request.resource.data.role == null
             && request.resource.data.get('companyId', null) == null
             && !request.resource.data.keys().hasAny(['extraTiles', 'hiddenTiles', 'photo', 'nickname'])
             && request.resource.data.email is string
-            && request.resource.data.email.lower() == request.auth.token.email.lower());
+            && request.resource.data.email.lower() == request.auth.token.email.lower()
+            && isShortText(request.resource.data, 'site', 40));
 
+      // Un admin modifie les comptes de son site, sans pouvoir les déplacer vers un autre site.
       // Un client ne peut modifier QUE sa photo, son surnom et son entreprise déclarée
-      allow update: if isAdmin()
+      allow update: if (canManageUser(resource.data) && canManageUser(request.resource.data))
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['nickname', 'photo', 'companyNameHint'])
             && isValidProfile(request.resource.data));
 
-      allow delete: if isAdmin();
+      allow delete: if canManageUser(resource.data);
     }
 
     // Entreprises (coworking)

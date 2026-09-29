@@ -9,6 +9,15 @@ const PORTAIL = {
   // réservation intégrée de l'espace coworking (resa-coworking.js).
   reservationUrl: "https://script.google.com/macros/s/AKfycbz3xBANvJGG2IwIzXSRjmuOzNBEEnMFZJEDs4qizWJmmqNnOcIyK2w0VnSxhDcq72cTKA/exec",
 
+  // ── Sites Hiptown (villes) ────────────────────────────
+  // Chaque compte est rattaché à un site. Un admin ne voit et ne modifie
+  // que les comptes de son site. Pour ouvrir une nouvelle ville, ajoute-la ici.
+  sites: {
+    bordeaux: "Bordeaux",
+  },
+  // Site attribué automatiquement aux clients qui s'inscrivent sur ce portail
+  defaultSite: "bordeaux",
+
   // ── Événements ────────────────────────────────────────
   // Ajoutez/modifiez les événements ici
   // image: nom du fichier uploadé sur GitHub
