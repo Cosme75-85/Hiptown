@@ -593,15 +593,138 @@ async function renderCompaniesPanel() {
   const members = {};
   users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
 
+  buildCompanyForm(document.getElementById("new-company-form"), null, renderCompaniesPanel);
   if (count) count.textContent = `(${companies.length})`;
   list.innerHTML = companies.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucune entreprise pour le moment.</p>';
   companies.forEach(c => list.appendChild(createCompanyCard(c, members[c.id] || 0)));
+}
+
+// Champs de la fiche entreprise (en plus du nom, des crédits et des couleurs)
+const COMPANY_TEXT_FIELDS = [
+  { key: "legalName",      label: "Raison sociale",             type: "text",     max: 150 },
+  { key: "legalRepName",   label: "Représentant légal",         type: "text",     max: 100 },
+  { key: "legalRepEmail",  label: "Mail du représentant légal", type: "email",    max: 150 },
+  { key: "billingAddress", label: "Adresse de facturation",     type: "textarea", max: 300 },
+  { key: "country",        label: "Pays",                       type: "text",     max: 60, placeholder: "France" },
+  { key: "siret",          label: "Numéro de SIRET",            type: "text",     max: 20, placeholder: "14 chiffres" },
+  { key: "vatNumber",      label: "Numéro de TVA",              type: "text",     max: 30, placeholder: "FR…" }
+];
+
+/**
+ * Formulaire de fiche entreprise, pour la création (c = null) et la modification.
+ * Crédits : postes négociés × crédits par poste, sauf ajustement à la main.
+ */
+function buildCompanyForm(container, c, onSaved) {
+  const style = SPACE_STYLES.coworking;
+  const data = c || {};
+  const perSeatDefault = Number(PORTAIL.creditsPerSeat) || 0;
+  const num = v => (v === undefined || v === null || v === "") ? "" : String(v);
+  const fieldHtml = f => {
+    const value = escapeHtml(data[f.key] || "");
+    const ph = f.placeholder ? `placeholder="${escapeHtml(f.placeholder)}"` : "";
+    const input = f.type === "textarea"
+      ? `<textarea class="profile-input cf-${f.key}" maxlength="${f.max}" rows="2" ${ph}>${value}</textarea>`
+      : `<input type="${f.type}" class="profile-input cf-${f.key}" maxlength="${f.max}" value="${value}" ${ph}/>`;
+    return `<label class="profile-label">${f.label}</label>${input}`;
+  };
+
+  container.innerHTML = `
+    <label class="profile-label">Nom de l'entreprise *</label>
+    <input type="text" class="profile-input cf-name" maxlength="100" value="${escapeHtml(data.name || "")}"/>
+    ${COMPANY_TEXT_FIELDS.map(fieldHtml).join("")}
+
+    <h4 style="font-size:13px;font-weight:700;margin:18px 0 0;">Contrat et crédits</h4>
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><label class="profile-label">Postes négociés</label>
+        <input type="number" min="0" step="1" class="profile-input cf-seats" value="${num(data.seats)}"/></div>
+      <div style="flex:1;"><label class="profile-label">Crédits par poste</label>
+        <input type="number" min="0" step="1" class="profile-input cf-per-seat" value="${num(data.creditsPerSeat ?? perSeatDefault)}"/></div>
+    </div>
+    <label class="profile-label">Nombre de crédits</label>
+    <input type="number" min="0" step="1" class="profile-input cf-credits" value="${num(data.credits)}"/>
+    <label style="display:flex;gap:8px;align-items:center;font-size:12px;margin-top:6px;">
+      <input type="checkbox" class="cf-manual" ${data.creditsManual ? "checked" : ""}/> Ajuster les crédits à la main (sinon postes × crédits par poste)
+    </label>
+
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;"><label class="profile-label">Couleur du badge</label>
+        <input type="color" class="profile-input cf-color" style="padding:4px;height:44px;" value="${escapeHtml(data.color || style.color)}"/></div>
+      <div style="flex:1;"><label class="profile-label">Couleur du texte</label>
+        <input type="color" class="profile-input cf-text-color" style="padding:4px;height:44px;" value="${escapeHtml(data.textColor || style.textColor)}"/></div>
+    </div>
+    <p class="profile-help cf-message" role="status" hidden></p>
+    <button class="direct-btn cf-save" type="button" style="margin-top:12px;width:auto;padding:8px 14px;background:var(--navy);color:#fff;">${c ? "Enregistrer" : "Ajouter l'entreprise"}</button>`;
+
+  const $ = sel => container.querySelector(sel);
+  const creditsInput = $(".cf-credits");
+  const manual = $(".cf-manual");
+  const toInt = v => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 ? n : null; };
+  function recomputeCredits() {
+    creditsInput.readOnly = !manual.checked;
+    if (manual.checked) return;
+    const seats = toInt($(".cf-seats").value);
+    const perSeat = toInt($(".cf-per-seat").value);
+    creditsInput.value = seats !== null && perSeat !== null ? seats * perSeat : "";
+  }
+  $(".cf-seats").addEventListener("input", recomputeCredits);
+  $(".cf-per-seat").addEventListener("input", recomputeCredits);
+  manual.addEventListener("change", recomputeCredits);
+  recomputeCredits();
+
+  const showMessage = (text, isError) => {
+    const m = $(".cf-message");
+    m.textContent = text;
+    m.style.color = isError ? "#dc2626" : "#166534";
+    m.hidden = false;
+  };
+
+  $(".cf-save").addEventListener("click", async () => {
+    const fields = { name: $(".cf-name").value.trim() };
+    COMPANY_TEXT_FIELDS.forEach(f => { fields[f.key] = $(".cf-" + f.key).value.trim(); });
+    fields.siret = fields.siret.replace(/\s+/g, "");
+    fields.vatNumber = fields.vatNumber.replace(/\s+/g, "").toUpperCase();
+    fields.seats = toInt($(".cf-seats").value);
+    fields.creditsPerSeat = toInt($(".cf-per-seat").value);
+    fields.credits = toInt(creditsInput.value);
+    fields.creditsManual = manual.checked;
+    fields.color = $(".cf-color").value;
+    fields.textColor = $(".cf-text-color").value;
+
+    if (!fields.name) { showMessage("Le nom de l'entreprise est obligatoire.", true); return; }
+    if (fields.siret && !/^\d{14}$/.test(fields.siret)) { showMessage("Le SIRET doit contenir 14 chiffres.", true); return; }
+    if (fields.legalRepEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.legalRepEmail)) { showMessage("Le mail du représentant légal n'est pas valide.", true); return; }
+
+    try {
+      if (c) {
+        await updateCompany(c.id, fields);
+      } else {
+        const companies = await listCompanies();
+        if (companies.some(x => (x.name || "").toLowerCase() === fields.name.toLowerCase())) {
+          showMessage("Cette entreprise existe déjà.", true);
+          return;
+        }
+        let id = companyIdFrom(fields.name);
+        if (companies.some(x => x.id === id)) id += "-" + Date.now();
+        await createCompany(id, fields);
+      }
+      onSaved();
+    } catch (err) {
+      console.error(err);
+      showMessage("Enregistrement impossible.", true);
+    }
+  });
 }
 
 function createCompanyCard(c, memberCount) {
   const style = SPACE_STYLES.coworking;
   const color = c.color || style.color;
   const textColor = c.textColor || style.textColor;
+  const details = [
+    c.legalName,
+    c.seats != null ? `${c.seats} poste(s)` : "",
+    c.credits != null ? `${c.credits} crédit(s)` : "",
+    `${memberCount} compte(s)`
+  ].filter(Boolean).join(" · ");
   const card = document.createElement("div");
   card.className = "info-card";
   card.innerHTML = `
@@ -609,67 +732,19 @@ function createCompanyCard(c, memberCount) {
       <span class="company-badge" style="width:32px;height:32px;font-size:11px;background-color:${escapeHtml(color)};color:${escapeHtml(textColor)};">${escapeHtml(initialsOf({ firstName: c.name || c.id }))}</span>
       <span style="flex:1;min-width:0;">
         <b>${escapeHtml(c.name || c.id)}</b><br>
-        <span style="font-size:11px;color:#94a3b8;">${memberCount} compte(s) rattaché(s)</span>
+        <span style="font-size:11px;color:#94a3b8;">${escapeHtml(details)}</span>
       </span>
       <button class="direct-btn edit-company-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
     </div>
-    <div class="edit-company-form" hidden style="padding:4px 18px 16px;">
-      <label class="profile-label">Nom</label>
-      <input type="text" class="profile-input c-name" maxlength="100" value="${escapeHtml(c.name || "")}"/>
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1;"><label class="profile-label">Couleur du badge</label>
-          <input type="color" class="profile-input c-color" style="padding:4px;height:44px;" value="${escapeHtml(color)}"/></div>
-        <div style="flex:1;"><label class="profile-label">Couleur du texte</label>
-          <input type="color" class="profile-input c-text-color" style="padding:4px;height:44px;" value="${escapeHtml(textColor)}"/></div>
-      </div>
-      <p class="profile-help c-message" role="status" hidden></p>
-      <button class="direct-btn c-save" type="button" style="margin-top:12px;width:auto;padding:8px 14px;background:var(--navy);color:#fff;">Enregistrer</button>
-    </div>`;
+    <div class="edit-company-form" hidden style="padding:4px 18px 16px;"></div>`;
 
   const form = card.querySelector(".edit-company-form");
-  card.querySelector(".edit-company-btn").addEventListener("click", () => { form.hidden = !form.hidden; });
-  card.querySelector(".c-save").addEventListener("click", async () => {
-    const message = form.querySelector(".c-message");
-    const name = form.querySelector(".c-name").value.trim();
-    if (!name) { message.textContent = "Le nom est obligatoire."; message.style.color = "#dc2626"; message.hidden = false; return; }
-    try {
-      await updateCompany(c.id, {
-        name,
-        color: form.querySelector(".c-color").value,
-        textColor: form.querySelector(".c-text-color").value
-      });
-      renderCompaniesPanel();
-    } catch (err) {
-      console.error(err);
-      message.textContent = "Enregistrement impossible.";
-      message.style.color = "#dc2626";
-      message.hidden = false;
-    }
+  card.querySelector(".edit-company-btn").addEventListener("click", () => {
+    if (form.hidden) buildCompanyForm(form, c, renderCompaniesPanel);
+    form.hidden = !form.hidden;
   });
   return card;
 }
-
-document.getElementById("create-company-btn")?.addEventListener("click", async () => {
-  const input = document.getElementById("new-company-name");
-  const name = input.value.trim();
-  if (!name) { alert("Entrez le nom de l'entreprise."); return; }
-  const companies = await listCompanies();
-  if (companies.some(c => (c.name || "").toLowerCase() === name.toLowerCase())) {
-    alert("Cette entreprise existe déjà.");
-    return;
-  }
-  let id = companyIdFrom(name);
-  if (companies.some(c => c.id === id)) id += "-" + Date.now();
-  try {
-    await createCompany(id, { name });
-  } catch (err) {
-    console.error(err);
-    alert("Impossible de créer l'entreprise.");
-    return;
-  }
-  input.value = "";
-  renderCompaniesPanel();
-});
 
 // ── Cloche de notifications ────────────────────────────
 const notifBellWrap = document.getElementById("notif-bell-wrap");
