@@ -22,6 +22,7 @@ let currentYear  = today.getFullYear();
 let currentMonth = today.getMonth() + 1; // 1-12
 
 let SPACES = [];          // salles reçues du serveur
+let MEALS = null;         // tarifs des repas en option { breakfast, lunch, vatRate } (€ HT par personne)
 let START_HOUR = 8;
 let END_HOUR = 18;
 let started = false;      // chargement fait à la première ouverture de la page
@@ -68,6 +69,36 @@ function showToast(message) {
   toast.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.hidden = true; }, 4000);
+}
+
+// ==================== RESTAURATION (EN OPTION, FACTURÉE) ====================
+
+function euros(n) { return n.toFixed(2).replace(".", ",") + " €"; }
+
+/** Libellés avec les tarifs reçus du serveur (même tarifs que les devis). */
+function renderMealLabels() {
+  if (!MEALS) return;
+  ["rc", "rc-edit"].forEach(prefix => {
+    $(prefix + "-breakfast-label").textContent = "Petit déjeuner — " + euros(MEALS.breakfast) + " HT / personne";
+    $(prefix + "-lunch-label").textContent = "Déjeuner — " + euros(MEALS.lunch) + " HT / personne";
+  });
+}
+
+/** Total des repas cochés ; prefix = "rc" (réservation) ou "rc-edit" (modification). */
+function updateMealsTotal(prefix) {
+  const box = $(prefix + "-meals-total");
+  const people = parseInt($(prefix + "-people").value, 10) || 0;
+  const perPerson = (MEALS && $(prefix + "-breakfast").checked ? MEALS.breakfast : 0)
+    + (MEALS && $(prefix + "-lunch").checked ? MEALS.lunch : 0);
+  box.hidden = !perPerson || !people;
+  if (box.hidden) return;
+  const ht = perPerson * people;
+  box.textContent = "Total restauration : " + euros(ht) + " HT (" + euros(ht * (1 + MEALS.vatRate))
+    + " TTC). Le devis vous est envoyé par email avec la confirmation.";
+}
+
+function mealsText(b) {
+  return [b.wantsBreakfast && "Petit déjeuner", b.wantsLunch && "Déjeuner"].filter(Boolean).join(" + ");
 }
 
 // ==================== CRÉDITS ====================
@@ -323,6 +354,8 @@ function showFormStep() {
     + (sameMonth ? (cost > creditBalance.remaining
       ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
       : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
+  $("rc-meals").hidden = !MEALS;
+  updateMealsTotal("rc");
   $("rc-form-step").hidden = false;
   $("rc-submit").hidden = false;
   $("rc-form-step").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -332,6 +365,8 @@ function resetForm() {
   $("rc-people").value = 1;
   $("rc-title").value = "";
   $("rc-notes").value = "";
+  $("rc-breakfast").checked = false;
+  $("rc-lunch").checked = false;
 }
 
 async function confirmBooking() {
@@ -345,6 +380,8 @@ async function confirmBooking() {
     startHour: b.startHour,
     endHour: b.endHour,
     numberOfPeople: parseInt($("rc-people").value, 10) || 0,
+    wantsBreakfast: $("rc-breakfast").checked,
+    wantsLunch: $("rc-lunch").checked,
     title: $("rc-title").value.trim(),
     notes: $("rc-notes").value.trim()
   };
@@ -514,7 +551,9 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-room">' + escapeHtml(b.spaceName) + "</div>"
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(when) + "</div>"
     + '<ul class="rc-bk-facts"><li>' + hours + "</li><li>👥 " + b.numberOfPeople + " personne(s)</li>"
-    + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "") + "</ul>"
+    + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "")
+    + (mealsText(b) ? "<li>🍽 " + escapeHtml(mealsText(b)) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + ")" : "") + "</li>" : "")
+    + "</ul>"
     + (b.notes ? '<p class="rc-bk-note">📝 ' + escapeHtml(b.notes) + "</p>" : "")
     + '<div class="rc-bk-actions">'
     + '<details class="rc-addcal"><summary class="rc-option">📅 Ajouter à mon agenda</summary><div class="rc-addcal-menu">'
@@ -540,6 +579,7 @@ function calendarDetails(b) {
     "Réservation Hiptown : " + b.spaceName,
     b.endDateString ? "Journée complète chaque jour (" + b.startHour + "h – " + b.endHour + "h)" : "",
     "Nombre de personnes : " + b.numberOfPeople,
+    mealsText(b) ? "Restauration : " + mealsText(b) : "",
     b.notes ? "Note : " + b.notes : "",
     "Pour annuler ou modifier : votre espace client Hiptown."
   ].filter(Boolean).join("\n");
@@ -614,6 +654,9 @@ function openEditModal(b) {
   $("rc-edit-start").innerHTML = hourOptions(START_HOUR, END_HOUR - 1, b.startHour);
   $("rc-edit-end").innerHTML = hourOptions(START_HOUR + 1, END_HOUR, b.endHour);
   $("rc-edit-people").value = b.numberOfPeople;
+  $("rc-edit-meals").hidden = !MEALS;
+  $("rc-edit-breakfast").checked = !!b.wantsBreakfast;
+  $("rc-edit-lunch").checked = !!b.wantsLunch;
   const space = SPACES.find(s => s.id === b.spaceId);
   $("rc-edit-people").max = (space && space.maxPeople) || "";
   updateEditForm();
@@ -637,7 +680,9 @@ function editPayload() {
     endDateString: multi ? endDate : null,
     startHour: multi ? START_HOUR : Number($("rc-edit-start").value),
     endHour: multi ? END_HOUR : Number($("rc-edit-end").value),
-    numberOfPeople: parseInt($("rc-edit-people").value, 10) || 0
+    numberOfPeople: parseInt($("rc-edit-people").value, 10) || 0,
+    wantsBreakfast: $("rc-edit-breakfast").checked,
+    wantsLunch: $("rc-edit-lunch").checked
   };
 }
 
@@ -647,6 +692,7 @@ function updateEditForm() {
   const p = editPayload();
   $("rc-edit-end-date").min = p.dateString;
   $("rc-edit-hours-block").hidden = !!p.endDateString;
+  updateMealsTotal("rc-edit");
   const space = SPACES.find(s => s.id === editing.spaceId);
   const costEl = $("rc-edit-cost");
   if (!space || editing.credits === null || !p.dateString || p.startHour >= p.endHour) { costEl.hidden = true; return; }
@@ -690,6 +736,8 @@ function start() {
       if (!data || !Array.isArray(data.spaces)) throw new Error("outil de réservation pas encore mis à jour");
       SPACES = data.spaces;
       START_HOUR = data.startHour;
+      MEALS = data.meals || null;
+      renderMealLabels();
       END_HOUR = data.endHour;
       renderSpaces();
       loadMonth();
@@ -773,7 +821,11 @@ $("rc-mine-next").addEventListener("click", () => {
 document.addEventListener("click", e => {
   document.querySelectorAll("#rc-mine-list .rc-addcal[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
 });
-["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end"].forEach(id => $(id).addEventListener("change", updateEditForm));
+["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end", "rc-edit-breakfast", "rc-edit-lunch"]
+  .forEach(id => $(id).addEventListener("change", updateEditForm));
+$("rc-edit-people").addEventListener("input", updateEditForm);
+["rc-breakfast", "rc-lunch"].forEach(id => $(id).addEventListener("change", () => updateMealsTotal("rc")));
+$("rc-people").addEventListener("input", () => updateMealsTotal("rc"));
 $("rc-edit-close").addEventListener("click", closeEditModal);
 $("rc-edit-submit").addEventListener("click", submitEdit);
 $("rc-edit-overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeEditModal(); });

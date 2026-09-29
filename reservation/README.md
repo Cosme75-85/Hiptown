@@ -72,6 +72,12 @@ Un texte par espace, modifiable dans `Config.gs` (objet `THANKS`) ; le délai, l
 et le lien d'avis s'y règlent aussi. Formule d'appel : « Bonjour Madame Dupont, »
 (civilité demandée dans le formulaire), ou « Bonjour Marie, » pour les demandes plus anciennes.
 
+**Restauration** : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
+déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un repas est choisi, un devis « repas seuls »
+(la salle reste sur crédits) est joint à son email et copié dans le dossier Drive des devis,
+et l'équipe (`OWNER_EMAIL`) reçoit un email pour préparer la commande, puis à chaque
+modification ou annulation.
+
 Mise en route, **une seule fois**, dans le menu déroulant des fonctions (▶ Exécuter) :
 1. `testThankYouEmails` : un exemple de chaque texte arrive sur votre adresse (aucun client contacté).
 2. `previewThankYouEmails` : le journal liste les clients qui recevraient l'email aujourd'hui, sans rien envoyer.
@@ -105,6 +111,12 @@ réservation appartient bien au compte (tag `portalUid`), que le nouveau crénea
 et que les crédits suffisent (ceux de l'ancien créneau sont rendus d'abord). Un email
 confirme chaque annulation ou modification. La salle reste la même : pour changer de salle,
 on annule puis on réserve à nouveau.
+
+**Restauration** : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
+déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un repas est choisi, un devis « repas seuls »
+(la salle reste sur crédits) est joint à son email et copié dans le dossier Drive des devis,
+et l'équipe (`OWNER_EMAIL`) reçoit un email pour préparer la commande, puis à chaque
+modification ou annulation.
 
 Mise en route, **une seule fois** après avoir copié les fichiers :
 1. Dans le menu déroulant des fonctions, choisir `testCoworkingSetup`, cliquer sur ▶ Exécuter
