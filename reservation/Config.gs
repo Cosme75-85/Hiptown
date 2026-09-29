@@ -96,9 +96,23 @@ const COWORKING = {
   spaceIds: ['salleCanele', 'salleBouchon', 'salleDuneblanche', 'sallePuitsdamour'],  // salles proposées
   allowedRoles: ['coworking', 'admin'],   // rôles du portail autorisés à réserver
   firebaseProjectId: 'erp-hiptown',       // projet Firebase du portail (firebase-config.js)
-  titlePrefix: '[COWORKING] '             // début du titre de l'événement dans l'agenda
+  titlePrefix: '[COWORKING] ',            // début du titre de l'événement dans l'agenda
+
+  // Barème en crédits, par salle (même découpage que les tarifs : à l'heure,
+  // demi-journée = 5h, journée = plus de 5h). Sans demi-journée ou journée
+  // indiquée, on compte le tarif horaire × le nombre d'heures.
+  // Les crédits d'une entreprise (fiche « Gestion des entreprises » du portail)
+  // sont redonnés chaque mois et ne se cumulent pas d'un mois sur l'autre.
+  credits: {
+    salleDuneblanche: { hourly: 1 },                                  // 1 à 6 personnes
+    salleBouchon:     { hourly: 55, halfDay: 200, fullDay: 380 },     // 12 personnes
+    sallePuitsdamour: { hourly: 55, halfDay: 200, fullDay: 380 },     // 12 personnes
+    salleCanele:      { hourly: 60, halfDay: 220, fullDay: 420 }      // 15 personnes
+  }
 };
-const TAG_PORTAL_UID = 'portalUid';       // compte du portail qui a réservé (servira aux crédits)
+const TAG_PORTAL_UID = 'portalUid';       // compte du portail qui a réservé
+const TAG_COMPANY = 'portalCompanyId';    // entreprise coworking dont les crédits sont utilisés
+const TAG_CREDITS = 'credits';            // crédits utilisés par la réservation
 
 // Civilités proposées dans le formulaire (utilisées dans « Bonjour Madame Dupont, »)
 const CIVILITIES = ['Madame', 'Monsieur'];

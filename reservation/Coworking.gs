@@ -27,7 +27,8 @@ function getCoworkingSpaces() {
         color: s.color,
         photoUrl: s.photoUrl,
         maxPeople: s.maxPeople,
-        allowMultiDay: s.allowMultiDay
+        allowMultiDay: s.allowMultiDay,
+        credits: COWORKING.credits[s.id] || null
       }))
   };
 }
@@ -63,6 +64,20 @@ function bookCoworkingRoom(idToken, rawBooking) {
       return { success: false, message: 'Ce créneau vient d\'être pris, merci de choisir un autre horaire.' };
     }
 
+    // Crédits : vérifiés sous le verrou, deux réservations simultanées ne peuvent pas dépasser le solde
+    const cost = computeCoworkingCredits(space.id, booking);
+    let balance = null;
+    if (user.chargesCredits) {
+      balance = getCreditBalance(user, booking.startDate.getFullYear(), booking.startDate.getMonth() + 1);
+      if (cost > balance.remaining) {
+        return {
+          success: false,
+          message: 'Crédits insuffisants : cette réservation coûte ' + cost + ' crédit(s), il vous en reste '
+            + balance.remaining + ' pour ' + balance.monthLabel + '.'
+        };
+      }
+    }
+
     const fullName = (user.firstName + ' ' + user.lastName).trim() || user.email;
     const title = booking.title || 'Réunion ' + (user.company || fullName);
     const description = [
@@ -76,6 +91,7 @@ function bookCoworkingRoom(idToken, rawBooking) {
       ['Demandé par', fullName + (user.company ? ' (' + user.company + ')' : '')],
       ['Email', user.email],
       ['Nombre de personnes', booking.numberOfPeople],
+      user.chargesCredits && ['Crédits utilisés', cost],
       booking.notes && ['Note', booking.notes]
     ].filter(Boolean)
       .map(([label, value]) => label + ' : ' + value)
@@ -88,19 +104,26 @@ function bookCoworkingRoom(idToken, rawBooking) {
     event.setTag(TAG_FIRST_NAME, user.firstName);
     event.setTag(TAG_QUANTITY, '1');
     event.setTag(TAG_PORTAL_UID, user.uid);
+    if (user.chargesCredits) {
+      event.setTag(TAG_COMPANY, user.companyId);
+      event.setTag(TAG_CREDITS, String(cost));
+    }
 
     invalidateAvailabilityCache(); // la disponibilité vient de changer
 
     // Un souci d'email ne doit pas annuler une réservation déjà inscrite dans l'agenda
     try {
-      sendCoworkingConfirmation(user, booking, title, start, end);
+      sendCoworkingConfirmation(user, booking, title, start, end,
+        balance && { cost: cost, remaining: balance.remaining - cost, monthLabel: balance.monthLabel });
     } catch (err) {
       Logger.log('⚠️ Email de confirmation coworking non envoyé à ' + user.email + ' : ' + err.message);
     }
 
     return {
       success: true,
-      message: 'Réservation confirmée ! ' + space.name + ' est à vous. Un email récapitulatif vous a été envoyé.'
+      message: 'Réservation confirmée ! ' + space.name + ' est à vous.'
+        + (balance ? ' ' + cost + ' crédit(s) utilisé(s), il en reste ' + (balance.remaining - cost) + '.' : '')
+        + ' Un email récapitulatif vous a été envoyé.'
     };
 
   } catch (err) {
@@ -138,16 +161,93 @@ function validateCoworkingBooking(raw) {
   return b;
 }
 
-function sendCoworkingConfirmation(user, booking, title, start, end) {
+function sendCoworkingConfirmation(user, booking, title, start, end, credits) {
   const when = frenchDateRange(start, end) + (booking.isMultiDay
     ? ', de ' + booking.startHour + 'h à ' + booking.endHour + 'h chaque jour'
     : ', de ' + booking.startHour + 'h à ' + booking.endHour + 'h');
   sendClientEmail(user.email, user.firstName, 'Réservation confirmée — ' + booking.space.name + ' — Hiptown', [
     'Votre réservation <b>"' + escapeHtml(title) + '"</b> est confirmée : <b>' + escapeHtml(booking.space.name)
       + '</b>, ' + when + ', pour ' + booking.numberOfPeople + ' personne(s).',
+    credits && ('Crédits utilisés : <b>' + credits.cost + '</b>. Il reste <b>' + credits.remaining
+      + '</b> crédit(s) à votre entreprise pour ' + credits.monthLabel + '.'),
     'Merci d\'avoir réservé avec votre espace client Hiptown. Nous vous souhaitons une excellente réunion !',
-    'Un empêchement ? Prévenez-nous simplement en répondant à cet email, nous libérerons la salle.'
-  ], 'À très bientôt');
+    'Un empêchement ? Prévenez-nous simplement en répondant à cet email, nous libérerons la salle '
+      + '(et vos crédits).'
+  ].filter(Boolean), 'À très bientôt');
+}
+
+// ==================== CRÉDITS ====================
+
+/**
+ * Crédits d'une réservation selon le barème COWORKING.credits.
+ * Même découpage que le devis des salles (computeQuote) : plusieurs jours = une journée
+ * par jour, plus de 5h = journée, 5h = demi-journée, sinon tarif horaire × heures.
+ */
+function computeCoworkingCredits(spaceId, b) {
+  const rate = COWORKING.credits[spaceId];
+  if (!rate) return 0;
+  const duration = b.endHour - b.startHour;
+  const days = b.numberOfDays || 1;
+  const hourly = (rate.hourly || 0) * duration;
+  let perDay;
+  if (duration > 5) perDay = rate.fullDay || hourly;
+  else if (duration === 5) perDay = rate.halfDay || hourly;
+  else perDay = hourly;
+  return perDay * days;
+}
+
+/**
+ * Solde du mois pour l'entreprise : crédits du contrat − crédits des réservations
+ * coworking qui commencent ce mois-ci. Rien n'est stocké : le solde repart
+ * automatiquement du plafond chaque mois, et supprimer une réservation de
+ * l'agenda rend ses crédits.
+ */
+function getCreditBalance(user, year, month) {
+  const from = new Date(year, month - 1, 1);
+  const to = new Date(year, month, 1);
+  let used = 0;
+  COWORKING.spaceIds.forEach(spaceId => {
+    const space = findSpace(spaceId);
+    const cal = space && CalendarApp.getCalendarById(space.calendarId);
+    if (!cal) return;
+    cal.getEvents(from, to).forEach(event => {
+      if (event.getStartTime() < from) return; // commencée le mois précédent : comptée sur ce mois-là
+      if (event.getTag(TAG_COMPANY) !== user.companyId) return;
+      used += Number(event.getTag(TAG_CREDITS)) || 0;
+    });
+  });
+  return {
+    allowance: user.monthlyCredits,
+    used: used,
+    remaining: Math.max(0, user.monthlyCredits - used),
+    monthLabel: frenchMonthLabel(year, month)
+  };
+}
+
+/** Solde affiché dans le portail pour le mois demandé (défaut : mois en cours). */
+function getCoworkingCredits(idToken, year, month) {
+  let user;
+  try {
+    user = getPortalUser(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  if (!user.chargesCredits) return { success: true, chargesCredits: false };
+  const now = new Date();
+  year = toInt(year) || now.getFullYear();
+  month = toInt(month) || now.getMonth() + 1;
+  if (month < 1 || month > 12) return { success: false, message: 'Mois invalide.' };
+  const balance = getCreditBalance(user, year, month);
+  balance.success = true;
+  balance.chargesCredits = true;
+  balance.company = user.company;
+  return balance;
+}
+
+function frenchMonthLabel(year, month) {
+  const names = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
+    'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  return names[month - 1] + ' ' + year;
 }
 
 // ==================== COMPTE DU PORTAIL ====================
@@ -168,18 +268,28 @@ function getPortalUser(idToken) {
   if (!profile.email) throw new Error('Adresse email manquante sur votre compte. Contactez l\'équipe Hiptown.');
 
   let company = '';
+  let companyDoc = null;
   if (profile.companyId) {
-    const doc = readFirestoreDoc('companies/' + encodeURIComponent(profile.companyId), idToken);
-    company = (doc && doc.name) || '';
+    companyDoc = readFirestoreDoc('companies/' + encodeURIComponent(profile.companyId), idToken);
+    company = (companyDoc && companyDoc.name) || '';
   }
   if (!company) company = profile.role === 'admin' ? 'Hiptown' : (profile.companyNameHint || '');
+
+  // Les coworkers réservent sur les crédits de leur entreprise ; l'équipe Hiptown (admin) non
+  const chargesCredits = profile.role !== 'admin';
+  if (chargesCredits && !companyDoc) {
+    throw new Error('Votre compte n\'est rattaché à aucune entreprise coworking. Contactez l\'équipe Hiptown.');
+  }
 
   return {
     uid: uid,
     email: String(profile.email).toLowerCase(),
     firstName: cleanText(profile.firstName, MAX_TEXT_LENGTH),
     lastName: cleanText(profile.lastName, MAX_TEXT_LENGTH),
-    company: cleanText(company, MAX_TEXT_LENGTH)
+    company: cleanText(company, MAX_TEXT_LENGTH),
+    chargesCredits: chargesCredits,
+    companyId: chargesCredits ? String(profile.companyId) : '',
+    monthlyCredits: chargesCredits ? Math.max(0, Number(companyDoc.credits) || 0) : 0
   };
 }
 
