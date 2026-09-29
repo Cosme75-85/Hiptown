@@ -91,6 +91,13 @@ Le serveur vérifie le compte : le portail envoie le jeton de connexion Firebase
 `Coworking.gs` relit la fiche du compte dans Firestore avec ce jeton. Seuls les comptes
 validés « coworking » ou « admin » peuvent réserver (réglage `COWORKING` dans `Config.gs`).
 
+**Crédits** : chaque réservation d'un coworker coûte des crédits selon le barème
+`COWORKING.credits` de `Config.gs`. Le plafond mensuel est le champ « Nombre de crédits »
+de la fiche entreprise du portail. Le solde n'est stocké nulle part : il est recalculé
+depuis les agendas (crédits des réservations de l'entreprise qui commencent dans le mois).
+Il repart donc du plafond chaque mois sans cumul, et supprimer une réservation dans
+l'agenda rend ses crédits. L'équipe Hiptown (rôle admin) réserve sans crédits.
+
 Mise en route, **une seule fois** après avoir copié les fichiers :
 1. Dans le menu déroulant des fonctions, choisir `testCoworkingSetup`, cliquer sur ▶ Exécuter
    et **accepter la nouvelle autorisation** (« se connecter à un service externe » : c'est

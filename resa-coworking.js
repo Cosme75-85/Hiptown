@@ -26,6 +26,7 @@ let started = false;      // chargement fait à la première ouverture de la pag
 
 // Demande en cours : { space, dateString, endDateString, startHour, endHour }
 let pendingBooking = null;
+let creditBalance = null;  // solde du mois affiché : { allowance, used, remaining, monthLabel } ou null
 let currentDayHours = [];
 
 const monthCache = {};     // "AAAA-M" -> disponibilités de toutes les salles
@@ -65,6 +66,55 @@ function showToast(message) {
   toastTimer = setTimeout(() => { toast.hidden = true; }, 4000);
 }
 
+// ==================== CRÉDITS ====================
+
+/** Même barème que le serveur (reservation/Coworking.gs, computeCoworkingCredits). */
+function creditsFor(space, startHour, endHour, numberOfDays) {
+  const rate = space.credits;
+  if (!rate) return 0;
+  const duration = endHour - startHour;
+  const hourly = (rate.hourly || 0) * duration;
+  let perDay = hourly;
+  if (duration > 5) perDay = rate.fullDay || hourly;
+  else if (duration === 5) perDay = rate.halfDay || hourly;
+  return perDay * (numberOfDays || 1);
+}
+
+async function postJson(body) {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+/** Solde de crédits de l'entreprise pour le mois affiché. */
+async function loadCredits() {
+  const box = $("rc-credits");
+  const year = currentYear, month = currentMonth;
+  if (!auth.currentUser) return;
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await postJson({ action: "getCoworkingCredits", idToken: idToken, year: year, month: month });
+    if (year !== currentYear || month !== currentMonth) return; // mois changé entre-temps
+    if (!res.success) {
+      creditBalance = null;
+      box.textContent = res.message;
+      box.hidden = false;
+      return;
+    }
+    if (!res.chargesCredits) { creditBalance = null; box.hidden = true; return; } // équipe Hiptown
+    creditBalance = res;
+    box.innerHTML = "Crédits " + escapeHtml(res.company ? "de " + res.company + " " : "") + "pour " + escapeHtml(res.monthLabel)
+      + " : <b>" + res.remaining + "</b> restant(s) sur " + res.allowance;
+    box.hidden = false;
+  } catch (err) {
+    creditBalance = null;
+    box.hidden = true;
+  }
+}
+
 // ==================== SALLES ET CALENDRIERS DU MOIS ====================
 
 function renderSpaces() {
@@ -89,6 +139,7 @@ function updateMonthNav(enabled) {
 function changeMonth(delta) {
   ({ year: currentYear, month: currentMonth } = shiftMonth(currentYear, currentMonth, delta));
   loadMonth();
+  loadCredits();
 }
 
 function fetchMonth(year, month) {
@@ -254,6 +305,20 @@ function showFormStep() {
   const email = auth.currentUser ? auth.currentUser.email : "";
   $("rc-booker").textContent = email ? "Confirmation envoyée à " + email : "";
   $("rc-people").max = b.space.maxPeople || "";
+
+  // Coût en crédits (le serveur revérifie le solde au moment de réserver)
+  const days = b.endDateString
+    ? Math.round((new Date(b.endDateString) - new Date(b.dateString)) / 86400000) + 1
+    : 1;
+  const cost = creditsFor(b.space, b.startHour, b.endHour, days);
+  const costEl = $("rc-cost");
+  const sameMonth = creditBalance && b.dateString.slice(0, 7) === currentYear + "-" + pad(currentMonth);
+  costEl.hidden = !creditBalance || !cost;
+  costEl.classList.toggle("rc-cost-over", !!(sameMonth && cost > creditBalance.remaining));
+  costEl.textContent = "Coût : " + cost + " crédit(s)"
+    + (sameMonth ? (cost > creditBalance.remaining
+      ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
+      : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
   $("rc-form-step").hidden = false;
   $("rc-submit").hidden = false;
   $("rc-form-step").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -295,11 +360,7 @@ async function confirmBooking() {
   try {
     // Jeton de connexion : prouve au serveur quel compte réserve (renouvelé automatiquement)
     const idToken = await auth.currentUser.getIdToken();
-    const res = await fetch(BASE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
-      body: JSON.stringify({ action: "bookCoworking", idToken: idToken, payload: payload })
-    }).then(r => r.json());
+    const res = await postJson({ action: "bookCoworking", idToken: idToken, payload: payload });
 
     showToast(res.message);
     if (res.success) {
@@ -309,6 +370,7 @@ async function confirmBooking() {
     // Réservation faite, ou créneau pris entre-temps : on relit les disponibilités
     Object.keys(monthCache).forEach(k => delete monthCache[k]);
     loadMonth();
+    loadCredits();
   } catch (err) {
     showToast("Erreur : " + err.message);
   } finally {
@@ -328,6 +390,7 @@ function start() {
       END_HOUR = data.endHour;
       renderSpaces();
       loadMonth();
+      loadCredits();
     })
     .catch(err => {
       started = false; // on réessaiera à la prochaine ouverture
@@ -346,6 +409,7 @@ document.addEventListener("hiptown-tile-action", e => {
   } else {
     Object.keys(monthCache).forEach(k => delete monthCache[k]);
     loadMonth();
+    loadCredits();
   }
 });
 

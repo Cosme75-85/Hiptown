@@ -69,6 +69,9 @@ function doPost(e) {
     if (body.action === 'bookCoworking') {
       return jsonResponse(bookCoworkingRoom(body.idToken, body.payload));
     }
+    if (body.action === 'getCoworkingCredits') {
+      return jsonResponse(getCoworkingCredits(body.idToken, body.year, body.month));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });
