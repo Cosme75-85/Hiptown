@@ -4,6 +4,8 @@
 //  mêmes agendas Google, mais sans prix, services, devis ni validation.
 //  Le serveur (reservation/Coworking.gs) vérifie le compte du portail
 //  et confirme la réservation tout de suite.
+//  « Mes réservations à venir » : chacun annule ou modifie les siennes
+//  jusqu'à leur début (le serveur revérifie propriétaire, créneau et crédits).
 // ═══════════════════════════════════════════════════════
 
 import { auth } from "./firebase-config.js";
@@ -28,6 +30,8 @@ let started = false;      // chargement fait à la première ouverture de la pag
 let pendingBooking = null;
 let creditBalance = null;  // solde du mois affiché : { allowance, used, remaining, monthLabel } ou null
 let currentDayHours = [];
+let myBookings = [];       // réservations à venir du compte connecté
+let editing = null;        // réservation en cours de modification
 
 const monthCache = {};     // "AAAA-M" -> disponibilités de toutes les salles
 let monthRequestToken = 0; // ignore les réponses réseau obsolètes (clics rapides)
@@ -368,14 +372,158 @@ async function confirmBooking() {
       resetForm();
     }
     // Réservation faite, ou créneau pris entre-temps : on relit les disponibilités
-    Object.keys(monthCache).forEach(k => delete monthCache[k]);
-    loadMonth();
-    loadCredits();
+    refreshAll();
   } catch (err) {
     showToast("Erreur : " + err.message);
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = "Confirmer la réservation";
+  }
+}
+
+// ==================== MES RÉSERVATIONS : ANNULER OU MODIFIER ====================
+
+/** Disponibilités, crédits et liste « Mes réservations » relus après un changement. */
+function refreshAll() {
+  Object.keys(monthCache).forEach(k => delete monthCache[k]);
+  loadMonth();
+  loadCredits();
+  loadMine();
+}
+
+function describeSlot(b) {
+  return b.endDateString
+    ? "Du " + formatDate(b.dateString) + " au " + formatDate(b.endDateString) + " (journée complète)"
+    : formatDate(b.dateString) + ", de " + b.startHour + "h à " + b.endHour + "h";
+}
+
+async function loadMine() {
+  const box = $("rc-mine");
+  if (!auth.currentUser) return;
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await postJson({ action: "getMyCoworkingBookings", idToken: idToken });
+    if (!res.success || !Array.isArray(res.bookings)) { box.hidden = true; return; }
+    myBookings = res.bookings;
+    renderMine();
+  } catch (err) {
+    box.hidden = true;
+  }
+}
+
+function renderMine() {
+  const box = $("rc-mine");
+  box.hidden = myBookings.length === 0;
+  $("rc-mine-list").innerHTML = myBookings.map((b, i) =>
+    '<div class="rc-mine-item"><div class="rc-mine-info"><b>' + escapeHtml(b.spaceName) + "</b> — " + escapeHtml(b.title)
+    + '<span class="rc-mine-when">' + escapeHtml(describeSlot(b)) + " · " + b.numberOfPeople + " pers."
+    + (b.credits ? " · " + b.credits + " crédit(s)" : "") + "</span></div>"
+    + '<div class="rc-mine-actions">'
+    + '<button type="button" class="rc-option" data-edit="' + i + '">Modifier</button>'
+    + '<button type="button" class="rc-option rc-danger" data-cancel="' + i + '">Annuler</button>'
+    + "</div></div>"
+  ).join("");
+}
+
+async function cancelMine(b, btn) {
+  if (!confirm("Annuler votre réservation « " + b.title + " » (" + b.spaceName + ", " + describeSlot(b) + ") ?")) return;
+  if (!auth.currentUser) return showToast("Session expirée, merci de vous reconnecter.");
+  btn.disabled = true;
+  btn.textContent = "Annulation...";
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await postJson({ action: "cancelCoworking", idToken: idToken, payload: { spaceId: b.spaceId, eventId: b.eventId } });
+    showToast(res.message);
+  } catch (err) {
+    showToast("Erreur : " + err.message);
+  }
+  refreshAll();
+}
+
+function hourOptions(from, to, selected) {
+  let html = "";
+  for (let h = from; h <= to; h++) html += '<option value="' + h + '"' + (h === selected ? " selected" : "") + ">" + h + "h</option>";
+  return html;
+}
+
+function openEditModal(b) {
+  editing = b;
+  const todayString = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+  $("rc-edit-title").textContent = "Modifier : " + b.spaceName;
+  $("rc-edit-current").textContent = "Actuellement : " + describeSlot(b);
+  $("rc-edit-date").value = b.dateString;
+  $("rc-edit-date").min = todayString;
+  $("rc-edit-end-block").hidden = !b.allowMultiDay;
+  $("rc-edit-end-date").value = b.endDateString || "";
+  $("rc-edit-end-date").min = b.dateString;
+  $("rc-edit-start").innerHTML = hourOptions(START_HOUR, END_HOUR - 1, b.startHour);
+  $("rc-edit-end").innerHTML = hourOptions(START_HOUR + 1, END_HOUR, b.endHour);
+  $("rc-edit-people").value = b.numberOfPeople;
+  const space = SPACES.find(s => s.id === b.spaceId);
+  $("rc-edit-people").max = (space && space.maxPeople) || "";
+  updateEditForm();
+  $("rc-edit-overlay").classList.add("rc-open");
+}
+
+function closeEditModal() {
+  $("rc-edit-overlay").classList.remove("rc-open");
+  editing = null;
+}
+
+/** Demande de modification telle que saisie (plusieurs jours = journée complète). */
+function editPayload() {
+  const dateString = $("rc-edit-date").value;
+  const endDate = editing.allowMultiDay ? $("rc-edit-end-date").value : "";
+  const multi = !!endDate && endDate > dateString;
+  return {
+    spaceId: editing.spaceId,
+    eventId: editing.eventId,
+    dateString: dateString,
+    endDateString: multi ? endDate : null,
+    startHour: multi ? START_HOUR : Number($("rc-edit-start").value),
+    endHour: multi ? END_HOUR : Number($("rc-edit-end").value),
+    numberOfPeople: parseInt($("rc-edit-people").value, 10) || 0
+  };
+}
+
+/** Horaires masqués pour plusieurs jours, et nouveau coût en crédits. */
+function updateEditForm() {
+  if (!editing) return;
+  const p = editPayload();
+  $("rc-edit-end-date").min = p.dateString;
+  $("rc-edit-hours-block").hidden = !!p.endDateString;
+  const space = SPACES.find(s => s.id === editing.spaceId);
+  const costEl = $("rc-edit-cost");
+  if (!space || editing.credits === null || !p.dateString || p.startHour >= p.endHour) { costEl.hidden = true; return; }
+  const days = p.endDateString ? Math.round((new Date(p.endDateString) - new Date(p.dateString)) / 86400000) + 1 : 1;
+  costEl.textContent = "Nouveau coût : " + creditsFor(space, p.startHour, p.endHour, days) + " crédit(s) (avant : " + editing.credits + ")";
+  costEl.hidden = false;
+}
+
+async function submitEdit() {
+  if (!editing) return;
+  const p = editPayload();
+  if (!p.dateString) return showToast("Merci de choisir une date.");
+  if (p.startHour >= p.endHour) return showToast("L'heure de fin doit être après l'heure de début.");
+  if (p.numberOfPeople < 1) return showToast("Merci de renseigner le nombre de personnes.");
+  if (!auth.currentUser) return showToast("Session expirée, merci de vous reconnecter.");
+
+  const btn = $("rc-edit-submit");
+  btn.disabled = true;
+  btn.textContent = "Enregistrement...";
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await postJson({ action: "modifyCoworking", idToken: idToken, payload: p });
+    showToast(res.message);
+    if (res.success) {
+      closeEditModal();
+      refreshAll();
+    }
+  } catch (err) {
+    showToast("Erreur : " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Enregistrer";
   }
 }
 
@@ -391,6 +539,7 @@ function start() {
       renderSpaces();
       loadMonth();
       loadCredits();
+      loadMine();
     })
     .catch(err => {
       started = false; // on réessaiera à la prochaine ouverture
@@ -407,9 +556,7 @@ document.addEventListener("hiptown-tile-action", e => {
     updateMonthNav(false);
     start();
   } else {
-    Object.keys(monthCache).forEach(k => delete monthCache[k]);
-    loadMonth();
-    loadCredits();
+    refreshAll();
   }
 });
 
@@ -434,4 +581,19 @@ $("rc-multiday-confirm").addEventListener("click", selectMultiDay);
 $("rc-cancel").addEventListener("click", closeModal);
 $("rc-submit").addEventListener("click", confirmBooking);
 $("rc-overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && pendingBooking) closeModal(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (editing) closeEditModal();
+  else if (pendingBooking) closeModal();
+});
+
+$("rc-mine-list").addEventListener("click", e => {
+  const editBtn = e.target.closest("[data-edit]");
+  if (editBtn) return openEditModal(myBookings[Number(editBtn.dataset.edit)]);
+  const cancelBtn = e.target.closest("[data-cancel]");
+  if (cancelBtn) cancelMine(myBookings[Number(cancelBtn.dataset.cancel)], cancelBtn);
+});
+["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end"].forEach(id => $(id).addEventListener("change", updateEditForm));
+$("rc-edit-close").addEventListener("click", closeEditModal);
+$("rc-edit-submit").addEventListener("click", submitEdit);
+$("rc-edit-overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeEditModal(); });

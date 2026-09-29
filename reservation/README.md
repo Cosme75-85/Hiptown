@@ -98,6 +98,14 @@ depuis les agendas (crédits des réservations de l'entreprise qui commencent da
 Il repart donc du plafond chaque mois sans cumul, et supprimer une réservation dans
 l'agenda rend ses crédits. L'équipe Hiptown (rôle admin) réserve sans crédits.
 
+**Annuler ou modifier** : la tuile affiche « Mes réservations à venir ». Chacun peut y
+annuler ou déplacer (date, horaires, nombre de personnes) **ses propres** réservations,
+tant qu'elles n'ont pas commencé, sans passer par l'équipe. Le serveur revérifie que la
+réservation appartient bien au compte (tag `portalUid`), que le nouveau créneau est libre
+et que les crédits suffisent (ceux de l'ancien créneau sont rendus d'abord). Un email
+confirme chaque annulation ou modification. La salle reste la même : pour changer de salle,
+on annule puis on réserve à nouveau.
+
 Mise en route, **une seule fois** après avoir copié les fichiers :
 1. Dans le menu déroulant des fonctions, choisir `testCoworkingSetup`, cliquer sur ▶ Exécuter
    et **accepter la nouvelle autorisation** (« se connecter à un service externe » : c'est
