@@ -45,6 +45,7 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     status: "pending",      // pending | approved | rejected
     companyId: null,
     companyNameHint,
+    site: PORTAIL.defaultSite, // site Hiptown du portail (voir config.js)
     createdAt: serverTimestamp()
   });
   return cred.user;

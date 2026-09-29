@@ -14,19 +14,27 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 /**
- * Liste tous les comptes en attente de validation.
+ * Filtre « site » des requêtes : un admin de site ne peut lire que les comptes
+ * de son site (règles Firestore) ; site = null pour le super-admin (tous les sites).
  */
-export async function listPendingUsers() {
-  const q = query(collection(db, "users"), where("status", "==", "pending"));
-  const snap = await getDocs(q);
+function usersQuery(site, ...filters) {
+  const siteFilter = site ? [where("site", "==", site)] : [];
+  return query(collection(db, "users"), ...siteFilter, ...filters);
+}
+
+/**
+ * Liste les comptes en attente de validation du site.
+ */
+export async function listPendingUsers(site = null) {
+  const snap = await getDocs(usersQuery(site, where("status", "==", "pending")));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
 
 /**
- * Liste tous les comptes (pour la page de gestion complète).
+ * Liste tous les comptes du site (pour la page de gestion complète).
  */
-export async function listAllUsers() {
-  const snap = await getDocs(collection(db, "users"));
+export async function listAllUsers(site = null) {
+  const snap = await getDocs(usersQuery(site));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
 
@@ -61,6 +69,15 @@ export async function updateUserAccess(uid, { role, companyId, status }) {
   await updateDoc(doc(db, "users", uid), patch);
 }
 
+/**
+ * Corrige la fiche d'un compte (nom, entreprise, rôle, statut, site...).
+ * Remarque : l'e-mail modifié ici est celui de la fiche ; l'e-mail de
+ * connexion (Firebase Auth) ne peut être changé que par l'utilisateur.
+ */
+export async function updateUser(uid, fields) {
+  await updateDoc(doc(db, "users", uid), fields);
+}
+
 export async function deleteUserDoc(uid) {
   await deleteDoc(doc(db, "users", uid));
   // Remarque : ceci supprime la fiche Firestore, pas le compte Auth
@@ -74,7 +91,7 @@ export async function deleteUserDoc(uid) {
  * Utilise une seconde instance Firebase "jetable" pour ne pas déconnecter
  * l'admin en cours de session (limitation connue du SDK client Firebase).
  */
-export async function adminCreateAccount(email, password, role, companyId = null, firstName = "", lastName = "") {
+export async function adminCreateAccount(email, password, role, companyId = null, firstName = "", lastName = "", site = null) {
   const tempApp = initializeApp(app.options, "temp-" + Date.now());
   const tempAuth = getAuth(tempApp);
   try {
@@ -86,6 +103,7 @@ export async function adminCreateAccount(email, password, role, companyId = null
       requestedRole: role,
       role,
       companyId,
+      site,
       status: "approved",
       createdAt: serverTimestamp(),
       approvedAt: serverTimestamp()

@@ -143,7 +143,8 @@
   <!-- ÉTAPE : PANNEAU ADMINISTRATEUR -->
   <section id="step-admin" hidden>
     <button class="back-btn" id="back-from-admin">← Retour</button>
-    <h2 class="step-title">🔑 Gestion des comptes</h2>
+    <h2 class="step-title" style="margin-bottom:4px;">🔑 Gestion des comptes</h2>
+    <p id="admin-site-label" style="font-size:13px;color:#64748b;margin-bottom:18px;"></p>
 
     <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">Demandes en attente</h3>
     <div class="info-grid" id="admin-pending-list"></div>
@@ -160,10 +161,14 @@
              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
       <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire"
              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <select id="new-admin-site" hidden
+              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></select>
       <button class="direct-btn" id="create-admin-btn" style="background:var(--navy);color:#fff;">Créer le compte admin</button>
     </div>
 
-    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Tous les comptes</h3>
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Tous les comptes <span id="admin-all-count" style="font-weight:400;color:#94a3b8;"></span></h3>
+    <div class="pin-box" id="admin-unassigned" hidden style="max-width:100%;text-align:left;margin-bottom:12px;"></div>
+    <input type="search" id="admin-search" class="profile-input" placeholder="Rechercher (nom, email, entreprise)" style="margin-bottom:12px;"/>
     <div class="info-grid" id="admin-all-list"></div>
   </section>
 

@@ -8,7 +8,7 @@ import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile }
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf } from "./profile.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
-  updateUserAccess, adminCreateAccount, listCompanies,
+  updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
   listUnseenBreakfastOrders, markBreakfastOrderSeen
 } from "./admin.js";
 
@@ -260,6 +260,27 @@ function adminNameOf(u) {
   return u.nickname ? `${fullName} (${u.nickname})` : fullName;
 }
 
+// ── Sites ──
+// Site géré par l'admin connecté (null = super-admin : tous les sites)
+function adminSite() {
+  return session?.profile?.site || null;
+}
+
+function siteLabel(siteId) {
+  if (!siteId) return "Sans site";
+  return (PORTAIL.sites && PORTAIL.sites[siteId]) || siteId;
+}
+
+function siteOptionsHtml(selected) {
+  const ids = Object.keys(PORTAIL.sites || {});
+  if (selected && !ids.includes(selected)) ids.push(selected);
+  return `<option value="">— Sans site —</option>` +
+    ids.map(id => `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(siteLabel(id))}</option>`).join("");
+}
+
+const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Coworking" };
+const STATUS_LABELS = { approved: "Validé", pending: "En attente", rejected: "Refusé" };
+
 // Carte de demande en attente, réutilisée dans le panneau admin ET la cloche de notifications
 function createPendingCard(u, companies, onDone) {
   const card = document.createElement("div");
@@ -298,12 +319,28 @@ function createPendingCard(u, companies, onDone) {
   return card;
 }
 
+// Recherche dans la liste des comptes
+let adminUsersCache = [];
+let adminCompaniesCache = [];
+document.getElementById("admin-search")?.addEventListener("input", () => renderAllUsersList());
+
 export async function renderAdminPanel() {
   const pendingList = document.getElementById("admin-pending-list");
-  const allList      = document.getElementById("admin-all-list");
-  const companies     = await listCompanies();
+  const site        = adminSite();
+  const companies   = await listCompanies();
+  adminCompaniesCache = companies;
 
-  const pending = await listPendingUsers();
+  const siteTitle = document.getElementById("admin-site-label");
+  if (siteTitle) siteTitle.textContent = site ? "Site : " + siteLabel(site) : "Tous les sites (super-admin)";
+
+  // Choix du site du nouvel admin : réservé au super-admin
+  const newAdminSite = document.getElementById("new-admin-site");
+  if (newAdminSite) {
+    newAdminSite.hidden = !!site;
+    if (!site) newAdminSite.innerHTML = siteOptionsHtml(PORTAIL.defaultSite);
+  }
+
+  const pending = await listPendingUsers(site);
   pendingList.innerHTML = pending.length
     ? ""
     : '<p style="color:#94a3b8;padding:12px;">Aucune demande en attente.</p>';
@@ -315,20 +352,165 @@ export async function renderAdminPanel() {
     }));
   });
 
-  const all = await listAllUsers();
-  allList.innerHTML = "";
-  const companyNames = Object.fromEntries(companies.map(c => [c.id, c.name]));
-  all.forEach(u => {
-    const row = document.createElement("div");
-    row.className = "info-item";
-    row.style.gap = "10px";
-    const companyName = companyNames[u.companyId] || u.companyNameHint || "Entreprise non renseignée";
-    row.innerHTML = `${avatarHtml(u)}
+  adminUsersCache = await listAllUsers(site);
+  adminUsersCache.sort((a, b) => adminNameOf(a).localeCompare(adminNameOf(b), "fr"));
+  renderAllUsersList();
+  renderUnassignedTool();
+}
+
+/** Liste « Tous les comptes » : une carte par compte, avec un formulaire de correction. */
+function renderAllUsersList() {
+  const allList = document.getElementById("admin-all-list");
+  const count   = document.getElementById("admin-all-count");
+  const term    = (document.getElementById("admin-search")?.value || "").trim().toLowerCase();
+  const companyNames = Object.fromEntries(adminCompaniesCache.map(c => [c.id, c.name]));
+
+  const users = adminUsersCache.filter(u => {
+    if (!term) return true;
+    const haystack = [adminNameOf(u), u.email, companyNames[u.companyId], u.companyNameHint]
+      .filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(term);
+  });
+
+  if (count) count.textContent = `(${users.length})`;
+  allList.innerHTML = users.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucun compte.</p>';
+  users.forEach(u => allList.appendChild(createUserCard(u, companyNames)));
+}
+
+function createUserCard(u, companyNames) {
+  const card = document.createElement("div");
+  card.className = "info-card";
+  const companyName = companyNames[u.companyId] || u.companyNameHint || "Entreprise non renseignée";
+  const statusColor = u.status === "approved" ? "#166534" : u.status === "rejected" ? "#dc2626" : "#c2410c";
+  card.innerHTML = `
+    <div class="info-item" style="gap:10px;">
+      ${avatarHtml(u)}
       <span style="flex:1;min-width:0;">
         <b>${escapeHtml(adminNameOf(u))}</b> — ${escapeHtml(companyName)}<br>
-        <span style="font-size:11px;color:#94a3b8;">${escapeHtml(u.email)} — ${escapeHtml(u.role || "—")} (${escapeHtml(u.status)})</span>
-      </span>`;
-    allList.appendChild(row);
+        <span style="font-size:11px;color:#94a3b8;">
+          ${escapeHtml(u.email)} — ${escapeHtml(ROLE_LABELS[u.role] || "Sans rôle")}
+          · <span style="color:${statusColor};">${escapeHtml(STATUS_LABELS[u.status] || u.status || "—")}</span>
+          ${adminSite() ? "" : " · " + escapeHtml(siteLabel(u.site))}
+        </span>
+      </span>
+      <button class="direct-btn edit-user-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
+    </div>
+    <div class="edit-user-form" hidden style="padding:4px 18px 16px;"></div>`;
+
+  const form = card.querySelector(".edit-user-form");
+  card.querySelector(".edit-user-btn").addEventListener("click", () => {
+    if (form.hidden) fillUserForm(form, u);
+    form.hidden = !form.hidden;
+  });
+  return card;
+}
+
+function fillUserForm(form, u) {
+  const isMe = session && u.uid === session.uid;
+  const canChangeSite = !adminSite(); // seul le super-admin déplace un compte d'un site à l'autre
+  const field = (label, html) => `<label class="profile-label">${label}</label>${html}`;
+  const input = (cls, value, type = "text") =>
+    `<input type="${type}" class="profile-input ${cls}" value="${escapeHtml(value || "")}"/>`;
+
+  form.innerHTML = `
+    <div style="display:flex;gap:8px;">
+      <div style="flex:1;">${field("Prénom", input("f-firstname", u.firstName))}</div>
+      <div style="flex:1;">${field("Nom", input("f-lastname", u.lastName))}</div>
+    </div>
+    ${field("Email (fiche)", input("f-email", u.email, "email"))}
+    ${field("Entreprise déclarée", input("f-company-hint", u.companyNameHint))}
+    ${field("Rôle", `<select class="profile-input f-role" ${isMe ? "disabled" : ""}>
+      ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
+      ${u.role ? "" : '<option value="" selected>— Sans rôle —</option>'}
+    </select>`)}
+    ${field("Entreprise coworking", `<select class="profile-input f-company">
+      <option value="">— Aucune —</option>
+      ${adminCompaniesCache.map(c => `<option value="${escapeHtml(c.id)}" ${u.companyId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+    </select>`)}
+    ${field("Statut", `<select class="profile-input f-status" ${isMe ? "disabled" : ""}>
+      ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${u.status === v ? "selected" : ""}>${l}</option>`).join("")}
+    </select>`)}
+    ${field("Site", canChangeSite
+      ? `<select class="profile-input f-site">${siteOptionsHtml(u.site || "")}</select>`
+      : `<input type="text" class="profile-input" value="${escapeHtml(siteLabel(u.site))}" readonly/>`)}
+    ${isMe ? '<p class="profile-help">Pour éviter de perdre ton accès, ton propre rôle et ton statut ne sont pas modifiables ici.</p>' : ""}
+    <p class="profile-help f-message" role="status" hidden></p>
+    <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;">
+      <button class="direct-btn f-save" type="button" style="margin-top:0;width:auto;padding:8px 14px;background:var(--navy);color:#fff;">Enregistrer</button>
+      ${isMe ? "" : '<button class="direct-btn f-delete" type="button" style="margin-top:0;width:auto;padding:8px 14px;border-color:#dc2626;color:#dc2626;">Supprimer la fiche</button>'}
+    </div>`;
+
+  const message = form.querySelector(".f-message");
+  const showMessage = (text, isError) => {
+    message.textContent = text;
+    message.style.color = isError ? "#dc2626" : "#166534";
+    message.hidden = false;
+  };
+
+  form.querySelector(".f-save").addEventListener("click", async () => {
+    const role = form.querySelector(".f-role").value || null;
+    const fields = {
+      firstName: form.querySelector(".f-firstname").value.trim(),
+      lastName: form.querySelector(".f-lastname").value.trim(),
+      email: form.querySelector(".f-email").value.trim().toLowerCase(),
+      companyNameHint: form.querySelector(".f-company-hint").value.trim(),
+      companyId: role === "coworking" ? (form.querySelector(".f-company").value || null) : null
+    };
+    if (!isMe) {
+      fields.role = role;
+      fields.status = form.querySelector(".f-status").value;
+    }
+    if (canChangeSite) fields.site = form.querySelector(".f-site").value || null;
+    if (!fields.email) { showMessage("L'email est obligatoire.", true); return; }
+    if (canChangeSite && isMe && fields.site) {
+      const ok = confirm(`Ton compte sera rattaché à ${siteLabel(fields.site)} : tu ne verras plus que les comptes de ce site. Continuer ?`);
+      if (!ok) return;
+    }
+    try {
+      await updateUser(u.uid, fields);
+      Object.assign(u, fields);
+      if (isMe) Object.assign(session.profile, fields);
+      showMessage("Modifications enregistrées ✓", false);
+      setTimeout(() => { renderAdminPanel(); refreshNotifBadge(); }, 800);
+    } catch (err) {
+      console.error(err);
+      showMessage("Enregistrement impossible (droits insuffisants ?).", true);
+    }
+  });
+
+  form.querySelector(".f-delete")?.addEventListener("click", async () => {
+    if (!confirm(`Supprimer la fiche de ${adminNameOf(u)} ? La personne n'aura plus accès à son espace.`)) return;
+    try {
+      await deleteUserDoc(u.uid);
+      renderAdminPanel();
+      refreshNotifBadge();
+    } catch (err) {
+      console.error(err);
+      showMessage("Suppression impossible (droits insuffisants ?).", true);
+    }
+  });
+}
+
+/** Super-admin : rattacher en une fois les comptes sans site (créés avant les sites) à un site. */
+function renderUnassignedTool() {
+  const box = document.getElementById("admin-unassigned");
+  if (!box) return;
+  const unassigned = adminSite() ? [] : adminUsersCache.filter(u => !u.site && u.role !== "admin");
+  box.hidden = unassigned.length === 0;
+  if (box.hidden) return;
+  box.innerHTML = `
+    <p style="font-size:13px;margin-bottom:8px;">
+      <b>${unassigned.length} compte(s) client sans site.</b> Rattache-les à un site pour que son administrateur les voie.
+    </p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <select class="profile-input unassigned-site" style="width:auto;margin:0;">${siteOptionsHtml(PORTAIL.defaultSite)}</select>
+      <button class="direct-btn unassigned-btn" type="button" style="margin-top:0;width:auto;padding:8px 14px;background:var(--navy);color:#fff;">Rattacher</button>
+    </div>`;
+  box.querySelector(".unassigned-btn").addEventListener("click", async () => {
+    const site = box.querySelector(".unassigned-site").value;
+    if (!site) return;
+    await Promise.all(unassigned.map(u => updateUser(u.uid, { site })));
+    renderAdminPanel();
   });
 }
 
@@ -340,7 +522,7 @@ const notifDropdown = document.getElementById("notif-dropdown");
 
 async function refreshNotifBadge() {
   if (!notifBadge) return;
-  const pending = await listPendingUsers();
+  const pending = await listPendingUsers(adminSite());
   const orders  = await listUnseenBreakfastOrders();
   const total = pending.length + orders.length;
   if (total > 0) {
@@ -353,7 +535,7 @@ async function refreshNotifBadge() {
 
 async function renderNotifDropdown() {
   const companies = await listCompanies();
-  const pending = await listPendingUsers();
+  const pending = await listPendingUsers(adminSite());
   const orders  = await listUnseenBreakfastOrders();
   notifDropdown.innerHTML = "";
 
@@ -429,7 +611,15 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   const firstName = document.getElementById("new-admin-firstname").value.trim();
   const lastName = document.getElementById("new-admin-lastname").value.trim();
   if (!email || password.length < 6) { alert("Email + mot de passe (6 car. min.) requis."); return; }
-  await adminCreateAccount(email, password, "admin", null, firstName, lastName);
+  // Un admin de site crée des admins pour son site ; le super-admin choisit le site
+  const siteSelect = document.getElementById("new-admin-site");
+  const site = adminSite() || (siteSelect ? siteSelect.value || null : null);
+  try {
+    await adminCreateAccount(email, password, "admin", null, firstName, lastName, site);
+  } catch (err) {
+    alert(friendlyError(err));
+    return;
+  }
   document.getElementById("new-admin-email").value = "";
   document.getElementById("new-admin-password").value = "";
   document.getElementById("new-admin-firstname").value = "";
