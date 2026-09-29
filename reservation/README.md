@@ -2,6 +2,8 @@
 
 Code source du module de réservation de salles (web app Google Apps Script),
 ouvert depuis la tuile « Réserver une salle » du portail client (`app.js`).
+Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworking
+(page intégrée au portail, `resa-coworking.js`).
 
 | Fichier | Rôle | À copier dans Apps Script |
 |---|---|---|
@@ -9,6 +11,7 @@ ouvert depuis la tuile « Réserver une salle » du portail client (`app.js`).
 | `Code.gs` | La logique : disponibilités, demandes, emails, approbation | ✅ |
 | `Devis.gs` | Devis PDF joint à l'email de confirmation | ✅ |
 | `Remerciement.gs` | Email de remerciement envoyé 3 jours après la réservation | ✅ |
+| `Coworking.gs` | Réservations des coworkers depuis le portail (sans paiement) | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
@@ -20,10 +23,10 @@ Le code qui tourne est celui de script.google.com : ce dossier en est la copie
 de référence (historique, retour arrière possible). Après chaque modification :
 
 1. Ouvrir le projet sur script.google.com.
-2. Pour chacun des 6 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
+2. Pour chacun des 7 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
    dans Apps Script (le créer avec **+ > Script** s'il n'existe pas, sans taper « .gs »),
    tout sélectionner (Ctrl+A), supprimer, coller le contenu du fichier GitHub.
-3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ces cinq-là : deux fichiers qui
+3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ceux-là : deux fichiers qui
    déclarent la même constante provoquent l'erreur « already been declared ».
 4. Enregistrer (Ctrl+S).
 5. **Déployer > Gérer les déploiements > ✏️ (crayon) > Version : Nouvelle version > Déployer**
@@ -73,3 +76,24 @@ Mise en route, **une seule fois**, dans le menu déroulant des fonctions (▶ Ex
 1. `testThankYouEmails` : un exemple de chaque texte arrive sur votre adresse (aucun client contacté).
 2. `previewThankYouEmails` : le journal liste les clients qui recevraient l'email aujourd'hui, sans rien envoyer.
 3. `installThanksTrigger` : l'envoi automatique démarre. `uninstallThanksTrigger` l'arrête.
+
+
+## Réservation depuis l'espace coworking
+
+Les comptes **Coworking** du portail (et l'équipe Hiptown) ont une tuile
+« Réserver une salle de réunion » : les 4 salles de réunion, dans les **mêmes agendas**
+que les réservations externes. Pas de prix, pas de devis, pas de validation :
+la réservation est confirmée tout de suite (événement bleu « [COWORKING] … » dans
+l'agenda) et la personne reçoit un email de confirmation avec un mot de remerciement.
+Pas d'email de remerciement 3 jours après pour ces réservations.
+
+Le serveur vérifie le compte : le portail envoie le jeton de connexion Firebase, et
+`Coworking.gs` relit la fiche du compte dans Firestore avec ce jeton. Seuls les comptes
+validés « coworking » ou « admin » peuvent réserver (réglage `COWORKING` dans `Config.gs`).
+
+Mise en route, **une seule fois** après avoir copié les fichiers :
+1. Dans le menu déroulant des fonctions, choisir `testCoworkingSetup`, cliquer sur ▶ Exécuter
+   et **accepter la nouvelle autorisation** (« se connecter à un service externe » : c'est
+   l'accès à Firestore). Le journal doit afficher les 4 salles et « Firestore joignable ».
+2. Déployer une nouvelle version (étape 5 ci-dessus). Sans ce déploiement, la tuile du
+   portail affiche « Impossible de charger les salles ».

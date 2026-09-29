@@ -1,9 +1,10 @@
 /**
  * SYSTÈME DE RÉSERVATION D'ESPACES — Code.gs
  * -------------------------------------------
- * Projet Apps Script en 4 fichiers :
+ * Projet Apps Script en plusieurs fichiers :
  *   Config.gs   → tout ce qui se règle (espaces, horaires, tarifs, emails)
  *   Code.gs     → la logique (ce fichier)
+ *   Coworking.gs → réservations des coworkers depuis le portail client
  *   Tests.gs    → fonctions de diagnostic à lancer à la main
  *   Index.html  → la page affichée au client
  */
@@ -30,6 +31,11 @@ function doGet(e) {
 
   if (action === 'getDayAvailability') {
     return jsonResponse(getDayAvailability(e.parameter.spaceId, e.parameter.dateString));
+  }
+
+  // Espace coworking du portail : liste des salles réservables (voir Coworking.gs)
+  if (action === 'getCoworkingSpaces') {
+    return jsonResponse(getCoworkingSpaces());
   }
 
   // Aucune action : on sert la page HTML. Tout ce dont elle a besoin au démarrage
@@ -59,6 +65,9 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     if (body.action === 'bookRoom') {
       return jsonResponse(bookRoom(body.payload));
+    }
+    if (body.action === 'bookCoworking') {
+      return jsonResponse(bookCoworkingRoom(body.idToken, body.payload));
     }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
@@ -307,18 +316,32 @@ function validateBooking(raw) {
     return { error: 'Nombre de postes invalide.' };
   }
 
+  const slotError = validateSlot(b);
+  if (slotError) return { error: slotError };
+  return b;
+}
+
+/**
+ * Vérifie la date et le créneau de la demande b (b.space, b.dateString, b.endDateString,
+ * b.startHour, b.endHour) et complète b (startDate, endDate, isMultiDay, numberOfDays).
+ * Partagée par les demandes du site public et celles de l'espace coworking (Coworking.gs).
+ * Retourne le message d'erreur, ou '' si le créneau est valide.
+ */
+function validateSlot(b) {
+  const space = b.space;
+
   // --- Dates ---
-  if (!isValidDateString(b.dateString)) return { error: 'Date invalide.' };
+  if (!isValidDateString(b.dateString)) return 'Date invalide.';
   b.startDate = parseDate(b.dateString);
-  if (b.startDate < startOfToday()) return { error: 'Impossible de réserver une date passée.' };
+  if (b.startDate < startOfToday()) return 'Impossible de réserver une date passée.';
 
   // Réservation multi-jours : chaque jour de la plage est réservé en journée complète (8h-18h)
   b.isMultiDay = !!b.endDateString && b.endDateString !== b.dateString;
   if (b.isMultiDay) {
-    if (!space.allowMultiDay) return { error: 'Cet espace ne se réserve pas sur plusieurs jours.' };
-    if (!isValidDateString(b.endDateString)) return { error: 'Date de fin invalide.' };
+    if (!space.allowMultiDay) return 'Cet espace ne se réserve pas sur plusieurs jours.';
+    if (!isValidDateString(b.endDateString)) return 'Date de fin invalide.';
     b.endDate = parseDate(b.endDateString);
-    if (b.endDate < b.startDate) return { error: 'La date de fin doit être après la date de début.' };
+    if (b.endDate < b.startDate) return 'La date de fin doit être après la date de début.';
     b.startHour = START_HOUR;
     b.endHour = END_HOUR;
   } else {
@@ -326,22 +349,22 @@ function validateBooking(raw) {
   }
   b.numberOfDays = Math.round((b.endDate - b.startDate) / DAY_MS) + 1;
   if (b.numberOfDays > MAX_MULTI_DAYS) {
-    return { error: 'Une réservation ne peut pas dépasser ' + MAX_MULTI_DAYS + ' jours.' };
+    return 'Une réservation ne peut pas dépasser ' + MAX_MULTI_DAYS + ' jours.';
   }
 
   // --- Horaires ---
   if (!(b.startHour >= START_HOUR && b.endHour <= END_HOUR && b.startHour < b.endHour)) {
-    return { error: 'Créneau invalide (horaires 8h-18h uniquement).' };
+    return 'Créneau invalide (horaires 8h-18h uniquement).';
   }
   if (space.onlyHalfOrFullDay) {
     const slot = b.startHour + '-' + b.endHour;
     const allowed = [START_HOUR + '-13', '13-' + END_HOUR, START_HOUR + '-' + END_HOUR];
     if (allowed.indexOf(slot) === -1) {
-      return { error: 'Cet espace se réserve uniquement à la demi-journée ou à la journée.' };
+      return 'Cet espace se réserve uniquement à la demi-journée ou à la journée.';
     }
   }
 
-  return b;
+  return '';
 }
 
 function bookRoom(rawBooking) {

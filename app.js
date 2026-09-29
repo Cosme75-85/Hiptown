@@ -19,6 +19,7 @@
   const stepHiptownOutils  = document.getElementById("step-hiptown-outils");
   const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
   const stepSiteDetail     = document.getElementById("step-site-detail");
+  const stepResaCowork     = document.getElementById("step-resa-cowork");
 
   const welcomeTitle   = document.getElementById("welcome-title");
   const welcomeSub     = document.getElementById("welcome-sub");
@@ -33,6 +34,7 @@
   const backFromHipOutils   = document.getElementById("back-from-hiptown-outils");
   const backFromHipEspaces  = document.getElementById("back-from-hiptown-espaces");
   const backFromSiteDetail  = document.getElementById("back-from-site-detail");
+  const backFromResaCowork  = document.getElementById("back-from-resa-cowork");
   const siteDetailTitle     = document.getElementById("site-detail-title");
   const siteDetailTools     = document.getElementById("site-detail-tools");
 
@@ -105,7 +107,8 @@
   const TILE_DEFS = {
     accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
     marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
-    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: "https://script.google.com/macros/s/AKfycby8RFneOFXdGwpSEIDIteOpLu3b1HL1zSGYQtFjJ_MccWN4oFvASImEl5oyERxkpwwKvg/exec" },
+    resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: PORTAIL.reservationUrl },
+    resacowork:{ title: "Réserver une salle de réunion", desc: "Les 4 salles, sans paiement",   icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "resacowork" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
     info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
@@ -124,7 +127,7 @@
 
   const SPACE_TILES = {
     salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "complem", "tarifssalle", "tarifscoworking", "avis"],
-    coworking: ["accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
+    coworking: ["resacowork", "accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
   };
 
@@ -225,7 +228,7 @@
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
     [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
-     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail]
+     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork]
     .forEach(function(s) { s.hidden = true; });
     eventsBanner.hidden = true;
   }
@@ -361,6 +364,7 @@
           if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
           if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
           if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
+          if (tile.action === "resacowork") stepResaCowork.hidden     = false;
           document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
@@ -434,7 +438,7 @@
   }
 
   // ── Retours ───────────────────────────────────────────
-  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces].forEach(function (btn) {
+  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces, backFromResaCowork].forEach(function (btn) {
     btn.addEventListener("click", function () { hideAll(); stepDashboard.hidden = false; window.scrollTo({ top: 0, behavior: "smooth" }); });
   });
 

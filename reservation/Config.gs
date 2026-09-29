@@ -89,6 +89,17 @@ const TAG_QUANTITY = 'quantity';
 const TAG_BOOKING = 'booking';   // détail de la demande (JSON), relu pour éditer le devis
 const TAG_THANKS_SENT = 'thanksSent'; // date d'envoi de l'email de remerciement (évite les doublons)
 
+// ==================== RÉSERVATION DEPUIS L'ESPACE COWORKING (voir Coworking.gs) ====================
+// Les coworkers réservent depuis le portail client, sans payer : réservation confirmée
+// tout de suite, dans les mêmes agendas que les réservations externes.
+const COWORKING = {
+  spaceIds: ['salleCanele', 'salleBouchon', 'salleDuneblanche', 'sallePuitsdamour'],  // salles proposées
+  allowedRoles: ['coworking', 'admin'],   // rôles du portail autorisés à réserver
+  firebaseProjectId: 'erp-hiptown',       // projet Firebase du portail (firebase-config.js)
+  titlePrefix: '[COWORKING] '             // début du titre de l'événement dans l'agenda
+};
+const TAG_PORTAL_UID = 'portalUid';       // compte du portail qui a réservé (servira aux crédits)
+
 // Civilités proposées dans le formulaire (utilisées dans « Bonjour Madame Dupont, »)
 const CIVILITIES = ['Madame', 'Monsieur'];
 

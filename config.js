@@ -4,6 +4,11 @@
 const PORTAIL = {
   incidentUrl: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5",
 
+  // Outil de réservation des salles (Google Apps Script, dossier reservation/ du dépôt).
+  // Sert à la tuile « Réserver une salle » (clients salle de réunion) et à la
+  // réservation intégrée de l'espace coworking (resa-coworking.js).
+  reservationUrl: "https://script.google.com/macros/s/AKfycby8RFneOFXdGwpSEIDIteOpLu3b1HL1zSGYQtFjJ_MccWN4oFvASImEl5oyERxkpwwKvg/exec",
+
   // ── Événements ────────────────────────────────────────
   // Ajoutez/modifiez les événements ici
   // image: nom du fichier uploadé sur GitHub
