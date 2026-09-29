@@ -9,7 +9,7 @@ import { initProfilePage, isSafePhoto, initialsOf, displayNameOf } from "./profi
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
-  listUnseenBreakfastOrders, markBreakfastOrderSeen
+  listUnseenBreakfastOrders, markBreakfastOrderSeen, createCompany
 } from "./admin.js";
 
 const stepAuth    = document.getElementById("step-auth");
@@ -281,6 +281,50 @@ function siteOptionsHtml(selected) {
 const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Coworking" };
 const STATUS_LABELS = { approved: "Validé", pending: "En attente", rejected: "Refusé" };
 
+/** Identifiant Firestore lisible à partir d'un nom d'entreprise (« Café Joli » -> « cafe-joli »). */
+function companyIdFrom(name) {
+  const slug = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return slug || "entreprise-" + Date.now();
+}
+
+/**
+ * Ajoute « ➕ Nouvelle entreprise… » à une liste d'entreprises coworking :
+ * l'admin saisit le nom, l'entreprise est créée dans Firestore puis sélectionnée.
+ */
+function enableNewCompanyOption(select, companies, suggestedName = "") {
+  const opt = document.createElement("option");
+  opt.value = "__new__";
+  opt.textContent = "➕ Nouvelle entreprise…";
+  select.appendChild(opt);
+  let previous = select.value;
+  select.addEventListener("change", async () => {
+    if (select.value !== "__new__") { previous = select.value; return; }
+    const name = (prompt("Nom de la nouvelle entreprise coworking :", suggestedName) || "").trim();
+    if (!name) { select.value = previous; return; }
+    const existing = companies.find(c => (c.name || "").toLowerCase() === name.toLowerCase());
+    let id = existing ? existing.id : companyIdFrom(name);
+    if (!existing) {
+      if (companies.some(c => c.id === id)) id += "-" + Date.now();
+      try {
+        await createCompany(id, { name });
+      } catch (err) {
+        console.error(err);
+        alert("Impossible de créer l'entreprise.");
+        select.value = previous;
+        return;
+      }
+      companies.push({ id, name });
+      const created = document.createElement("option");
+      created.value = id;
+      created.textContent = name;
+      select.insertBefore(created, opt);
+    }
+    select.value = id;
+    previous = id;
+  });
+}
+
 // Carte de demande en attente, réutilisée dans le panneau admin ET la cloche de notifications
 function createPendingCard(u, companies, onDone) {
   const card = document.createElement("div");
@@ -306,9 +350,10 @@ function createPendingCard(u, companies, onDone) {
         <button class="direct-btn reject-btn" style="margin-top:0;width:auto;padding:6px 12px;border-color:#dc2626;color:#dc2626;font-size:12px;">Refuser</button>
       </div>
     </div>`;
+  enableNewCompanyOption(card.querySelector(".approve-company"), companies, u.companyNameHint || "");
   card.querySelector(".approve-btn").addEventListener("click", async () => {
     const role = card.querySelector(".approve-role").value;
-    const companyId = card.querySelector(".approve-company").value || null;
+    const companyId = card.querySelector(".approve-company").value.replace("__new__", "") || null;
     await approveUser(u.uid, role, role === "coworking" ? companyId : null);
     onDone();
   });
@@ -423,7 +468,7 @@ function fillUserForm(form, u) {
       ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
       ${u.role ? "" : '<option value="" selected>— Sans rôle —</option>'}
     </select>`)}
-    ${field("Entreprise coworking", `<select class="profile-input f-company">
+    ${field("Entreprise coworking (pour le rôle Coworking)", `<select class="profile-input f-company">
       <option value="">— Aucune —</option>
       ${adminCompaniesCache.map(c => `<option value="${escapeHtml(c.id)}" ${u.companyId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
     </select>`)}
@@ -440,6 +485,7 @@ function fillUserForm(form, u) {
       ${isMe ? "" : '<button class="direct-btn f-delete" type="button" style="margin-top:0;width:auto;padding:8px 14px;border-color:#dc2626;color:#dc2626;">Supprimer la fiche</button>'}
     </div>`;
 
+  enableNewCompanyOption(form.querySelector(".f-company"), adminCompaniesCache, u.companyNameHint || "");
   const message = form.querySelector(".f-message");
   const showMessage = (text, isError) => {
     message.textContent = text;
@@ -454,7 +500,7 @@ function fillUserForm(form, u) {
       lastName: form.querySelector(".f-lastname").value.trim(),
       email: form.querySelector(".f-email").value.trim().toLowerCase(),
       companyNameHint: form.querySelector(".f-company-hint").value.trim(),
-      companyId: role === "coworking" ? (form.querySelector(".f-company").value || null) : null
+      companyId: role === "coworking" ? (form.querySelector(".f-company").value.replace("__new__", "") || null) : null
     };
     if (!isMe) {
       fields.role = role;
