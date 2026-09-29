@@ -15,6 +15,10 @@ const PORTAIL = {
   sites: {
     bordeaux: "Bordeaux",
   },
+  // Crédits coworking proposés par poste négocié dans le contrat (modifiable
+  // entreprise par entreprise dans « Gestion des entreprises »)
+  creditsPerSeat: 10,
+
   // Site attribué automatiquement aux clients qui s'inscrivent sur ce portail
   defaultSite: "bordeaux",
 
