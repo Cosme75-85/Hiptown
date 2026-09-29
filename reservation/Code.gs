@@ -72,6 +72,15 @@ function doPost(e) {
     if (body.action === 'getCoworkingCredits') {
       return jsonResponse(getCoworkingCredits(body.idToken, body.year, body.month));
     }
+    if (body.action === 'getMyCoworkingBookings') {
+      return jsonResponse(getMyCoworkingBookings(body.idToken));
+    }
+    if (body.action === 'cancelCoworking') {
+      return jsonResponse(cancelCoworkingBooking(body.idToken, body.payload));
+    }
+    if (body.action === 'modifyCoworking') {
+      return jsonResponse(modifyCoworkingBooking(body.idToken, body.payload));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });
@@ -789,10 +798,12 @@ function getEventQuantity(event) {
  * Voie rapide : le service avancé « Google Calendar API » (à activer une fois dans
  * l'éditeur : Services > + > Google Calendar API). Un seul appel par agenda renvoie
  * début, fin et quantité de TOUS les événements.
+ * excludeEventId (optionnel) : événement ignoré, utilisé quand un coworker déplace
+ * sa propre réservation (elle ne doit pas se bloquer elle-même).
  * Voie de secours (service non activé) : CalendarApp, qui fait un appel à Google
  * par information et par événement, donc nettement plus lent.
  */
-function getBookedSlots(space, from, to) {
+function getBookedSlots(space, from, to, excludeEventId) {
   // Une salle de capacité 1 est bloquée par n'importe quel événement : inutile de lire la quantité
   const readQty = space.capacity > 1;
 
@@ -806,9 +817,10 @@ function getBookedSlots(space, from, to) {
         singleEvents: true,  // événements récurrents dépliés, comme CalendarApp
         maxResults: 2500,
         pageToken: pageToken,
-        fields: 'nextPageToken,items(start,end,description,extendedProperties/private)'
+        fields: 'nextPageToken,items(iCalUID,start,end,description,extendedProperties/private)'
       });
       (page.items || []).forEach(ev => {
+        if (excludeEventId && ev.iCalUID === excludeEventId) return;
         const tags = (ev.extendedProperties && ev.extendedProperties.private) || {};
         slots.push({
           start: apiEventTime(ev.start),
@@ -823,11 +835,13 @@ function getBookedSlots(space, from, to) {
 
   const cal = CalendarApp.getCalendarById(space.calendarId);
   if (!cal) throw new Error('Agenda introuvable : ' + space.calendarId);
-  return cal.getEvents(from, to).map(ev => ({
-    start: ev.getStartTime().getTime(),
-    end: ev.getEndTime().getTime(),
-    qty: readQty ? getEventQuantity(ev) : 1
-  }));
+  return cal.getEvents(from, to)
+    .filter(ev => !excludeEventId || ev.getId() !== excludeEventId)
+    .map(ev => ({
+      start: ev.getStartTime().getTime(),
+      end: ev.getEndTime().getTime(),
+      qty: readQty ? getEventQuantity(ev) : 1
+    }));
 }
 
 /** Heure d'un événement renvoyé par l'API : dateTime, ou date seule (journée entière, minuit local). */
