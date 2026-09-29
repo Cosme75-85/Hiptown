@@ -1041,3 +1041,10 @@ footer {
   .rc-modal { max-width: 440px; border-radius: var(--radius-md); }
   .rc-toast { left: 50%; right: auto; transform: translateX(-50%); max-width: 90vw; }
 }
+
+/* Crédits restants de l'entreprise, en haut à droite du bandeau (espace coworking) */
+.header-credits { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 70px; padding: 6px 10px; border-radius: var(--radius-md); background: #e0f2fe; color: #0369a1; text-align: center; line-height: 1.1; }
+.header-credits[hidden] { display: none; }
+.header-credits-value { font-size: 18px; font-weight: 700; }
+.header-credits-label { font-size: 10px; }
+.header-credits.header-credits-low { background: #fee2e2; color: #dc2626; }

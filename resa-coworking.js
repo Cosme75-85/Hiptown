@@ -158,6 +158,8 @@ async function loadCredits() {
     }
     if (!res.chargesCredits) { creditBalance = null; box.hidden = true; return; } // équipe Hiptown
     creditBalance = res;
+    const now = new Date();
+    if (year === now.getFullYear() && month === now.getMonth() + 1) showHeaderCredits(res);
     box.innerHTML = "Crédits " + escapeHtml(res.company ? "de " + res.company + " " : "") + "pour " + escapeHtml(res.monthLabel)
       + " : <b>" + res.remaining + "</b> restant(s) sur " + res.allowance;
     box.hidden = false;
@@ -166,6 +168,39 @@ async function loadCredits() {
     box.hidden = true;
   }
 }
+
+/**
+ * Crédits restants de l'entreprise pour le mois en cours, en haut à droite du bandeau.
+ * Le solde est celui de l'entreprise : tous ses membres voient le même chiffre.
+ */
+async function refreshHeaderCredits() {
+  const box = $("header-credits");
+  if (!box || !auth.currentUser) return;
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    showHeaderCredits(await postJson({ action: "getCoworkingCredits", idToken: idToken }));
+  } catch (err) {
+    box.hidden = true;
+  }
+}
+
+/** Affiche un solde (réponse de getCoworkingCredits, mois en cours) dans le bandeau. */
+function showHeaderCredits(res) {
+  const box = $("header-credits");
+  if (!box) return;
+  if (!res || !res.success || !res.chargesCredits) { box.hidden = true; return; }
+  $("header-credits-value").textContent = res.remaining;
+  box.title = "Crédits restants " + (res.company ? "de " + res.company + " " : "") + "pour " + res.monthLabel
+    + " (" + res.remaining + " sur " + res.allowance + ")";
+  box.classList.toggle("header-credits-low", res.allowance > 0 && res.remaining < res.allowance * 0.1);
+  box.hidden = false;
+}
+
+document.addEventListener("hiptown-dashboard", e => {
+  const box = $("header-credits");
+  if (box) box.hidden = true; // masqué tant que le solde n'est pas chargé (et pour les autres espaces)
+  if (e.detail && e.detail.space === "coworking") refreshHeaderCredits();
+});
 
 // ==================== SALLES ET CALENDRIERS DU MOIS ====================
 
@@ -444,6 +479,8 @@ function refreshAll() {
   loadMonth();
   loadCredits();
   loadMine();
+  // Le bandeau montre le mois en cours : on le relit si un autre mois est affiché
+  if (currentYear !== today.getFullYear() || currentMonth !== today.getMonth() + 1) refreshHeaderCredits();
 }
 
 function describeSlot(b) {
