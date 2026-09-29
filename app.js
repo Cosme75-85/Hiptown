@@ -119,7 +119,7 @@
     avis:      { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",            icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
     hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
-    gestion:   { title: "Gestion des comptes",       desc: "Valider les accès",                      icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "admin" },
+    gestion:   { title: "Gestion",                   desc: "Comptes et entreprises",                 icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "gestion" },
     suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
     tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", image: "https://drive.google.com/thumbnail?id=13iZvHQuzoO4M7Za6OEEtyJUBF-1Tv6ho&sz=w2000" },
     tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", image: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },

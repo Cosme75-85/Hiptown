@@ -9,13 +9,15 @@ import { initProfilePage, isSafePhoto, initialsOf, displayNameOf } from "./profi
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
-  listUnseenBreakfastOrders, markBreakfastOrderSeen
+  listUnseenBreakfastOrders, markBreakfastOrderSeen, createCompany, updateCompany
 } from "./admin.js";
 
 const stepAuth    = document.getElementById("step-auth");
 const stepPending = document.getElementById("step-pending");
 const stepAdmin   = document.getElementById("step-admin");
 const stepProfile = document.getElementById("step-profile");
+const stepGestion   = document.getElementById("step-gestion");
+const stepCompanies = document.getElementById("step-companies");
 const authError   = document.getElementById("auth-error");
 
 let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
@@ -25,7 +27,7 @@ let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'é
 // masque en plus les 3 nouvelles sections.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -235,10 +237,30 @@ document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(
 //  PANNEAU ADMIN + NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
-document.getElementById("back-from-admin")?.addEventListener("click", () => {
+// Menu « Gestion » : deux cases, Gestion des comptes et Gestion des entreprises
+function openGestionMenu() {
+  hideAllAuth();
+  stepGestion.hidden = false;
+}
+
+document.getElementById("back-from-gestion")?.addEventListener("click", () => {
   hideAllAuth();
   document.getElementById("step-dashboard").hidden = false;
 });
+document.getElementById("open-gestion-comptes")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  hideAllAuth();
+  stepAdmin.hidden = false;
+  renderAdminPanel();
+});
+document.getElementById("open-gestion-entreprises")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  hideAllAuth();
+  stepCompanies.hidden = false;
+  renderCompaniesPanel();
+});
+document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 
 /**
  * Neutralise le HTML d'un texte saisi par un client avant de l'insérer dans la page.
@@ -281,6 +303,50 @@ function siteOptionsHtml(selected) {
 const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Coworking" };
 const STATUS_LABELS = { approved: "Validé", pending: "En attente", rejected: "Refusé" };
 
+/** Identifiant Firestore lisible à partir d'un nom d'entreprise (« Café Joli » -> « cafe-joli »). */
+function companyIdFrom(name) {
+  const slug = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return slug || "entreprise-" + Date.now();
+}
+
+/**
+ * Ajoute « ➕ Nouvelle entreprise… » à une liste d'entreprises coworking :
+ * l'admin saisit le nom, l'entreprise est créée dans Firestore puis sélectionnée.
+ */
+function enableNewCompanyOption(select, companies, suggestedName = "") {
+  const opt = document.createElement("option");
+  opt.value = "__new__";
+  opt.textContent = "➕ Nouvelle entreprise…";
+  select.appendChild(opt);
+  let previous = select.value;
+  select.addEventListener("change", async () => {
+    if (select.value !== "__new__") { previous = select.value; return; }
+    const name = (prompt("Nom de la nouvelle entreprise coworking :", suggestedName) || "").trim();
+    if (!name) { select.value = previous; return; }
+    const existing = companies.find(c => (c.name || "").toLowerCase() === name.toLowerCase());
+    let id = existing ? existing.id : companyIdFrom(name);
+    if (!existing) {
+      if (companies.some(c => c.id === id)) id += "-" + Date.now();
+      try {
+        await createCompany(id, { name });
+      } catch (err) {
+        console.error(err);
+        alert("Impossible de créer l'entreprise.");
+        select.value = previous;
+        return;
+      }
+      companies.push({ id, name });
+      const created = document.createElement("option");
+      created.value = id;
+      created.textContent = name;
+      select.insertBefore(created, opt);
+    }
+    select.value = id;
+    previous = id;
+  });
+}
+
 // Carte de demande en attente, réutilisée dans le panneau admin ET la cloche de notifications
 function createPendingCard(u, companies, onDone) {
   const card = document.createElement("div");
@@ -306,9 +372,10 @@ function createPendingCard(u, companies, onDone) {
         <button class="direct-btn reject-btn" style="margin-top:0;width:auto;padding:6px 12px;border-color:#dc2626;color:#dc2626;font-size:12px;">Refuser</button>
       </div>
     </div>`;
+  enableNewCompanyOption(card.querySelector(".approve-company"), companies, u.companyNameHint || "");
   card.querySelector(".approve-btn").addEventListener("click", async () => {
     const role = card.querySelector(".approve-role").value;
-    const companyId = card.querySelector(".approve-company").value || null;
+    const companyId = card.querySelector(".approve-company").value.replace("__new__", "") || null;
     await approveUser(u.uid, role, role === "coworking" ? companyId : null);
     onDone();
   });
@@ -423,7 +490,7 @@ function fillUserForm(form, u) {
       ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
       ${u.role ? "" : '<option value="" selected>— Sans rôle —</option>'}
     </select>`)}
-    ${field("Entreprise coworking", `<select class="profile-input f-company">
+    ${field("Entreprise coworking (pour le rôle Coworking)", `<select class="profile-input f-company">
       <option value="">— Aucune —</option>
       ${adminCompaniesCache.map(c => `<option value="${escapeHtml(c.id)}" ${u.companyId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
     </select>`)}
@@ -440,6 +507,7 @@ function fillUserForm(form, u) {
       ${isMe ? "" : '<button class="direct-btn f-delete" type="button" style="margin-top:0;width:auto;padding:8px 14px;border-color:#dc2626;color:#dc2626;">Supprimer la fiche</button>'}
     </div>`;
 
+  enableNewCompanyOption(form.querySelector(".f-company"), adminCompaniesCache, u.companyNameHint || "");
   const message = form.querySelector(".f-message");
   const showMessage = (text, isError) => {
     message.textContent = text;
@@ -454,7 +522,7 @@ function fillUserForm(form, u) {
       lastName: form.querySelector(".f-lastname").value.trim(),
       email: form.querySelector(".f-email").value.trim().toLowerCase(),
       companyNameHint: form.querySelector(".f-company-hint").value.trim(),
-      companyId: role === "coworking" ? (form.querySelector(".f-company").value || null) : null
+      companyId: role === "coworking" ? (form.querySelector(".f-company").value.replace("__new__", "") || null) : null
     };
     if (!isMe) {
       fields.role = role;
@@ -513,6 +581,95 @@ function renderUnassignedTool() {
     renderAdminPanel();
   });
 }
+
+// ── Gestion des entreprises coworking ──────────────────
+async function renderCompaniesPanel() {
+  const list  = document.getElementById("companies-list");
+  const count = document.getElementById("companies-count");
+  const companies = await listCompanies();
+  companies.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "fr"));
+  // Nombre de comptes rattachés à chaque entreprise (parmi les comptes visibles par l'admin)
+  const users = await listAllUsers(adminSite());
+  const members = {};
+  users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
+
+  if (count) count.textContent = `(${companies.length})`;
+  list.innerHTML = companies.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucune entreprise pour le moment.</p>';
+  companies.forEach(c => list.appendChild(createCompanyCard(c, members[c.id] || 0)));
+}
+
+function createCompanyCard(c, memberCount) {
+  const style = SPACE_STYLES.coworking;
+  const color = c.color || style.color;
+  const textColor = c.textColor || style.textColor;
+  const card = document.createElement("div");
+  card.className = "info-card";
+  card.innerHTML = `
+    <div class="info-item" style="gap:10px;">
+      <span class="company-badge" style="width:32px;height:32px;font-size:11px;background-color:${escapeHtml(color)};color:${escapeHtml(textColor)};">${escapeHtml(initialsOf({ firstName: c.name || c.id }))}</span>
+      <span style="flex:1;min-width:0;">
+        <b>${escapeHtml(c.name || c.id)}</b><br>
+        <span style="font-size:11px;color:#94a3b8;">${memberCount} compte(s) rattaché(s)</span>
+      </span>
+      <button class="direct-btn edit-company-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
+    </div>
+    <div class="edit-company-form" hidden style="padding:4px 18px 16px;">
+      <label class="profile-label">Nom</label>
+      <input type="text" class="profile-input c-name" maxlength="100" value="${escapeHtml(c.name || "")}"/>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label class="profile-label">Couleur du badge</label>
+          <input type="color" class="profile-input c-color" style="padding:4px;height:44px;" value="${escapeHtml(color)}"/></div>
+        <div style="flex:1;"><label class="profile-label">Couleur du texte</label>
+          <input type="color" class="profile-input c-text-color" style="padding:4px;height:44px;" value="${escapeHtml(textColor)}"/></div>
+      </div>
+      <p class="profile-help c-message" role="status" hidden></p>
+      <button class="direct-btn c-save" type="button" style="margin-top:12px;width:auto;padding:8px 14px;background:var(--navy);color:#fff;">Enregistrer</button>
+    </div>`;
+
+  const form = card.querySelector(".edit-company-form");
+  card.querySelector(".edit-company-btn").addEventListener("click", () => { form.hidden = !form.hidden; });
+  card.querySelector(".c-save").addEventListener("click", async () => {
+    const message = form.querySelector(".c-message");
+    const name = form.querySelector(".c-name").value.trim();
+    if (!name) { message.textContent = "Le nom est obligatoire."; message.style.color = "#dc2626"; message.hidden = false; return; }
+    try {
+      await updateCompany(c.id, {
+        name,
+        color: form.querySelector(".c-color").value,
+        textColor: form.querySelector(".c-text-color").value
+      });
+      renderCompaniesPanel();
+    } catch (err) {
+      console.error(err);
+      message.textContent = "Enregistrement impossible.";
+      message.style.color = "#dc2626";
+      message.hidden = false;
+    }
+  });
+  return card;
+}
+
+document.getElementById("create-company-btn")?.addEventListener("click", async () => {
+  const input = document.getElementById("new-company-name");
+  const name = input.value.trim();
+  if (!name) { alert("Entrez le nom de l'entreprise."); return; }
+  const companies = await listCompanies();
+  if (companies.some(c => (c.name || "").toLowerCase() === name.toLowerCase())) {
+    alert("Cette entreprise existe déjà.");
+    return;
+  }
+  let id = companyIdFrom(name);
+  if (companies.some(c => c.id === id)) id += "-" + Date.now();
+  try {
+    await createCompany(id, { name });
+  } catch (err) {
+    console.error(err);
+    alert("Impossible de créer l'entreprise.");
+    return;
+  }
+  input.value = "";
+  renderCompaniesPanel();
+});
 
 // ── Cloche de notifications ────────────────────────────
 const notifBellWrap = document.getElementById("notif-bell-wrap");
@@ -598,6 +755,7 @@ document.addEventListener("click", (e) => {
 
 // Déclenché par app.js via : document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }))
 document.addEventListener("hiptown-tile-action", (e) => {
+  if (e.detail === "gestion") openGestionMenu();
   if (e.detail === "admin") {
     hideAllAuth();
     stepAdmin.hidden = false;
