@@ -19,6 +19,7 @@ const PORTAIL = {
   cities: {
     bordeaux: {
       name: "Bordeaux",
+      code: "NABO",
       sites: {
         nabo02: "NABO02 — Place de la Bourse CCI Tetris",
         nabo03: "NABO03 — Ferrere",
@@ -29,6 +30,12 @@ const PORTAIL = {
         nabo08: "NABO08 — Madéra",
       },
     },
+    // Sites à compléter (identifiant en minuscules : "Code — nom", comme Bordeaux)
+    paris:     { name: "Paris",     code: "IFPA", sites: {} },
+    lyon:      { name: "Lyon",      code: "ARLY", sites: {} },
+    marseille: { name: "Marseille", code: "PAMA", sites: {} },
+    rennes:    { name: "Rennes",    code: "BRRE", sites: {} },
+    lille:     { name: "Lille",     code: "HFLI", sites: {} },
   },
   // Crédits coworking proposés par poste négocié dans le contrat (modifiable
   // entreprise par entreprise dans « Gestion des entreprises »)

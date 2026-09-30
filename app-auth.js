@@ -101,11 +101,13 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
   const lastName  = document.getElementById("signup-lastname").value.trim();
   const birthDate = document.getElementById("signup-birthdate").value;
   const role      = document.querySelector('input[name="signup-role"]:checked').value;
+  const city      = document.getElementById("signup-city")?.value || PORTAIL.defaultSite;
   const siteId    = document.getElementById("signup-site")?.value || "";
-  if (!siteId) { showAuthError("Choisissez votre site Hiptown."); return; }
+  const hasSites  = Object.keys(PORTAIL.cities?.[city]?.sites || {}).length > 0;
+  if (hasSites && !siteId) { showAuthError("Choisissez votre site Hiptown."); return; }
   try {
     await signUp(email, password, role, company, firstName, lastName, birthDate,
-      { site: cityOfSite(siteId) || PORTAIL.defaultSite, siteId });
+      { site: city, siteId: siteId || null });
     // Le routage vers l'écran "en attente" se fait automatiquement
   } catch (err) {
     showAuthError(friendlyError(err));
@@ -357,6 +359,24 @@ function siteOptionsHtml(selected, emptyLabel = "— Choisir un site —") {
   return `<option value="">${emptyLabel}</option>${known}${groups}`;
 }
 
+/** Sites d'une ville, limités aux sites de l'équipe connectée si besoin. */
+function citySiteOptionsHtml(city, selected, emptyLabel = "— Site à choisir —") {
+  const scope = adminScope();
+  const ids = Object.keys(PORTAIL.cities?.[city]?.sites || {})
+    .filter(id => !scope?.siteIds || scope.siteIds.includes(id));
+  if (selected && !ids.includes(selected)) ids.unshift(selected);
+  if (!ids.length) return `<option value="">Aucun site configuré pour cette ville</option>`;
+  return `<option value="">${emptyLabel}</option>` + ids.map(id =>
+    `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(siteLabel(id))}</option>`).join("");
+}
+
+/** Ville puis site : le choix de la ville recharge la liste des sites. */
+function wireCitySite(citySelect, siteSelect, selectedSite = "", emptyLabel) {
+  const draw = () => { siteSelect.innerHTML = citySiteOptionsHtml(citySelect.value, selectedSite, emptyLabel); selectedSite = ""; };
+  citySelect.addEventListener("change", draw);
+  draw();
+}
+
 /** Cases à cocher des sites d'une ville (équipe de site). */
 function siteCheckboxesHtml(city, checked = []) {
   const sites = PORTAIL.cities?.[city]?.sites || {};
@@ -395,8 +415,11 @@ function buildAccessFields(container, u) {
   const label = text => `<label class="profile-label">${text}</label>`;
 
   if (u.role !== "admin") {
-    container.innerHTML = label("Site du client") +
-      `<select class="profile-input acc-site">${siteOptionsHtml(u.siteId || "", "— Site à choisir —")}</select>`;
+    const city = cityOfSite(u.siteId) || u.site || myCity || PORTAIL.defaultSite;
+    container.innerHTML = label("Ville du client") +
+      `<select class="profile-input acc-city" ${myLevel === "general" ? "" : "disabled"}>${cityOptionsHtml(myLevel === "general" ? city : myCity)}</select>` +
+      label("Site du client") + `<select class="profile-input acc-site"></select>`;
+    wireCitySite(container.querySelector(".acc-city"), container.querySelector(".acc-site"), u.siteId || "");
     return;
   }
 
@@ -430,9 +453,10 @@ function readAccessFields(container, role) {
   const myLevel = myAdminLevel();
   const myCity = session?.profile?.site || null;
   if (role !== "admin") {
+    const city = myLevel === "general" ? (container.querySelector(".acc-city")?.value || PORTAIL.defaultSite) : myCity;
     const siteId = container.querySelector(".acc-site")?.value || null;
-    if (!siteId) return { siteId: null, adminLevel: null, siteIds: [] };
-    return { site: cityOfSite(siteId) || myCity || PORTAIL.defaultSite, siteId, adminLevel: null, siteIds: [] };
+    if (myLevel === "site" && !siteId) return { error: "Choisis un des sites que tu gères." };
+    return { site: city, siteId, adminLevel: null, siteIds: [] };
   }
   const level = container.querySelector(".acc-level")?.value || "city";
   if (level === "general") {
@@ -1109,6 +1133,10 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   renderAdminPanel();
 });
 
-// Choix du site à l'inscription (sites regroupés par ville)
+// Choix de la ville puis du site à l'inscription
+const signupCity = document.getElementById("signup-city");
 const signupSite = document.getElementById("signup-site");
-if (signupSite) signupSite.innerHTML = siteOptionsHtml("", "— Votre site Hiptown —");
+if (signupCity && signupSite) {
+  signupCity.innerHTML = cityOptionsHtml(PORTAIL.defaultSite);
+  wireCitySite(signupCity, signupSite, "", "— Votre site Hiptown —");
+}
