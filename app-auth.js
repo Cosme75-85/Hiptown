@@ -237,6 +237,7 @@ function routeToDashboard(client, space) {
   }
   // Prévient les autres modules (ex. crédits coworking dans le bandeau, resa-coworking.js)
   document.dispatchEvent(new CustomEvent("hiptown-dashboard", { detail: { space } }));
+  if (space === "hiptown") applySiteAccess();
   if (notifBellWrap) {
     const isAdmin = space === "hiptown";
     notifBellWrap.hidden = !isAdmin;
@@ -388,6 +389,32 @@ function siteCheckboxesHtml(city, checked = []) {
     </label>` + ids.map(id => `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;">
       <input type="checkbox" class="site-check" value="${escapeHtml(id)}" ${checked.includes(id) ? "checked" : ""}/> ${escapeHtml(sites[id])}
     </label>`).join("");
+}
+
+/**
+ * Page « Sites » : ne montre que les sites auxquels l'admin connecté a accès
+ * (tous pour l'admin général, ceux de sa ville pour un admin de ville,
+ * ceux cochés sur sa fiche pour l'équipe de site). « Suivi des sites » reste visible.
+ */
+function applySiteAccess() {
+  const scope = adminScope();
+  const allowed = !scope ? null
+    : scope.siteIds || Object.keys(PORTAIL.cities?.[scope.city]?.sites || {});
+  let visible = 0;
+  document.querySelectorAll("#step-hiptown-espaces .site-card").forEach(card => {
+    card.hidden = !!allowed && !allowed.includes(card.dataset.site);
+    if (!card.hidden) visible++;
+  });
+  const grid = document.querySelector("#step-hiptown-espaces .sites-grid");
+  let empty = document.getElementById("sites-none");
+  if (!empty && grid) {
+    empty = document.createElement("p");
+    empty.id = "sites-none";
+    empty.style.cssText = "color:#94a3b8;padding:12px;";
+    empty.textContent = "Aucun site ne t'est attribué pour l'instant.";
+    grid.after(empty);
+  }
+  if (empty) empty.hidden = visible > 0;
 }
 
 /** Libellé court du rattachement d'un compte (ville, niveau, sites). */
