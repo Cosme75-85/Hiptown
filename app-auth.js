@@ -585,21 +585,55 @@ function renderUnassignedTool() {
 }
 
 // ── Gestion des entreprises coworking ──────────────────
+// Entreprises et nombre de comptes rattachés, gardés pour filtrer sans tout relire
+let companiesCache = [];
+let companyMembers = {};
+
 async function renderCompaniesPanel() {
-  const list  = document.getElementById("companies-list");
-  const count = document.getElementById("companies-count");
   const companies = await listCompanies();
-  companies.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "fr"));
+  companies.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "fr", { sensitivity: "base" }));
   // Nombre de comptes rattachés à chaque entreprise (parmi les comptes visibles par l'admin)
   const users = await listAllUsers(adminSite());
   const members = {};
   users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
-
-  buildCompanyForm(document.getElementById("new-company-form"), null, renderCompaniesPanel);
-  if (count) count.textContent = `(${companies.length})`;
-  list.innerHTML = companies.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucune entreprise pour le moment.</p>';
-  companies.forEach(c => list.appendChild(createCompanyCard(c, members[c.id] || 0)));
+  companiesCache = companies;
+  companyMembers = members;
+  closeNewCompanyForm();
+  renderCompaniesList();
 }
+
+/** Liste des entreprises (ordre alphabétique), filtrée par la recherche. */
+function renderCompaniesList() {
+  const list  = document.getElementById("companies-list");
+  const count = document.getElementById("companies-count");
+  const normalize = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const term = normalize(document.getElementById("companies-search")?.value.trim());
+  const shown = companiesCache.filter(c => !term
+    || [c.name, c.legalName, c.siret, c.id].some(v => normalize(v).includes(term)));
+
+  if (count) count.textContent = term ? `(${shown.length} sur ${companiesCache.length})` : `(${companiesCache.length})`;
+  list.innerHTML = shown.length ? "" : `<p style="color:#94a3b8;padding:12px;">${
+    companiesCache.length ? "Aucune entreprise ne correspond à la recherche." : "Aucune entreprise pour le moment."}</p>`;
+  shown.forEach(c => list.appendChild(createCompanyCard(c, companyMembers[c.id] || 0)));
+}
+
+function openNewCompanyForm() {
+  buildCompanyForm(document.getElementById("new-company-form"), null, renderCompaniesPanel);
+  document.getElementById("new-company-box").hidden = false;
+  document.getElementById("open-new-company").hidden = true;
+  document.querySelector("#new-company-form .cf-name")?.focus();
+}
+
+function closeNewCompanyForm() {
+  const box = document.getElementById("new-company-box");
+  if (box) box.hidden = true;
+  const btn = document.getElementById("open-new-company");
+  if (btn) btn.hidden = false;
+}
+
+document.getElementById("open-new-company")?.addEventListener("click", openNewCompanyForm);
+document.getElementById("close-new-company")?.addEventListener("click", closeNewCompanyForm);
+document.getElementById("companies-search")?.addEventListener("input", renderCompaniesList);
 
 // Champs de la fiche entreprise (en plus du nom, des crédits et des couleurs)
 const COMPANY_TEXT_FIELDS = [
