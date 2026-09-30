@@ -831,15 +831,20 @@ document.addEventListener("click", (e) => {
 });
 
 /**
- * Page « Mon contrat » du client coworking : fiche de son entreprise en lecture seule
- * (saisie par Hiptown dans Gestion des entreprises).
+ * Page « Mon contrat » du client coworking, en lecture seule, en deux cases :
+ * - Contrat : fiche de l'entreprise (companies/{id}) + lien du contrat signé si companies/{id}.contractUrl existe
+ * - Avenants : liste companies/{id}.amendments = [{ title, date, url }], vide tant que Hiptown n'en a pas ajouté
  */
-function renderMyContract() {
+const safeUrl = u => /^https:\/\//i.test(String(u || "")) ? u : "";
+
+function renderMyContract(tab = "contrat") {
   const box = document.getElementById("contrat-content");
   if (!box || !session) return;
+  document.querySelectorAll(".contrat-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
   const c = session.company;
+  const empty = text => `<p style="color:#94a3b8;padding:12px;">${text}</p>`;
   if (!c) {
-    box.innerHTML = `<p style="color:#94a3b8;padding:12px;">Aucun contrat rattaché à votre compte pour le moment. Contactez l'équipe Hiptown.</p>`;
+    box.innerHTML = empty("Aucun contrat rattaché à votre compte pour le moment. Contactez l'équipe Hiptown.");
     return;
   }
   const row = (label, value) => (value === undefined || value === null || value === "") ? "" :
@@ -848,14 +853,35 @@ function renderMyContract() {
        <span style="font-weight:600;font-size:13px;text-align:right;white-space:pre-line;">${escapeHtml(value)}</span></div>`;
   const card = (title, rows) => rows ? `<div class="info-card" style="padding:12px 18px;margin-bottom:12px;">
        <div class="info-card-title" style="margin-bottom:4px;">${title}</div>${rows}</div>` : "";
+  const docLink = (url, label) => `<a class="info-item" href="${escapeHtml(url)}" target="_blank" rel="noopener">🔗 ${escapeHtml(label)}</a>`;
+  const footer = `<p style="font-size:12px;color:var(--text-pale);margin-top:6px;">Une information à corriger ? Contactez l'équipe Hiptown.</p>`;
+
+  if (tab === "avenants") {
+    const list = (Array.isArray(c.amendments) ? c.amendments : []).filter(a => a && (a.title || a.url));
+    box.innerHTML = list.length
+      ? card("Avenants", list.map(a => {
+          const label = (a.title || "Avenant") + (a.date ? " · " + a.date : "");
+          return safeUrl(a.url) ? docLink(a.url, label) : row(label, " ");
+        }).join("")) + footer
+      : empty("Aucun avenant à votre contrat pour le moment.");
+    return;
+  }
+
+  const contractUrl = safeUrl(c.contractUrl);
   box.innerHTML =
     card("Contrat", row("Entreprise", c.name) + row("Postes", c.seats) +
-      row("Crédits par mois", c.credits != null ? c.credits + " crédit(s)" : "")) +
+      row("Crédits par mois", c.credits != null ? c.credits + " crédit(s)" : "") +
+      (contractUrl ? docLink(contractUrl, "Voir le contrat signé") : "")) +
     card("Facturation", row("Raison sociale", c.legalName) + row("Représentant légal", c.legalRepName) +
       row("Mail du représentant", c.legalRepEmail) + row("Adresse de facturation", c.billingAddress) +
       row("Pays", c.country) + row("SIRET", c.siret) + row("N° de TVA", c.vatNumber)) +
-    `<p style="font-size:12px;color:var(--text-pale);margin-top:6px;">Une information à corriger ? Contactez l'équipe Hiptown.</p>`;
+    footer;
 }
+
+document.querySelectorAll(".contrat-tab").forEach(t => t.addEventListener("click", e => {
+  e.preventDefault();
+  renderMyContract(t.dataset.tab);
+}));
 
 // Déclenché par app.js via : document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }))
 document.addEventListener("hiptown-tile-action", (e) => {
