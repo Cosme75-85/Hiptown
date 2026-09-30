@@ -14,28 +14,40 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 /**
- * Filtre « site » des requêtes : un admin de site ne peut lire que les comptes
- * de son site (règles Firestore) ; site = null pour le super-admin (tous les sites).
+ * Périmètre des requêtes, qui doit correspondre aux règles Firestore :
+ *  - null : admin général, tous les comptes
+ *  - { city } : admin de ville, les comptes de sa ville
+ *  - { city, siteIds } : employé, les comptes des sites qu'il gère
+ * Retourne null si le périmètre est vide (employé sans site).
  */
-function usersQuery(site, ...filters) {
-  const siteFilter = site ? [where("site", "==", site)] : [];
-  return query(collection(db, "users"), ...siteFilter, ...filters);
+function usersQuery(scope, ...filters) {
+  const scoped = [];
+  if (scope && scope.city) scoped.push(where("site", "==", scope.city));
+  if (scope && scope.siteIds) {
+    if (!scope.siteIds.length) return null;
+    scoped.push(where("siteId", "in", scope.siteIds.slice(0, 30)));
+  }
+  return query(collection(db, "users"), ...scoped, ...filters);
 }
 
-/**
- * Liste les comptes en attente de validation du site.
- */
-export async function listPendingUsers(site = null) {
-  const snap = await getDocs(usersQuery(site, where("status", "==", "pending")));
+async function runUsersQuery(q) {
+  if (!q) return [];
+  const snap = await getDocs(q);
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
 
 /**
- * Liste tous les comptes du site (pour la page de gestion complète).
+ * Liste les comptes en attente de validation du périmètre.
  */
-export async function listAllUsers(site = null) {
-  const snap = await getDocs(usersQuery(site));
-  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+export async function listPendingUsers(scope = null) {
+  return runUsersQuery(usersQuery(scope, where("status", "==", "pending")));
+}
+
+/**
+ * Liste tous les comptes du périmètre (pour la page de gestion complète).
+ */
+export async function listAllUsers(scope = null) {
+  return runUsersQuery(usersQuery(scope));
 }
 
 /**
@@ -91,7 +103,7 @@ export async function deleteUserDoc(uid) {
  * Utilise une seconde instance Firebase "jetable" pour ne pas déconnecter
  * l'admin en cours de session (limitation connue du SDK client Firebase).
  */
-export async function adminCreateAccount(email, password, role, companyId = null, firstName = "", lastName = "", site = null) {
+export async function adminCreateAccount(email, password, role, companyId = null, firstName = "", lastName = "", site = null, extra = {}) {
   const tempApp = initializeApp(app.options, "temp-" + Date.now());
   const tempAuth = getAuth(tempApp);
   try {
@@ -104,6 +116,7 @@ export async function adminCreateAccount(email, password, role, companyId = null
       role,
       companyId,
       site,
+      ...extra,               // adminLevel, siteIds (employé) ou siteId (client)
       status: "approved",
       createdAt: serverTimestamp(),
       approvedAt: serverTimestamp()
