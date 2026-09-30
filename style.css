@@ -566,6 +566,11 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 
 .service-card.open { border-color: var(--teal); }
 
+/* Cartes avec formulaire ou liens : pleine largeur une fois ouvertes */
+.service-card-wide.open { grid-column: 1 / -1; }
+.service-card-form { text-align: left; font-size: 13px; }
+.service-card-desc a { justify-content: center; }
+
 /* ── SERVICES COMPLÉMENTAIRES ── */
 .complem-grid {
   display: flex;
