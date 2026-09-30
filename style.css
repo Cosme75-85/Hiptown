@@ -306,12 +306,22 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 }
 .profile-input[readonly] { background: var(--bg); color: var(--text-soft); }
 .profile-help { font-size: 12px; color: var(--text-soft); margin-top: 6px; }
+.profile-name-block { margin-bottom: 6px; }
+.profile-fullname { font-size: 20px; font-weight: 700; color: var(--text-dark); overflow-wrap: anywhere; }
+.profile-nickname-preview { font-size: 14px; color: var(--text-soft); margin-top: 2px; overflow-wrap: anywhere; }
 
 .welcome-title {
   overflow-wrap: anywhere;
   font-size: 20px;
   font-weight: 700;
   color: var(--text-dark);
+}
+
+.welcome-nickname {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-top: 1px;
+  overflow-wrap: anywhere;
 }
 
 .welcome-sub {

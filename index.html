@@ -275,9 +275,22 @@
         </div>
       </div>
 
+      <div class="profile-name-block" id="profile-name-block" hidden>
+        <p class="profile-fullname" id="profile-fullname"></p>
+        <p class="profile-nickname-preview" id="profile-nickname-preview" hidden></p>
+      </div>
+
       <label class="profile-label" for="profile-nickname">Surnom <span style="font-weight:400;">(facultatif)</span></label>
       <input type="text" id="profile-nickname" class="profile-input" placeholder="Ex : Max"/>
-      <p class="profile-help">S'il est rempli, il remplace votre prénom et nom sur votre espace.</p>
+      <p class="profile-help" id="profile-nickname-help">S'il est rempli, il remplace votre prénom et nom sur votre espace.</p>
+
+      <div id="profile-team-fields" hidden>
+        <label class="profile-label" for="profile-jobtitle">Poste</label>
+        <input type="text" id="profile-jobtitle" class="profile-input" placeholder="Ex : Responsable de site"/>
+
+        <label class="profile-label" for="profile-city">Ville</label>
+        <input type="text" id="profile-city" class="profile-input" placeholder="Ex : Bordeaux"/>
+      </div>
 
       <label class="profile-label" for="profile-company">Entreprise</label>
       <input type="text" id="profile-company" class="profile-input"/>
@@ -294,6 +307,7 @@
       <button class="company-badge" id="company-badge" type="button" title="Modifier mon profil" aria-label="Modifier mon profil"></button>
       <div style="flex:1;min-width:0;">
         <h1 class="welcome-title" id="welcome-title"></h1>
+        <p class="welcome-nickname" id="welcome-nickname" hidden></p>
         <p class="welcome-sub" id="welcome-sub">Bienvenue sur votre espace Hiptown</p>
         <button class="profile-link" id="profile-link" type="button">✏️ Mon profil</button>
       </div>

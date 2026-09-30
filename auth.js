@@ -57,7 +57,7 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
  * Les règles Firestore n'autorisent que ces champs (voir firestore.rules).
  *
  * @param {string} uid
- * @param {{ nickname?: string, photo?: string, companyNameHint?: string }} fields
+ * @param {{ nickname?: string, photo?: string, companyNameHint?: string, jobTitle?: string, city?: string }} fields
  */
 export async function updateMyProfile(uid, fields) {
   await updateDoc(doc(db, "users", uid), fields);
