@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile } from "./auth.js";
-import { initProfilePage, isSafePhoto, initialsOf, displayNameOf } from "./profile.js";
+import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
@@ -186,6 +186,10 @@ function buildClient() {
   const { profile, space, company } = session;
   const style = SPACE_STYLES[space];
   const companyName = companyNameOf(session);
+  // Équipe Hiptown : « Prénom Nom » en titre, surnom en petit dessous, puis poste et ville
+  const isTeam = space === "hiptown";
+  const fullName = fullNameOf(profile);
+  const teamInfo = [profile.jobTitle, profile.city].filter(Boolean).join(" · ");
   return {
     // L'id sert à mémoriser l'ordre des tuiles : on garde celui de l'entreprise en coworking
     id: company ? company.id : style.id,
@@ -193,8 +197,11 @@ function buildClient() {
     textColor: company && company.textColor ? company.textColor : style.textColor,
     initials: initialsOf(profile),
     photo: isSafePhoto(profile.photo) ? profile.photo : "",
-    displayName: displayNameOf(profile),
-    subtitle: (companyName || "Entreprise à renseigner") + " · " + style.label,
+    displayName: isTeam && fullName ? fullName : displayNameOf(profile),
+    nickname: isTeam && fullName ? (profile.nickname || "") : "",
+    subtitle: isTeam && teamInfo
+      ? teamInfo
+      : (companyName || "Entreprise à renseigner") + " · " + style.label,
     extraTiles:  Array.isArray(profile.extraTiles)  ? profile.extraTiles  : [],
     hiddenTiles: Array.isArray(profile.hiddenTiles) ? profile.hiddenTiles : []
   };

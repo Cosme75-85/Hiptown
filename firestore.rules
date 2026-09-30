@@ -55,6 +55,8 @@ service cloud.firestore {
     function isValidProfile(data) {
       return isShortText(data, 'nickname', 30)
         && isShortText(data, 'companyNameHint', 100)
+        && isShortText(data, 'jobTitle', 60)
+        && isShortText(data, 'city', 60)
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
@@ -80,11 +82,11 @@ service cloud.firestore {
             && isShortText(request.resource.data, 'site', 40));
 
       // Un admin modifie les comptes de son site, sans pouvoir les déplacer vers un autre site.
-      // Un client ne peut modifier QUE sa photo, son surnom et son entreprise déclarée
+      // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste et sa ville
       allow update: if (canManageUser(resource.data) && canManageUser(request.resource.data))
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['nickname', 'photo', 'companyNameHint'])
+                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city'])
             && isValidProfile(request.resource.data));
 
       allow delete: if canManageUser(resource.data);

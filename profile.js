@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Profil personnalisable (photo, surnom, entreprise)
+//  PORTAIL HIPTOWN — Profil personnalisable (photo, surnom, entreprise, poste, ville)
 // ═══════════════════════════════════════════════════════
 
 const PHOTO_SIZE = 200;          // px : photo carrée, suffisante pour un avatar net
@@ -7,6 +7,8 @@ const PHOTO_QUALITY = 0.8;       // compression JPEG (0 à 1)
 const MAX_PHOTO_LENGTH = 150000; // caractères, même limite que firestore.rules
 const MAX_NICKNAME_LENGTH = 30;
 const MAX_COMPANY_LENGTH = 100;
+const MAX_JOB_TITLE_LENGTH = 60; // même limite que firestore.rules
+const MAX_CITY_LENGTH = 60;
 
 // Seules nos photos (JPEG encodé en base64) sont affichées : une valeur
 // trafiquée dans Firestore ne peut pas injecter autre chose dans la page.
@@ -66,12 +68,18 @@ export function initProfilePage({ getContext, save, onClose }) {
   const photoInput = $("profile-photo-input");
   const nicknameInput = $("profile-nickname");
   const companyInput = $("profile-company");
+  const jobTitleInput = $("profile-jobtitle");
+  const cityInput = $("profile-city");
+  const teamFields = $("profile-team-fields");
+  const nameBlock = $("profile-name-block");
   const companyNote = $("profile-company-note");
   const message = $("profile-message");
   const saveBtn = $("profile-save");
 
   nicknameInput.maxLength = MAX_NICKNAME_LENGTH;
   companyInput.maxLength = MAX_COMPANY_LENGTH;
+  jobTitleInput.maxLength = MAX_JOB_TITLE_LENGTH;
+  cityInput.maxLength = MAX_CITY_LENGTH;
 
   let photo = ""; // photo en cours d'édition (pas encore enregistrée)
 
@@ -88,11 +96,31 @@ export function initProfilePage({ getContext, save, onClose }) {
     $("profile-photo-remove").hidden = !photo;
   }
 
+  /** Équipe Hiptown : « Prénom Nom » en grand, le surnom en petit dessous (aperçu en direct). */
+  function renderNameBlock() {
+    const { profile, space } = getContext();
+    nameBlock.hidden = space !== "hiptown";
+    if (nameBlock.hidden) return;
+    $("profile-fullname").textContent = fullNameOf(profile) || profile.email || "";
+    const nickname = nicknameInput.value.trim();
+    $("profile-nickname-preview").textContent = nickname;
+    $("profile-nickname-preview").hidden = !nickname;
+  }
+
   /** Ouvre la page, pré-remplie avec le profil actuel. */
   function open(infoMessage) {
     const { profile, space, companyName } = getContext();
     photo = isSafePhoto(profile.photo) ? profile.photo : "";
     nicknameInput.value = profile.nickname || "";
+
+    // Poste et ville : seulement pour l'équipe Hiptown
+    const isTeam = space === "hiptown";
+    teamFields.hidden = !isTeam;
+    jobTitleInput.value = profile.jobTitle || "";
+    cityInput.value = profile.city || "";
+    $("profile-nickname-help").textContent = isTeam
+      ? "Affiché en petit sous votre prénom et nom."
+      : "S'il est rempli, il remplace votre prénom et nom sur votre espace.";
 
     // Seul un client « salle de réunion » saisit lui-même son entreprise ;
     // en coworking, c'est l'entreprise attribuée par Hiptown à la validation.
@@ -103,6 +131,7 @@ export function initProfilePage({ getContext, save, onClose }) {
     companyNote.hidden = editable;
 
     renderAvatar();
+    renderNameBlock();
     showMessage(infoMessage || "", false);
     window.hideAllAuth();
     $("step-profile").hidden = false;
@@ -122,6 +151,8 @@ export function initProfilePage({ getContext, save, onClose }) {
     }
   });
 
+  nicknameInput.addEventListener("input", renderNameBlock);
+
   $("profile-photo-remove").addEventListener("click", () => {
     photo = "";
     renderAvatar();
@@ -134,6 +165,10 @@ export function initProfilePage({ getContext, save, onClose }) {
       const company = companyInput.value.trim();
       if (!company) return showMessage("Le nom de l'entreprise est obligatoire.", true);
       fields.companyNameHint = company.slice(0, MAX_COMPANY_LENGTH);
+    }
+    if (space === "hiptown") {
+      fields.jobTitle = jobTitleInput.value.trim().slice(0, MAX_JOB_TITLE_LENGTH);
+      fields.city = cityInput.value.trim().slice(0, MAX_CITY_LENGTH);
     }
 
     saveBtn.disabled = true;
@@ -150,6 +185,11 @@ export function initProfilePage({ getContext, save, onClose }) {
   $("back-from-profile").addEventListener("click", onClose);
 
   return { open };
+}
+
+/** « Prénom Nom » (vide s'ils ne sont pas renseignés). */
+export function fullNameOf(profile) {
+  return [profile.firstName, profile.lastName].filter(Boolean).join(" ");
 }
 
 /** Initiales à afficher quand il n'y a pas de photo : surnom, sinon prénom + nom. */

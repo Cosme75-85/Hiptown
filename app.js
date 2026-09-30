@@ -25,6 +25,7 @@
 
   const welcomeTitle   = document.getElementById("welcome-title");
   const welcomeSub     = document.getElementById("welcome-sub");
+  const welcomeNickname = document.getElementById("welcome-nickname");
   const companyBadge   = document.getElementById("company-badge");
   const logoutBtn      = document.getElementById("logout-btn");
   const tilesGrid      = document.getElementById("tiles-grid");
@@ -264,6 +265,8 @@
     companyBadge.style.backgroundImage = client.photo ? 'url("' + client.photo + '")' : "";
     companyBadge.textContent           = client.photo ? "" : client.initials;
     welcomeTitle.textContent           = client.displayName;
+    welcomeNickname.textContent        = client.nickname || "";
+    welcomeNickname.hidden             = !client.nickname;
     welcomeSub.textContent             = client.subtitle;
   }
 
