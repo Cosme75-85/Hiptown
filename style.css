@@ -1070,3 +1070,15 @@ footer {
 .header-credits-value { font-size: 18px; font-weight: 700; }
 .header-credits-label { font-size: 10px; }
 .header-credits.header-credits-low { background: #fee2e2; color: #dc2626; }
+
+/* Gestion des comptes : cases par ville et par catégorie */
+.account-box { border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--white); margin-bottom: 10px; }
+.account-box > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; font-weight: 700; font-size: 14px; }
+.account-box > summary::-webkit-details-marker { display: none; }
+.account-box > summary::before { content: "▸"; margin-right: 8px; transition: transform 0.2s; }
+.account-box[open] > summary::before { transform: rotate(90deg); }
+.account-box > summary > span:first-of-type { flex: 1; }
+.account-box-body { padding: 0 12px 12px; }
+.account-box-cat { background: #f8fafc; }
+.account-box-cat > summary { font-size: 13px; }
+.account-count { font-weight: 400; color: #94a3b8; font-size: 12px; background: #eef2ff; border-radius: 999px; padding: 2px 10px; }
