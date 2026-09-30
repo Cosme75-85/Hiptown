@@ -417,7 +417,7 @@ function buildAccessFields(container, u) {
   if (u.role !== "admin") {
     const city = cityOfSite(u.siteId) || u.site || myCity || PORTAIL.defaultSite;
     container.innerHTML = label("Ville du client") +
-      `<select class="profile-input acc-city" ${myLevel === "general" ? "" : "disabled"}>${cityOptionsHtml(myLevel === "general" ? city : myCity)}</select>` +
+      `<select class="profile-input acc-city" ${myLevel === "site" ? "disabled" : ""}>${cityOptionsHtml(myLevel === "site" ? myCity : city)}</select>` +
       label("Site du client") + `<select class="profile-input acc-site"></select>`;
     wireCitySite(container.querySelector(".acc-city"), container.querySelector(".acc-site"), u.siteId || "");
     return;
@@ -453,7 +453,8 @@ function readAccessFields(container, role) {
   const myLevel = myAdminLevel();
   const myCity = session?.profile?.site || null;
   if (role !== "admin") {
-    const city = myLevel === "general" ? (container.querySelector(".acc-city")?.value || PORTAIL.defaultSite) : myCity;
+    // Admin général et admin de ville changent la ville ; l'équipe de site reste dans la sienne
+    const city = myLevel === "site" ? myCity : (container.querySelector(".acc-city")?.value || myCity || PORTAIL.defaultSite);
     const siteId = container.querySelector(".acc-site")?.value || null;
     if (myLevel === "site" && !siteId) return { error: "Choisis un des sites que tu gères." };
     return { site: city, siteId, adminLevel: null, siteIds: [] };
@@ -717,6 +718,9 @@ function fillUserForm(form, u) {
       Object.assign(fields, place);
     }
     if (!fields.email) { showMessage("L'email est obligatoire.", true); return; }
+    const myCity = session?.profile?.site || null;
+    if (myCity && fields.site && fields.site !== myCity
+        && !confirm(`${adminNameOf(u)} passera à ${cityLabel(fields.site)} : ce compte sortira de ta liste. Continuer ?`)) return;
     try {
       await updateUser(u.uid, fields);
       Object.assign(u, fields);

@@ -62,6 +62,18 @@ service cloud.firestore {
         && (!('adminLevel' in data) || data.adminLevel == null || data.adminLevel in ['city', 'site']);
     }
 
+    // Un admin de ville peut envoyer un CLIENT de sa ville dans une autre ville
+    // (le client sort alors de son périmètre). Jamais pour un compte admin.
+    function canMoveClientToCity(before, after) {
+      return isAdmin() && myLevel() == 'city'
+        && before.site == mySite()
+        && before.get('role', null) != 'admin' && after.get('role', null) != 'admin'
+        && after.site is string && after.site.size() <= 40
+        && isOptionalText(after, 'siteId', 40)
+        && after.get('adminLevel', null) == null
+        && after.get('siteIds', []).size() == 0;
+    }
+
     function isApprovedRole(r) {
       return isSignedIn()
         && myProfile().role == r
@@ -113,6 +125,7 @@ service cloud.firestore {
       // Un admin modifie les comptes de son périmètre, sans pouvoir les en sortir.
       // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste et sa ville
       allow update: if (canWriteUser(resource.data) && canWriteUser(request.resource.data))
+        || canMoveClientToCity(resource.data, request.resource.data)
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city'])
