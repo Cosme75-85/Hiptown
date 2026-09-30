@@ -497,6 +497,13 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 .info-item:hover { background: var(--bg); color: var(--navy); }
 
 /* ── SERVICES ── */
+.services-part-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 18px 0 10px;
+}
+
 .services-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
