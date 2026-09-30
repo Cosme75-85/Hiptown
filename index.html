@@ -118,7 +118,9 @@
         <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)" required minlength="6"
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <input type="text" id="signup-company" placeholder="Nom de votre entreprise" required maxlength="100"
-               style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+        <select id="signup-site" required
+                style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:#fff;"></select>
         <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
         <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
           Votre compte sera activé après validation par l'équipe Hiptown.
@@ -235,7 +237,8 @@
     <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">Demandes en attente</h3>
     <div class="info-grid" id="admin-pending-list"></div>
 
-    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Créer un compte administrateur</h3>
+    <div id="create-admin-section">
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Créer un compte Hiptown (admin ou équipe)</h3>
     <div class="pin-box" style="max-width:100%;text-align:left;">
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <input type="text" id="new-admin-firstname" placeholder="Prénom"
@@ -247,9 +250,9 @@
              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
       <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire"
              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-      <select id="new-admin-site" hidden
-              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></select>
-      <button class="direct-btn" id="create-admin-btn" style="background:var(--navy);color:#fff;">Créer le compte admin</button>
+      <div id="new-admin-access" style="margin-bottom:10px;"></div>
+      <button class="direct-btn" id="create-admin-btn" style="background:var(--navy);color:#fff;">Créer le compte</button>
+    </div>
     </div>
 
     <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Tous les comptes <span id="admin-all-count" style="font-weight:400;color:#94a3b8;"></span></h3>

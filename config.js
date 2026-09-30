@@ -9,17 +9,32 @@ const PORTAIL = {
   // réservation intégrée de l'espace coworking (resa-coworking.js).
   reservationUrl: "https://script.google.com/macros/s/AKfycbxQi0MRfoJZ4YVroQfKe3l6mUBKwBZH8fMlMCLQa5YavhnKiZMsn6ULtb4-DHth47GsOw/exec",
 
-  // ── Sites Hiptown (villes) ────────────────────────────
-  // Chaque compte est rattaché à un site. Un admin ne voit et ne modifie
-  // que les comptes de son site. Pour ouvrir une nouvelle ville, ajoute-la ici.
-  sites: {
-    bordeaux: "Bordeaux",
+  // ── Villes et sites Hiptown ───────────────────────────
+  // Chaque compte est rattaché à une ville, et chaque client à un site de cette ville.
+  //  - admin général : pas de ville, gère tout
+  //  - admin de ville : gère tous les comptes de sa ville
+  //  - employé : gère les clients des sites qu'on lui attribue
+  // Pour ouvrir une ville ou un site, ajoute-le ici (l'identifiant à gauche ne doit
+  // plus changer ensuite : il est enregistré sur les comptes).
+  cities: {
+    bordeaux: {
+      name: "Bordeaux",
+      sites: {
+        nabo02: "NABO02 — Place de la Bourse CCI Tetris",
+        nabo03: "NABO03 — Ferrere",
+        nabo04: "NABO04 — Chartrons",
+        nabo05: "NABO05 — Place de la Bourse CCI KBRW",
+        nabo06: "NABO06 — Émergence",
+        nabo07: "NABO07 — Tourny",
+        nabo08: "NABO08 — Madéra",
+      },
+    },
   },
   // Crédits coworking proposés par poste négocié dans le contrat (modifiable
   // entreprise par entreprise dans « Gestion des entreprises »)
   creditsPerSeat: 160,
 
-  // Site attribué automatiquement aux clients qui s'inscrivent sur ce portail
+  // Ville proposée par défaut (inscription, création de compte)
   defaultSite: "bordeaux",
 
   // ── Événements ────────────────────────────────────────

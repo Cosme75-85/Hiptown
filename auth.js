@@ -27,7 +27,7 @@ import {
  * @param {string} lastName
  * @param {string} birthDate - format YYYY-MM-DD (issu d'un <input type="date">)
  */
-export async function signUp(email, password, requestedRole, companyNameHint = "", firstName = "", lastName = "", birthDate = "") {
+export async function signUp(email, password, requestedRole, companyNameHint = "", firstName = "", lastName = "", birthDate = "", place = {}) {
   if (requestedRole !== "salle" && requestedRole !== "coworking") {
     throw new Error("Rôle d'inscription invalide.");
   }
@@ -45,7 +45,8 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     status: "pending",      // pending | approved | rejected
     companyId: null,
     companyNameHint,
-    site: PORTAIL.defaultSite, // site Hiptown du portail (voir config.js)
+    site: place.site || PORTAIL.defaultSite, // ville Hiptown (voir config.js PORTAIL.cities)
+    siteId: place.siteId || null,            // site choisi par le client (ex. "nabo06")
     createdAt: serverTimestamp()
   });
   return cred.user;

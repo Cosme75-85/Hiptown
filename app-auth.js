@@ -101,8 +101,11 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
   const lastName  = document.getElementById("signup-lastname").value.trim();
   const birthDate = document.getElementById("signup-birthdate").value;
   const role      = document.querySelector('input[name="signup-role"]:checked').value;
+  const siteId    = document.getElementById("signup-site")?.value || "";
+  if (!siteId) { showAuthError("Choisissez votre site Hiptown."); return; }
   try {
-    await signUp(email, password, role, company, firstName, lastName, birthDate);
+    await signUp(email, password, role, company, firstName, lastName, birthDate,
+      { site: cityOfSite(siteId) || PORTAIL.defaultSite, siteId });
     // Le routage vers l'écran "en attente" se fait automatiquement
   } catch (err) {
     showAuthError(friendlyError(err));
@@ -291,22 +294,156 @@ function adminNameOf(u) {
   return u.nickname ? `${fullName} (${u.nickname})` : fullName;
 }
 
-// ── Sites ──
-// Site géré par l'admin connecté (null = super-admin : tous les sites)
-function adminSite() {
-  return session?.profile?.site || null;
+// ── Villes, sites et niveaux d'admin ──
+// users.site = ville (ex. "bordeaux") ; users.siteId = site du client (ex. "nabo06").
+// Admin sans ville = admin général ; adminLevel "site" = équipe limitée à users.siteIds.
+const LEVEL_LABELS = { general: "Admin général", city: "Admin de ville", site: "Équipe de site" };
+
+function levelOf(p) {
+  if (!p || p.role !== "admin") return null;
+  if (p.adminLevel === "site") return "site";
+  return p.site ? "city" : "general";
+}
+
+function myAdminLevel() {
+  return levelOf(session?.profile) || "general";
+}
+
+// Périmètre de l'admin connecté (null = tout), utilisé pour filtrer les requêtes
+function adminScope() {
+  const p = session?.profile;
+  if (!p || !p.site) return null;
+  if (p.adminLevel === "site") return { city: p.site, siteIds: p.siteIds || [] };
+  return { city: p.site };
+}
+
+function cityLabel(cityId) {
+  if (!cityId) return "Sans ville";
+  return PORTAIL.cities?.[cityId]?.name || cityId;
+}
+
+function cityOfSite(siteId) {
+  return Object.keys(PORTAIL.cities || {}).find(c => PORTAIL.cities[c].sites?.[siteId]) || null;
 }
 
 function siteLabel(siteId) {
   if (!siteId) return "Sans site";
-  return (PORTAIL.sites && PORTAIL.sites[siteId]) || siteId;
+  const city = cityOfSite(siteId);
+  return (city && PORTAIL.cities[city].sites[siteId]) || siteId;
 }
 
-function siteOptionsHtml(selected) {
-  const ids = Object.keys(PORTAIL.sites || {});
+// Villes visibles par l'admin connecté (toutes pour l'admin général)
+function visibleCities() {
+  const scope = adminScope();
+  return scope ? [scope.city] : Object.keys(PORTAIL.cities || {});
+}
+
+function cityOptionsHtml(selected) {
+  const ids = Object.keys(PORTAIL.cities || {});
   if (selected && !ids.includes(selected)) ids.push(selected);
-  return `<option value="">— Sans site —</option>` +
-    ids.map(id => `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(siteLabel(id))}</option>`).join("");
+  return ids.map(id => `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(cityLabel(id))}</option>`).join("");
+}
+
+/** Sites regroupés par ville, limités à ce que l'admin connecté gère. */
+function siteOptionsHtml(selected, emptyLabel = "— Choisir un site —") {
+  const scope = adminScope();
+  const groups = visibleCities().map(city => {
+    const ids = Object.keys(PORTAIL.cities?.[city]?.sites || {})
+      .filter(id => !scope?.siteIds || scope.siteIds.includes(id));
+    return ids.length ? `<optgroup label="${escapeHtml(cityLabel(city))}">${ids.map(id =>
+      `<option value="${escapeHtml(id)}" ${id === selected ? "selected" : ""}>${escapeHtml(siteLabel(id))}</option>`).join("")}</optgroup>` : "";
+  }).join("");
+  const known = selected && cityOfSite(selected) ? "" : (selected ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>` : "");
+  return `<option value="">${emptyLabel}</option>${known}${groups}`;
+}
+
+/** Cases à cocher des sites d'une ville (équipe de site). */
+function siteCheckboxesHtml(city, checked = []) {
+  const sites = PORTAIL.cities?.[city]?.sites || {};
+  const ids = Object.keys(sites);
+  if (!ids.length) return '<p class="profile-help">Aucun site configuré pour cette ville.</p>';
+  return ids.map(id => `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;">
+      <input type="checkbox" class="site-check" value="${escapeHtml(id)}" ${checked.includes(id) ? "checked" : ""}/> ${escapeHtml(sites[id])}
+    </label>`).join("");
+}
+
+/** Libellé court du rattachement d'un compte (ville, niveau, sites). */
+function accountPlaceLabel(u) {
+  const level = levelOf(u);
+  if (level === "general") return LEVEL_LABELS.general;
+  if (level === "city") return `${LEVEL_LABELS.city} — ${cityLabel(u.site)}`;
+  if (level === "site") return `${LEVEL_LABELS.site} — ${(u.siteIds || []).map(id => siteLabel(id).split(" — ")[0]).join(", ") || "aucun site"}`;
+  return u.siteId ? siteLabel(u.siteId) : `${cityLabel(u.site)} · site à choisir`;
+}
+
+/** Titre du panneau selon le niveau de l'admin connecté. */
+function adminScopeTitle() {
+  const p = session?.profile;
+  const level = myAdminLevel();
+  if (level === "general") return "Admin général — toutes les villes et tous les sites";
+  if (level === "city") return `Admin de ville — ${cityLabel(p.site)} (tous les sites)`;
+  return `Équipe — ${cityLabel(p.site)} · ${(p.siteIds || []).map(siteLabel).join(", ") || "aucun site attribué"}`;
+}
+
+/**
+ * Champs « accès » d'un compte : niveau, ville et sites pour un compte Hiptown,
+ * site pour un client. L'admin connecté ne propose que ce qu'il a le droit de donner.
+ */
+function buildAccessFields(container, u) {
+  const myLevel = myAdminLevel();
+  const myCity = session?.profile?.site || null;
+  const label = text => `<label class="profile-label">${text}</label>`;
+
+  if (u.role !== "admin") {
+    container.innerHTML = label("Site du client") +
+      `<select class="profile-input acc-site">${siteOptionsHtml(u.siteId || "", "— Site à choisir —")}</select>`;
+    return;
+  }
+
+  const draw = (level, city, checked) => {
+    const levels = Object.entries(LEVEL_LABELS).filter(([v]) => v !== "general" || myLevel === "general");
+    const cityField = level === "general" ? "" : label("Ville") + (myLevel === "general"
+      ? `<select class="profile-input acc-city">${cityOptionsHtml(city)}</select>`
+      : `<input type="text" class="profile-input" value="${escapeHtml(cityLabel(myCity))}" readonly/>`);
+    container.innerHTML = label("Niveau d'accès") +
+      `<select class="profile-input acc-level">${levels.map(([v, l]) =>
+        `<option value="${v}" ${v === level ? "selected" : ""}>${l}</option>`).join("")}</select>` +
+      cityField +
+      (level === "site" ? label("Sites gérés") + `<div class="acc-sites">${siteCheckboxesHtml(city, checked)}</div>` : "") +
+      `<p class="profile-help">${level === "general" ? "Voit et gère toutes les villes et tous les sites."
+        : level === "city" ? "Voit et gère tous les comptes et tous les sites de sa ville."
+        : "Gère uniquement les clients des sites cochés."}</p>`;
+    const read = () => ({
+      level: container.querySelector(".acc-level").value,
+      city: container.querySelector(".acc-city")?.value || (myLevel === "general" ? city : myCity) || PORTAIL.defaultSite,
+      checked: [...container.querySelectorAll(".site-check:checked")].map(c => c.value)
+    });
+    container.querySelector(".acc-level").addEventListener("change", () => { const r = read(); draw(r.level, r.city, r.checked); });
+    container.querySelector(".acc-city")?.addEventListener("change", () => { const r = read(); draw(r.level, r.city, []); });
+  };
+  const level = levelOf(u) === "general" && myLevel !== "general" ? "city" : (levelOf(u) || "city");
+  draw(level, myLevel === "general" ? (u.site || PORTAIL.defaultSite) : myCity, u.siteIds || []);
+}
+
+/** Lit les champs de buildAccessFields et renvoie les champs Firestore (ou { error }). */
+function readAccessFields(container, role) {
+  const myLevel = myAdminLevel();
+  const myCity = session?.profile?.site || null;
+  if (role !== "admin") {
+    const siteId = container.querySelector(".acc-site")?.value || null;
+    if (!siteId) return { siteId: null, adminLevel: null, siteIds: [] };
+    return { site: cityOfSite(siteId) || myCity || PORTAIL.defaultSite, siteId, adminLevel: null, siteIds: [] };
+  }
+  const level = container.querySelector(".acc-level")?.value || "city";
+  if (level === "general") {
+    if (myLevel !== "general") return { error: "Seul l'admin général peut créer un autre admin général." };
+    return { site: null, siteId: null, adminLevel: null, siteIds: [] };
+  }
+  const city = myLevel === "general" ? (container.querySelector(".acc-city")?.value || PORTAIL.defaultSite) : myCity;
+  if (level === "city") return { site: city, siteId: null, adminLevel: "city", siteIds: [] };
+  const siteIds = [...container.querySelectorAll(".site-check:checked")].map(c => c.value);
+  if (!siteIds.length) return { error: "Coche au moins un site pour ce membre de l'équipe." };
+  return { site: city, siteId: null, adminLevel: "site", siteIds };
 }
 
 const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Coworking" };
@@ -367,6 +504,7 @@ function createPendingCard(u, companies, onDone) {
       <p style="font-size:12px;color:#64748b;">
         Demandé : ${u.requestedRole === "coworking" ? "Coworking" : "Salle de réunion"}
         ${u.companyNameHint ? " — " + escapeHtml(u.companyNameHint) : ""}
+        <br>Site : ${escapeHtml(accountPlaceLabel(u))}
       </p>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
         <select class="approve-role" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
@@ -402,21 +540,22 @@ document.getElementById("admin-search")?.addEventListener("input", () => renderA
 
 export async function renderAdminPanel() {
   const pendingList = document.getElementById("admin-pending-list");
-  const site        = adminSite();
+  const scope       = adminScope();
   const companies   = await listCompanies();
   adminCompaniesCache = companies;
 
   const siteTitle = document.getElementById("admin-site-label");
-  if (siteTitle) siteTitle.textContent = site ? "Site : " + siteLabel(site) : "Tous les sites (super-admin)";
+  if (siteTitle) siteTitle.textContent = adminScopeTitle();
 
-  // Choix du site du nouvel admin : réservé au super-admin
-  const newAdminSite = document.getElementById("new-admin-site");
-  if (newAdminSite) {
-    newAdminSite.hidden = !!site;
-    if (!site) newAdminSite.innerHTML = siteOptionsHtml(PORTAIL.defaultSite);
+  // Création de comptes Hiptown : admin général et admins de ville uniquement
+  const createSection = document.getElementById("create-admin-section");
+  if (createSection) createSection.hidden = myAdminLevel() === "site";
+  const newAdminAccess = document.getElementById("new-admin-access");
+  if (newAdminAccess && myAdminLevel() !== "site") {
+    buildAccessFields(newAdminAccess, { role: "admin", adminLevel: "city", site: scope?.city || PORTAIL.defaultSite });
   }
 
-  const pending = await listPendingUsers(site);
+  const pending = await listPendingUsers(scope);
   pendingList.innerHTML = pending.length
     ? ""
     : '<p style="color:#94a3b8;padding:12px;">Aucune demande en attente.</p>';
@@ -428,7 +567,7 @@ export async function renderAdminPanel() {
     }));
   });
 
-  adminUsersCache = await listAllUsers(site);
+  adminUsersCache = await listAllUsers(scope);
   adminUsersCache.sort((a, b) => adminNameOf(a).localeCompare(adminNameOf(b), "fr"));
   renderAllUsersList();
   renderUnassignedTool();
@@ -466,7 +605,7 @@ function createUserCard(u, companyNames) {
         <span style="font-size:11px;color:#94a3b8;">
           ${escapeHtml(u.email)} — ${escapeHtml(ROLE_LABELS[u.role] || "Sans rôle")}
           · <span style="color:${statusColor};">${escapeHtml(STATUS_LABELS[u.status] || u.status || "—")}</span>
-          ${adminSite() ? "" : " · " + escapeHtml(siteLabel(u.site))}
+          · ${escapeHtml(accountPlaceLabel(u))}
         </span>
       </span>
       <button class="direct-btn edit-user-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
@@ -483,7 +622,9 @@ function createUserCard(u, companyNames) {
 
 function fillUserForm(form, u) {
   const isMe = session && u.uid === session.uid;
-  const canChangeSite = !adminSite(); // seul le super-admin déplace un compte d'un site à l'autre
+  const myLevel = myAdminLevel();
+  // Les comptes Hiptown (admins) se règlent par niveau ; l'équipe de site ne touche pas aux admins
+  const canSetAdmin = myLevel !== "site";
   const field = (label, html) => `<label class="profile-label">${label}</label>${html}`;
   const input = (cls, value, type = "text") =>
     `<input type="${type}" class="profile-input ${cls}" value="${escapeHtml(value || "")}"/>`;
@@ -496,7 +637,7 @@ function fillUserForm(form, u) {
     ${field("Email (fiche)", input("f-email", u.email, "email"))}
     ${field("Entreprise déclarée", input("f-company-hint", u.companyNameHint))}
     ${field("Rôle", `<select class="profile-input f-role" ${isMe ? "disabled" : ""}>
-      ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
+      ${Object.entries(ROLE_LABELS).filter(([v]) => canSetAdmin || v !== "admin").map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
       ${u.role ? "" : '<option value="" selected>— Sans rôle —</option>'}
     </select>`)}
     ${field("Entreprise coworking (pour le rôle Coworking)", `<select class="profile-input f-company">
@@ -506,9 +647,7 @@ function fillUserForm(form, u) {
     ${field("Statut", `<select class="profile-input f-status" ${isMe ? "disabled" : ""}>
       ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${u.status === v ? "selected" : ""}>${l}</option>`).join("")}
     </select>`)}
-    ${field("Site", canChangeSite
-      ? `<select class="profile-input f-site">${siteOptionsHtml(u.site || "")}</select>`
-      : `<input type="text" class="profile-input" value="${escapeHtml(siteLabel(u.site))}" readonly/>`)}
+    <div class="f-access"></div>
     ${isMe ? '<p class="profile-help">Pour éviter de perdre ton accès, ton propre rôle et ton statut ne sont pas modifiables ici.</p>' : ""}
     <p class="profile-help f-message" role="status" hidden></p>
     <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;">
@@ -517,6 +656,17 @@ function fillUserForm(form, u) {
     </div>`;
 
   enableNewCompanyOption(form.querySelector(".f-company"), adminCompaniesCache, u.companyNameHint || "");
+  const access = form.querySelector(".f-access");
+  const renderAccess = () => {
+    const role = form.querySelector(".f-role").value;
+    if (isMe) {
+      access.innerHTML = field("Accès", `<input type="text" class="profile-input" value="${escapeHtml(accountPlaceLabel(u))}" readonly/>`);
+    } else {
+      buildAccessFields(access, { ...u, role });
+    }
+  };
+  form.querySelector(".f-role").addEventListener("change", renderAccess);
+  renderAccess();
   const message = form.querySelector(".f-message");
   const showMessage = (text, isError) => {
     message.textContent = text;
@@ -537,12 +687,12 @@ function fillUserForm(form, u) {
       fields.role = role;
       fields.status = form.querySelector(".f-status").value;
     }
-    if (canChangeSite) fields.site = form.querySelector(".f-site").value || null;
-    if (!fields.email) { showMessage("L'email est obligatoire.", true); return; }
-    if (canChangeSite && isMe && fields.site) {
-      const ok = confirm(`Ton compte sera rattaché à ${siteLabel(fields.site)} : tu ne verras plus que les comptes de ce site. Continuer ?`);
-      if (!ok) return;
+    if (!isMe) {
+      const place = readAccessFields(access, role);
+      if (place.error) { showMessage(place.error, true); return; }
+      Object.assign(fields, place);
     }
+    if (!fields.email) { showMessage("L'email est obligatoire.", true); return; }
     try {
       await updateUser(u.uid, fields);
       Object.assign(u, fields);
@@ -572,21 +722,22 @@ function fillUserForm(form, u) {
 function renderUnassignedTool() {
   const box = document.getElementById("admin-unassigned");
   if (!box) return;
-  const unassigned = adminSite() ? [] : adminUsersCache.filter(u => !u.site && u.role !== "admin");
+  const unassigned = myAdminLevel() === "site" ? [] : adminUsersCache.filter(u => !u.siteId && u.role !== "admin");
   box.hidden = unassigned.length === 0;
   if (box.hidden) return;
   box.innerHTML = `
     <p style="font-size:13px;margin-bottom:8px;">
-      <b>${unassigned.length} compte(s) client sans site.</b> Rattache-les à un site pour que son administrateur les voie.
+      <b>${unassigned.length} compte(s) client sans site.</b> Rattache-les à un site pour que l'équipe de ce site les voie (tu pourras corriger au cas par cas avec « Modifier »).
     </p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-      <select class="profile-input unassigned-site" style="width:auto;margin:0;">${siteOptionsHtml(PORTAIL.defaultSite)}</select>
+      <select class="profile-input unassigned-site" style="width:auto;margin:0;">${siteOptionsHtml("")}</select>
       <button class="direct-btn unassigned-btn" type="button" style="margin-top:0;width:auto;padding:8px 14px;background:var(--navy);color:#fff;">Rattacher</button>
     </div>`;
   box.querySelector(".unassigned-btn").addEventListener("click", async () => {
-    const site = box.querySelector(".unassigned-site").value;
-    if (!site) return;
-    await Promise.all(unassigned.map(u => updateUser(u.uid, { site })));
+    const siteId = box.querySelector(".unassigned-site").value;
+    if (!siteId) return;
+    const site = cityOfSite(siteId);
+    await Promise.all(unassigned.map(u => updateUser(u.uid, { site, siteId })));
     renderAdminPanel();
   });
 }
@@ -600,7 +751,7 @@ async function renderCompaniesPanel() {
   const companies = await listCompanies();
   companies.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "fr", { sensitivity: "base" }));
   // Nombre de comptes rattachés à chaque entreprise (parmi les comptes visibles par l'admin)
-  const users = await listAllUsers(adminSite());
+  const users = await listAllUsers(adminScope());
   const members = {};
   users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
   companiesCache = companies;
@@ -797,7 +948,7 @@ const notifDropdown = document.getElementById("notif-dropdown");
 
 async function refreshNotifBadge() {
   if (!notifBadge) return;
-  const pending = await listPendingUsers(adminSite());
+  const pending = await listPendingUsers(adminScope());
   const orders  = await listUnseenBreakfastOrders();
   const total = pending.length + orders.length;
   if (total > 0) {
@@ -810,7 +961,7 @@ async function refreshNotifBadge() {
 
 async function renderNotifDropdown() {
   const companies = await listCompanies();
-  const pending = await listPendingUsers(adminSite());
+  const pending = await listPendingUsers(adminScope());
   const orders  = await listUnseenBreakfastOrders();
   notifDropdown.innerHTML = "";
 
@@ -941,11 +1092,12 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   const firstName = document.getElementById("new-admin-firstname").value.trim();
   const lastName = document.getElementById("new-admin-lastname").value.trim();
   if (!email || password.length < 6) { alert("Email + mot de passe (6 car. min.) requis."); return; }
-  // Un admin de site crée des admins pour son site ; le super-admin choisit le site
-  const siteSelect = document.getElementById("new-admin-site");
-  const site = adminSite() || (siteSelect ? siteSelect.value || null : null);
+  // Niveau, ville et sites du nouveau compte (voir buildAccessFields)
+  const place = readAccessFields(document.getElementById("new-admin-access"), "admin");
+  if (place.error) { alert(place.error); return; }
+  const { site, ...extra } = place;
   try {
-    await adminCreateAccount(email, password, "admin", null, firstName, lastName, site);
+    await adminCreateAccount(email, password, "admin", null, firstName, lastName, site, extra);
   } catch (err) {
     alert(friendlyError(err));
     return;
@@ -956,3 +1108,7 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   document.getElementById("new-admin-lastname").value = "";
   renderAdminPanel();
 });
+
+// Choix du site à l'inscription (sites regroupés par ville)
+const signupSite = document.getElementById("signup-site");
+if (signupSite) signupSite.innerHTML = siteOptionsHtml("", "— Votre site Hiptown —");

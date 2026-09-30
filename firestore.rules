@@ -24,20 +24,42 @@ service cloud.firestore {
         && myProfile().status == 'approved';
     }
 
-    // Site géré par l'admin connecté (ex. "bordeaux").
-    // Un admin SANS site est un super-admin : il gère tous les sites.
+    // ── Niveaux d'administration ──────────────────────────
+    // Le champ « site » d'un compte contient sa VILLE (ex. "bordeaux").
+    //  - admin général : admin SANS ville → gère tous les comptes, toutes les villes
+    //  - admin de ville : admin avec une ville → gère tous les comptes de sa ville
+    //  - employé (adminLevel == 'site') : gère les clients de ses sites
+    //    (siteIds, ex. ["nabo06"]) dans sa ville ; un client a un seul site (siteId).
     function mySite() {
       return myProfile().get('site', null);
+    }
+
+    function myLevel() {
+      return myProfile().get('adminLevel', null) == 'site' ? 'site'
+        : (mySite() == null ? 'general' : 'city');
     }
 
     function isSuperAdmin() {
       return isAdmin() && mySite() == null;
     }
 
-    // L'admin connecté peut-il gérer ce compte ? (super-admin, ou même site que lui)
+    // L'admin connecté peut-il voir ce compte ?
     function canManageUser(data) {
       return isSuperAdmin()
-        || (isAdmin() && data.site == mySite());
+        || (isAdmin() && myLevel() == 'city' && data.site == mySite())
+        || (isAdmin() && myLevel() == 'site' && data.site == mySite()
+            && data.siteId in myProfile().get('siteIds', []));
+    }
+
+    // Ce que l'admin connecté a le droit d'écrire sur un compte :
+    // un admin de ville crée des admins de ville et des employés de SA ville (jamais
+    // d'admin général : sa ville est imposée) ; un employé ne gère que des clients.
+    function canWriteUser(data) {
+      return canManageUser(data)
+        && (myLevel() != 'site' || data.role != 'admin')
+        && isOptionalText(data, 'siteId', 40)
+        && (!('siteIds' in data) || (data.siteIds is list && data.siteIds.size() <= 30))
+        && (!('adminLevel' in data) || data.adminLevel == null || data.adminLevel in ['city', 'site']);
     }
 
     function isApprovedRole(r) {
@@ -49,6 +71,11 @@ service cloud.firestore {
     // Texte facultatif d'au plus max caractères
     function isShortText(data, field, max) {
       return !(field in data) || (data[field] is string && data[field].size() <= max);
+    }
+
+    // Idem, mais la valeur peut aussi être null
+    function isOptionalText(data, field, max) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= max);
     }
 
     // Champs de profil qu'un client peut modifier lui-même (page « Mon profil »)
@@ -65,13 +92,13 @@ service cloud.firestore {
 
     // Comptes utilisateurs
     match /users/{userId} {
-      // Un admin ne voit que les comptes de son site (le super-admin voit tout)
+      // Un admin ne voit que les comptes de son périmètre (l'admin général voit tout)
       allow read: if isOwner(userId) || canManageUser(resource.data);
 
       // Inscription : compte en attente, sans rôle, sans entreprise officielle ni tuiles imposées
       // (l'e-mail est comparé en minuscules : Firebase Auth l'enregistre ainsi)
-      // Un admin peut aussi créer directement un compte déjà validé, sur son site.
-      allow create: if canManageUser(request.resource.data)
+      // Un admin peut aussi créer directement un compte déjà validé, dans son périmètre.
+      allow create: if canWriteUser(request.resource.data)
         || (isOwner(userId)
             && request.resource.data.status == 'pending'
             && request.resource.data.role == null
@@ -79,17 +106,19 @@ service cloud.firestore {
             && !request.resource.data.keys().hasAny(['extraTiles', 'hiddenTiles', 'photo', 'nickname'])
             && request.resource.data.email is string
             && request.resource.data.email.lower() == request.auth.token.email.lower()
-            && isShortText(request.resource.data, 'site', 40));
+            && isShortText(request.resource.data, 'site', 40)
+            && isOptionalText(request.resource.data, 'siteId', 40)
+            && !request.resource.data.keys().hasAny(['adminLevel', 'siteIds']));
 
-      // Un admin modifie les comptes de son site, sans pouvoir les déplacer vers un autre site.
+      // Un admin modifie les comptes de son périmètre, sans pouvoir les en sortir.
       // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste et sa ville
-      allow update: if (canManageUser(resource.data) && canManageUser(request.resource.data))
+      allow update: if (canWriteUser(resource.data) && canWriteUser(request.resource.data))
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city'])
             && isValidProfile(request.resource.data));
 
-      allow delete: if canManageUser(resource.data);
+      allow delete: if canWriteUser(resource.data);
     }
 
     // Entreprises (coworking)
