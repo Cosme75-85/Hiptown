@@ -726,17 +726,29 @@ function renderAllUsersList() {
     return;
   }
 
-  // Admin général : une case par ville, plus « Sans ville » (admins généraux, anciens comptes)
+  // Admin général : une case « Administrateur général » en tête, puis une case par ville
+  const generalAdmins = users.filter(u => !u.site && u.role === "admin");
+  if (generalAdmins.length || !term) {
+    const box = accountBox("general", "Administrateur général", generalAdmins.length, !!term && generalAdmins.length > 0, "city");
+    fillCategory(box.querySelector(".account-box-body"), "general", generalAdmins);
+    allList.appendChild(box);
+  }
   const cities = Object.keys(PORTAIL.cities || {});
   users.forEach(u => { if (u.site && !cities.includes(u.site)) cities.push(u.site); });
-  [...cities, ""].forEach(city => {
-    const cityUsers = users.filter(u => (u.site || "") === city);
-    if ((!city || term) && !cityUsers.length) return;
-    const title = city ? cityLabel(city) : "Sans ville (admins généraux, comptes à rattacher)";
-    const box = accountBox("city|" + city, title, cityUsers.length, !!term && cityUsers.length > 0, "city");
+  cities.forEach(city => {
+    const cityUsers = users.filter(u => u.site === city);
+    if (term && !cityUsers.length) return;
+    const box = accountBox("city|" + city, cityLabel(city), cityUsers.length, !!term && cityUsers.length > 0, "city");
     renderCategories(box.querySelector(".account-box-body"), city, cityUsers);
     allList.appendChild(box);
   });
+  // Anciens comptes clients sans ville : à rattacher avec « Modifier »
+  const orphans = users.filter(u => !u.site && u.role !== "admin");
+  if (orphans.length) {
+    const box = accountBox("orphans", "Comptes sans ville (à rattacher)", orphans.length, !!term, "city");
+    fillCategory(box.querySelector(".account-box-body"), "orphans", orphans);
+    allList.appendChild(box);
+  }
 }
 
 function createUserCard(u, companyNames) {
