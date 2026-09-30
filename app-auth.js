@@ -479,6 +479,9 @@ function readAccessFields(container, role) {
   return { site: city, siteId: null, adminLevel: "site", siteIds };
 }
 
+// Entreprise des comptes administrateurs Hiptown
+const HIPTOWN_COMPANY = "Hiptown";
+
 const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Coworking" };
 const STATUS_LABELS = { approved: "Validé", pending: "En attente", rejected: "Refusé" };
 
@@ -628,7 +631,8 @@ function renderAllUsersList() {
 function createUserCard(u, companyNames) {
   const card = document.createElement("div");
   card.className = "info-card";
-  const companyName = companyNames[u.companyId] || u.companyNameHint || "Entreprise non renseignée";
+  const companyName = companyNames[u.companyId] || u.companyNameHint
+    || (u.role === "admin" ? HIPTOWN_COMPANY : "Entreprise non renseignée");
   const statusColor = u.status === "approved" ? "#166534" : u.status === "rejected" ? "#dc2626" : "#c2410c";
   card.innerHTML = `
     <div class="info-item" style="gap:10px;">
@@ -713,7 +717,7 @@ function fillUserForm(form, u) {
       firstName: form.querySelector(".f-firstname").value.trim(),
       lastName: form.querySelector(".f-lastname").value.trim(),
       email: form.querySelector(".f-email").value.trim().toLowerCase(),
-      companyNameHint: form.querySelector(".f-company-hint").value.trim(),
+      companyNameHint: form.querySelector(".f-company-hint").value.trim() || (role === "admin" ? HIPTOWN_COMPANY : ""),
       companyId: role === "coworking" ? (form.querySelector(".f-company").value.replace("__new__", "") || null) : null
     };
     if (!isMe) {
@@ -1133,7 +1137,8 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   if (place.error) { alert(place.error); return; }
   const { site, ...extra } = place;
   try {
-    await adminCreateAccount(email, password, "admin", null, firstName, lastName, site, extra);
+    await adminCreateAccount(email, password, "admin", null, firstName, lastName, site,
+      { ...extra, companyNameHint: HIPTOWN_COMPANY });
   } catch (err) {
     alert(friendlyError(err));
     return;
