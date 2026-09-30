@@ -382,7 +382,10 @@ function siteCheckboxesHtml(city, checked = []) {
   const sites = PORTAIL.cities?.[city]?.sites || {};
   const ids = Object.keys(sites);
   if (!ids.length) return '<p class="profile-help">Aucun site configuré pour cette ville.</p>';
-  return ids.map(id => `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;">
+  const all = ids.every(id => checked.includes(id));
+  return `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;font-weight:700;">
+      <input type="checkbox" class="site-all" ${all ? "checked" : ""}/> Tous les sites
+    </label>` + ids.map(id => `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;">
       <input type="checkbox" class="site-check" value="${escapeHtml(id)}" ${checked.includes(id) ? "checked" : ""}/> ${escapeHtml(sites[id])}
     </label>`).join("");
 }
@@ -417,7 +420,7 @@ function buildAccessFields(container, u) {
   if (u.role !== "admin") {
     const city = cityOfSite(u.siteId) || u.site || myCity || PORTAIL.defaultSite;
     container.innerHTML = label("Ville du client") +
-      `<select class="profile-input acc-city" ${myLevel === "general" ? "" : "disabled"}>${cityOptionsHtml(myLevel === "general" ? city : myCity)}</select>` +
+      `<select class="profile-input acc-city" ${myLevel === "site" ? "disabled" : ""}>${cityOptionsHtml(myLevel === "site" ? myCity : city)}</select>` +
       label("Site du client") + `<select class="profile-input acc-site"></select>`;
     wireCitySite(container.querySelector(".acc-city"), container.querySelector(".acc-site"), u.siteId || "");
     return;
@@ -442,6 +445,11 @@ function buildAccessFields(container, u) {
       checked: [...container.querySelectorAll(".site-check:checked")].map(c => c.value)
     });
     container.querySelector(".acc-level").addEventListener("change", () => { const r = read(); draw(r.level, r.city, r.checked); });
+    // « Tous les sites » coche ou décoche tout, et suit les cases une à une
+    const allBox = container.querySelector(".site-all");
+    const boxes = [...container.querySelectorAll(".site-check")];
+    allBox?.addEventListener("change", () => boxes.forEach(b => { b.checked = allBox.checked; }));
+    boxes.forEach(b => b.addEventListener("change", () => { if (allBox) allBox.checked = boxes.every(x => x.checked); }));
     container.querySelector(".acc-city")?.addEventListener("change", () => { const r = read(); draw(r.level, r.city, []); });
   };
   const level = levelOf(u) === "general" && myLevel !== "general" ? "city" : (levelOf(u) || "city");
@@ -453,7 +461,8 @@ function readAccessFields(container, role) {
   const myLevel = myAdminLevel();
   const myCity = session?.profile?.site || null;
   if (role !== "admin") {
-    const city = myLevel === "general" ? (container.querySelector(".acc-city")?.value || PORTAIL.defaultSite) : myCity;
+    // Admin général et admin de ville changent la ville ; l'équipe de site reste dans la sienne
+    const city = myLevel === "site" ? myCity : (container.querySelector(".acc-city")?.value || myCity || PORTAIL.defaultSite);
     const siteId = container.querySelector(".acc-site")?.value || null;
     if (myLevel === "site" && !siteId) return { error: "Choisis un des sites que tu gères." };
     return { site: city, siteId, adminLevel: null, siteIds: [] };
@@ -717,6 +726,9 @@ function fillUserForm(form, u) {
       Object.assign(fields, place);
     }
     if (!fields.email) { showMessage("L'email est obligatoire.", true); return; }
+    const myCity = session?.profile?.site || null;
+    if (myCity && fields.site && fields.site !== myCity
+        && !confirm(`${adminNameOf(u)} passera à ${cityLabel(fields.site)} : ce compte sortira de ta liste. Continuer ?`)) return;
     try {
       await updateUser(u.uid, fields);
       Object.assign(u, fields);
