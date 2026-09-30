@@ -14,7 +14,9 @@
   const stepDashboard      = document.getElementById("step-dashboard");
   const stepInfo           = document.getElementById("step-info");
   const stepServices       = document.getElementById("step-services");
-  const stepComplem        = document.getElementById("step-complem");
+  const stepMesInfos       = document.getElementById("step-mes-infos");
+  const stepContrat        = document.getElementById("step-contrat");
+  const stepInfoCowork     = document.getElementById("step-info-cowork");
   const stepSalleInfo      = document.getElementById("step-salle-info");
   const stepHiptownOutils  = document.getElementById("step-hiptown-outils");
   const stepHiptownEspaces = document.getElementById("step-hiptown-espaces");
@@ -29,7 +31,6 @@
 
   const backFromInfo        = document.getElementById("back-from-info");
   const backFromServ        = document.getElementById("back-from-services");
-  const backFromComp        = document.getElementById("back-from-complem");
   const backFromSalleInfo   = document.getElementById("back-from-salle-info");
   const backFromHipOutils   = document.getElementById("back-from-hiptown-outils");
   const backFromHipEspaces  = document.getElementById("back-from-hiptown-espaces");
@@ -110,11 +111,13 @@
     resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: PORTAIL.reservationUrl },
     resacowork:{ title: "Réserver une salle de réunion", desc: "Les 4 salles, sans paiement",   icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "resacowork" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
+    mesinfos:  { title: "Mes informations",          desc: "Mon contrat, mes factures",              icon: "👤", bg: "#e0f2fe", color: "#0369a1", url: null, action: "mesinfos" },
+    infocowork:{ title: "Informations du coworking", desc: "Équipements, espaces et services",       icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "infocowork" },
     incident:  { title: "Signaler un incident",      desc: "Signalez un dysfonctionnement",          icon: "⚠️", bg: "#fee2e2", color: "#dc2626", url: "https://noteforms.com/forms/nabo0609-emergence-cw-dcepd5" },
     info:      { title: "Informations",              desc: "Guides pratiques & équipements",         icon: "ℹ️", bg: "#f0f0ff", color: "#4338ca", url: null, action: "info" },
     salleinfo: { title: "Utilisation des salles",    desc: "Internet, écran, sortie...",             icon: "🗓️", bg: "#e0f2fe", color: "#0369a1", url: null, action: "salleinfo" },
-    services:  { title: "Les services",              desc: "Tout ce qui est inclus",                 icon: "✨", bg: "#f0fdf4", color: "#166534", url: null, action: "services" },
-    complem:   { title: "Services complémentaires",  desc: "Parking, espace commun...",              icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
+    services:  { title: "Mes services",              desc: "Inclus et en option",                    icon: "✨", bg: "#f0fdf4", color: "#166534", url: null, action: "services" },
+    complem:   { title: "Services en option",        desc: "Parking, espace commun...",              icon: "➕", bg: "#fff7ed", color: "#c2410c", url: null, action: "complem" },
     adresses:  { title: "Les bonnes adresses",       desc: "Restaurants, cafés, services...",        icon: "📍", bg: "#fce7f3", color: "#be185d", url: "https://www.google.com/maps/d/edit?mid=1qkXCeH3ESbRKg0VrPkCHDOGk9paZ4d8&usp=sharing" },
     avis:      { title: "⭐ Laisser un avis Google", desc: "Partagez votre expérience !",            icon: "⭐", bg: "#fef9c3", color: "#854d0e", url: "https://g.page/r/CU4ouN9TY1R8EBM/review", wide: true },
     hiptools:  { title: "Outils Hiptown",            desc: "Facturation, organisation, plateformes", icon: "🛠️", bg: "#1e1847", color: "#ffe700", url: null, action: "hiptools" },
@@ -126,8 +129,8 @@
   };
 
   const SPACE_TILES = {
-    salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "complem", "tarifssalle", "tarifscoworking", "avis"],
-    coworking: ["resacowork", "accueil", "marcel", "factures", "incident", "info", "services", "complem", "adresses", "avis"],
+    salle:     ["accueil", "resasalle", "salleinfo", "adresses", "services", "tarifssalle", "tarifscoworking", "avis"],
+    coworking: ["resacowork", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "gestion", "accueil", "incident"],
   };
 
@@ -227,7 +230,7 @@
 
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
-    [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepComplem,
+    [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepMesInfos, stepContrat, stepInfoCowork,
      stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork]
     .forEach(function(s) { s.hidden = true; });
     eventsBanner.hidden = true;
@@ -359,8 +362,10 @@
           e.preventDefault();
           hideAll();
           if (tile.action === "info")       stepInfo.hidden           = false;
-          if (tile.action === "services")   stepServices.hidden       = false;
-          if (tile.action === "complem")    stepComplem.hidden        = false;
+          if (tile.action === "services")   openServices(false);
+          if (tile.action === "complem")    openServices(true);
+          if (tile.action === "mesinfos")   stepMesInfos.hidden       = false;
+          if (tile.action === "infocowork") stepInfoCowork.hidden     = false;
           if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
           if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
           if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
@@ -437,9 +442,37 @@
     });
   }
 
+  // ── Mes services : une page, partie « inclus » puis partie « en option » ──
+  function openServices(scrollToOptions) {
+    hideAll(); stepServices.hidden = false;
+    // Les repas avec une réunion ne concernent que la réservation coworking
+    document.getElementById("option-repas-reunion").hidden = currentSpace !== "coworking";
+    if (scrollToOptions) document.getElementById("services-options").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ── Cases regroupées (espace coworking) ────────────────
+  function showStep(step) {
+    hideAll(); step.hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  document.getElementById("open-info-equipements").addEventListener("click", function (e) { e.preventDefault(); showStep(stepInfo); });
+  document.getElementById("open-mes-services").addEventListener("click", function (e) { e.preventDefault(); openServices(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  // « Mon contrat » : rempli par app-auth.js (données de l'entreprise)
+  document.getElementById("open-mon-contrat").addEventListener("click", function (e) {
+    e.preventDefault();
+    document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: "contrat" }));
+    showStep(stepContrat);
+  });
+  document.getElementById("back-from-contrat").addEventListener("click", function () { showStep(stepMesInfos); });
+
   // ── Retours ───────────────────────────────────────────
-  [backFromInfo, backFromServ, backFromComp, backFromSalleInfo, backFromHipOutils, backFromHipEspaces, backFromResaCowork].forEach(function (btn) {
-    btn.addEventListener("click", function () { hideAll(); stepDashboard.hidden = false; window.scrollTo({ top: 0, behavior: "smooth" }); });
+  [backFromSalleInfo, backFromHipOutils, backFromHipEspaces, backFromResaCowork,
+   document.getElementById("back-from-mes-infos"), document.getElementById("back-from-info-cowork")].forEach(function (btn) {
+    btn.addEventListener("click", function () { showStep(stepDashboard); });
+  });
+  // En coworking, « Informations » et « Mes services » sont rangées dans « Informations du coworking »
+  [backFromInfo, backFromServ].forEach(function (btn) {
+    btn.addEventListener("click", function () { showStep(currentSpace === "coworking" ? stepInfoCowork : stepDashboard); });
   });
 
   backFromSiteDetail.addEventListener("click", function () {

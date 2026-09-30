@@ -156,6 +156,45 @@
     </div>
   </section>
 
+  <!-- ÉTAPE : MES INFORMATIONS (client coworking) -->
+  <section id="step-mes-infos" hidden>
+    <button class="back-btn" id="back-from-mes-infos">← Retour</button>
+    <h2 class="step-title">👤 Mes informations</h2>
+    <div class="outils-grid">
+      <a class="outil-card" href="#" id="open-mon-contrat">
+        <div class="outil-logo">📝</div>
+        <div class="outil-name">Mon contrat</div>
+      </a>
+      <a class="outil-card" href="https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" target="_blank">
+        <div class="outil-logo">📄</div>
+        <div class="outil-name">Mes factures</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ÉTAPE : MON CONTRAT (client coworking, lecture seule) -->
+  <section id="step-contrat" hidden>
+    <button class="back-btn" id="back-from-contrat">← Retour</button>
+    <h2 class="step-title">📝 Mon contrat</h2>
+    <div id="contrat-content"></div>
+  </section>
+
+  <!-- ÉTAPE : INFORMATIONS DU COWORKING -->
+  <section id="step-info-cowork" hidden>
+    <button class="back-btn" id="back-from-info-cowork">← Retour</button>
+    <h2 class="step-title">🏢 Informations du coworking</h2>
+    <div class="outils-grid">
+      <a class="outil-card" href="#" id="open-info-equipements">
+        <div class="outil-logo">ℹ️</div>
+        <div class="outil-name">Informations équipements et espaces</div>
+      </a>
+      <a class="outil-card" href="#" id="open-mes-services">
+        <div class="outil-logo">✨</div>
+        <div class="outil-name">Mes services</div>
+      </a>
+    </div>
+  </section>
+
   <!-- ÉTAPE : GESTION DES ENTREPRISES COWORKING (admin) -->
   <section id="step-companies" hidden>
     <button class="back-btn" id="back-from-companies">← Retour</button>
@@ -332,7 +371,8 @@
   <!-- PAGE LES SERVICES -->
   <section id="step-services" hidden>
     <button class="back-btn" id="back-from-services">← Retour</button>
-    <h2 class="step-title">✨ Services inclus</h2>
+    <h2 class="step-title">✨ Mes services</h2>
+    <h3 class="services-part-title">Services inclus</h3>
     <div class="services-grid">
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">☕</div><div class="service-card-title">Café / Thés</div><div class="service-card-desc">Café, thés et infusions en libre service toute la journée.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🍽️</div><div class="service-card-title">Vaisselle</div><div class="service-card-desc">Accès à la vaisselle et au lave-vaisselle pour vos repas.</div></div>
@@ -343,12 +383,8 @@
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚿</div><div class="service-card-title">Douches</div><div class="service-card-desc">Douches disponibles pour les sportifs.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🏢</div><div class="service-card-title">Espace commun</div><div class="service-card-desc">Grand espace de convivialité et de détente.</div></div>
     </div>
-  </section>
 
-  <!-- PAGE SERVICES COMPLEMENTAIRES -->
-  <section id="step-complem" hidden>
-    <button class="back-btn" id="back-from-complem">← Retour</button>
-    <h2 class="step-title">➕ Services complémentaires</h2>
+    <h3 class="services-part-title" id="services-options">Services en option</h3>
     <div class="complem-grid">
       <div class="complem-card" onclick="this.classList.toggle('open')">
         <div class="complem-card-icon">🅿️</div>
@@ -363,6 +399,14 @@
         <div class="complem-card-body">
           <div class="complem-card-title">Location Espace Commun</div>
           <div class="complem-card-desc">Réservez l'espace pour vos événements et réunions. Tarifs sur demande.</div>
+        </div>
+        <div class="complem-chevron">▼</div>
+      </div>
+      <div class="complem-card" id="option-repas-reunion" onclick="this.classList.toggle('open')">
+        <div class="complem-card-icon">🍽️</div>
+        <div class="complem-card-body">
+          <div class="complem-card-title">Repas avec votre réunion</div>
+          <div class="complem-card-desc">Petit déjeuner et déjeuner à cocher au moment de réserver une salle de réunion, au moins 24h à l'avance. Un devis repas vous est envoyé.</div>
         </div>
         <div class="complem-chevron">▼</div>
       </div>

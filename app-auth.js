@@ -830,9 +830,37 @@ document.addEventListener("click", (e) => {
   }
 });
 
+/**
+ * Page « Mon contrat » du client coworking : fiche de son entreprise en lecture seule
+ * (saisie par Hiptown dans Gestion des entreprises).
+ */
+function renderMyContract() {
+  const box = document.getElementById("contrat-content");
+  if (!box || !session) return;
+  const c = session.company;
+  if (!c) {
+    box.innerHTML = `<p style="color:#94a3b8;padding:12px;">Aucun contrat rattaché à votre compte pour le moment. Contactez l'équipe Hiptown.</p>`;
+    return;
+  }
+  const row = (label, value) => (value === undefined || value === null || value === "") ? "" :
+    `<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">
+       <span style="color:var(--text-soft);font-size:13px;">${label}</span>
+       <span style="font-weight:600;font-size:13px;text-align:right;white-space:pre-line;">${escapeHtml(value)}</span></div>`;
+  const card = (title, rows) => rows ? `<div class="info-card" style="padding:12px 18px;margin-bottom:12px;">
+       <div class="info-card-title" style="margin-bottom:4px;">${title}</div>${rows}</div>` : "";
+  box.innerHTML =
+    card("Contrat", row("Entreprise", c.name) + row("Postes", c.seats) +
+      row("Crédits par mois", c.credits != null ? c.credits + " crédit(s)" : "")) +
+    card("Facturation", row("Raison sociale", c.legalName) + row("Représentant légal", c.legalRepName) +
+      row("Mail du représentant", c.legalRepEmail) + row("Adresse de facturation", c.billingAddress) +
+      row("Pays", c.country) + row("SIRET", c.siret) + row("N° de TVA", c.vatNumber)) +
+    `<p style="font-size:12px;color:var(--text-pale);margin-top:6px;">Une information à corriger ? Contactez l'équipe Hiptown.</p>`;
+}
+
 // Déclenché par app.js via : document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }))
 document.addEventListener("hiptown-tile-action", (e) => {
   if (e.detail === "gestion") openGestionMenu();
+  if (e.detail === "contrat") renderMyContract();
   if (e.detail === "admin") {
     hideAllAuth();
     stepAdmin.hidden = false;
