@@ -636,23 +636,107 @@ export async function renderAdminPanel() {
   renderUnassignedTool();
 }
 
-/** Liste « Tous les comptes » : une carte par compte, avec un formulaire de correction. */
+// ── Liste des comptes rangée par ville, puis par catégorie ──
+// Admin général : une case par ville (Clients, Clients SDR, Salariés) ;
+// admin de ville : Salariés et Clients ; équipe de site : les clients de ses sites.
+const ACCOUNT_CATEGORIES = {
+  clients:  "Clients coworking",
+  sdr:      "Clients SDR (salles de réunion)",
+  allClients: "Clients",
+  salaries: "Salariés Hiptown"
+};
+const openAccountBoxes = new Set();   // cases ouvertes, gardées d'un affichage à l'autre
+const categoryTerms = {};             // recherche propre à chaque catégorie
+
+function categoryOf(u) {
+  if (u.role === "admin") return "salaries";
+  const role = u.role || u.requestedRole;
+  return role === "salle" ? "sdr" : "clients";
+}
+
+function categoriesForMe() {
+  const level = myAdminLevel();
+  if (level === "general") return ["clients", "sdr", "salaries"];
+  if (level === "city") return ["allClients", "salaries"];
+  return ["allClients"];
+}
+
+function userMatches(u, term, companyNames) {
+  if (!term) return true;
+  return [adminNameOf(u), u.email, companyNames[u.companyId], u.companyNameHint, accountPlaceLabel(u)]
+    .filter(Boolean).join(" ").toLowerCase().includes(term);
+}
+
+/** Une case repliable (ville ou catégorie) dont l'état ouvert est mémorisé. */
+function accountBox(key, title, count, forceOpen, level) {
+  const box = document.createElement("details");
+  box.className = "account-box account-box-" + level;
+  box.open = forceOpen || openAccountBoxes.has(key);
+  box.innerHTML = `<summary><span>${escapeHtml(title)}</span><span class="account-count">${count}</span></summary><div class="account-box-body"></div>`;
+  box.addEventListener("toggle", () => { box.open ? openAccountBoxes.add(key) : openAccountBoxes.delete(key); });
+  return box;
+}
+
 function renderAllUsersList() {
   const allList = document.getElementById("admin-all-list");
   const count   = document.getElementById("admin-all-count");
   const term    = (document.getElementById("admin-search")?.value || "").trim().toLowerCase();
   const companyNames = Object.fromEntries(adminCompaniesCache.map(c => [c.id, c.name]));
+  const cats = categoriesForMe();
+  const catKey = u => { const c = categoryOf(u); return cats.includes(c) ? c : (c === "salaries" ? null : "allClients"); };
 
-  const users = adminUsersCache.filter(u => {
-    if (!term) return true;
-    const haystack = [adminNameOf(u), u.email, companyNames[u.companyId], u.companyNameHint]
-      .filter(Boolean).join(" ").toLowerCase();
-    return haystack.includes(term);
-  });
-
+  const users = adminUsersCache.filter(u => userMatches(u, term, companyNames));
   if (count) count.textContent = `(${users.length})`;
-  allList.innerHTML = users.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucun compte.</p>';
-  users.forEach(u => allList.appendChild(createUserCard(u, companyNames)));
+  allList.innerHTML = "";
+
+  // Une catégorie : sa propre recherche, puis ses comptes par ordre alphabétique
+  const fillCategory = (body, key, list) => {
+    body.innerHTML = `<input type="search" class="profile-input account-search" placeholder="Rechercher dans cette catégorie" style="margin:8px 0;"/><div class="info-grid account-list"></div>`;
+    const input = body.querySelector(".account-search");
+    const listEl = body.querySelector(".account-list");
+    input.value = categoryTerms[key] || "";
+    const draw = () => {
+      const t = input.value.trim().toLowerCase();
+      categoryTerms[key] = t;
+      const shown = list.filter(u => userMatches(u, t, companyNames));
+      listEl.innerHTML = shown.length ? "" : '<p style="color:#94a3b8;padding:8px 12px;">Aucun compte.</p>';
+      shown.forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
+    };
+    input.addEventListener("input", draw);
+    draw();
+  };
+
+  const renderCategories = (container, cityKey, cityUsers) => {
+    cats.forEach(cat => {
+      const list = cityUsers.filter(u => catKey(u) === cat);
+      if (term && !list.length) return; // pendant une recherche, on n'affiche que ce qui correspond
+      const key = cityKey + "|" + cat;
+      const box = accountBox(key, ACCOUNT_CATEGORIES[cat], list.length, !!term && list.length > 0, "cat");
+      fillCategory(box.querySelector(".account-box-body"), key, list);
+      container.appendChild(box);
+    });
+  };
+
+  if (term && !users.length) {
+    allList.innerHTML = '<p style="color:#94a3b8;padding:12px;">Aucun compte ne correspond à cette recherche.</p>';
+    return;
+  }
+  if (myAdminLevel() !== "general") {
+    renderCategories(allList, adminScope()?.city || "", users);
+    return;
+  }
+
+  // Admin général : une case par ville, plus « Sans ville » (admins généraux, anciens comptes)
+  const cities = Object.keys(PORTAIL.cities || {});
+  users.forEach(u => { if (u.site && !cities.includes(u.site)) cities.push(u.site); });
+  [...cities, ""].forEach(city => {
+    const cityUsers = users.filter(u => (u.site || "") === city);
+    if ((!city || term) && !cityUsers.length) return;
+    const title = city ? cityLabel(city) : "Sans ville (admins généraux, comptes à rattacher)";
+    const box = accountBox("city|" + city, title, cityUsers.length, !!term && cityUsers.length > 0, "city");
+    renderCategories(box.querySelector(".account-box-body"), city, cityUsers);
+    allList.appendChild(box);
+  });
 }
 
 function createUserCard(u, companyNames) {
