@@ -677,10 +677,10 @@ function fillUserForm(form, u) {
       ${Object.entries(ROLE_LABELS).filter(([v]) => canSetAdmin || v !== "admin").map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
       ${u.role ? "" : '<option value="" selected>— Sans rôle —</option>'}
     </select>`)}
-    ${field("Entreprise coworking (pour le rôle Coworking)", `<select class="profile-input f-company">
+    <div class="f-company-wrap">${field("Entreprise coworking (pour le rôle Coworking)", `<select class="profile-input f-company">
       <option value="">— Aucune —</option>
       ${adminCompaniesCache.map(c => `<option value="${escapeHtml(c.id)}" ${u.companyId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
-    </select>`)}
+    </select>`)}</div>
     ${field("Statut", `<select class="profile-input f-status" ${isMe ? "disabled" : ""}>
       ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${u.status === v ? "selected" : ""}>${l}</option>`).join("")}
     </select>`)}
@@ -702,7 +702,10 @@ function fillUserForm(form, u) {
       buildAccessFields(access, { ...u, role });
     }
   };
-  form.querySelector(".f-role").addEventListener("change", renderAccess);
+  // Pas d'entreprise coworking pour un administrateur Hiptown
+  const toggleCompany = () => { form.querySelector(".f-company-wrap").hidden = form.querySelector(".f-role").value === "admin"; };
+  form.querySelector(".f-role").addEventListener("change", () => { renderAccess(); toggleCompany(); });
+  toggleCompany();
   renderAccess();
   const message = form.querySelector(".f-message");
   const showMessage = (text, isError) => {
