@@ -382,7 +382,10 @@ function siteCheckboxesHtml(city, checked = []) {
   const sites = PORTAIL.cities?.[city]?.sites || {};
   const ids = Object.keys(sites);
   if (!ids.length) return '<p class="profile-help">Aucun site configuré pour cette ville.</p>';
-  return ids.map(id => `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;">
+  const all = ids.every(id => checked.includes(id));
+  return `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;font-weight:700;">
+      <input type="checkbox" class="site-all" ${all ? "checked" : ""}/> Tous les sites
+    </label>` + ids.map(id => `<label style="display:flex;gap:8px;align-items:center;font-size:12px;margin:4px 0;">
       <input type="checkbox" class="site-check" value="${escapeHtml(id)}" ${checked.includes(id) ? "checked" : ""}/> ${escapeHtml(sites[id])}
     </label>`).join("");
 }
@@ -442,6 +445,11 @@ function buildAccessFields(container, u) {
       checked: [...container.querySelectorAll(".site-check:checked")].map(c => c.value)
     });
     container.querySelector(".acc-level").addEventListener("change", () => { const r = read(); draw(r.level, r.city, r.checked); });
+    // « Tous les sites » coche ou décoche tout, et suit les cases une à une
+    const allBox = container.querySelector(".site-all");
+    const boxes = [...container.querySelectorAll(".site-check")];
+    allBox?.addEventListener("change", () => boxes.forEach(b => { b.checked = allBox.checked; }));
+    boxes.forEach(b => b.addEventListener("change", () => { if (allBox) allBox.checked = boxes.every(x => x.checked); }));
     container.querySelector(".acc-city")?.addEventListener("change", () => { const r = read(); draw(r.level, r.city, []); });
   };
   const level = levelOf(u) === "general" && myLevel !== "general" ? "city" : (levelOf(u) || "city");
