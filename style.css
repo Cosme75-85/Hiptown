@@ -497,6 +497,11 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 .info-item:hover { background: var(--bg); color: var(--navy); }
 
 /* ── SERVICES ── */
+.contrat-tab.active {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px var(--navy) inset;
+}
+
 .services-part-title {
   font-size: 15px;
   font-weight: 700;
