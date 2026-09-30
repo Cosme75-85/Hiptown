@@ -214,10 +214,15 @@
     <button class="back-btn" id="back-from-companies">← Retour</button>
     <h2 class="step-title">🏢 Gestion des entreprises</h2>
 
-    <h3 style="font-size:14px;font-weight:700;margin-bottom:10px;">Ajouter une entreprise coworking</h3>
-    <div class="pin-box" id="new-company-form" style="max-width:100%;text-align:left;"></div>
+    <button class="direct-btn" id="open-new-company" type="button" style="background:var(--navy);color:#fff;margin-top:0;">➕ Créer une nouvelle entreprise</button>
+    <div class="pin-box" id="new-company-box" hidden style="max-width:100%;text-align:left;margin-top:12px;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;">Nouvelle entreprise coworking</h3>
+      <div id="new-company-form"></div>
+      <button class="direct-btn" id="close-new-company" type="button" style="width:auto;padding:8px 14px;">Annuler</button>
+    </div>
 
     <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Entreprises <span id="companies-count" style="font-weight:400;color:#94a3b8;"></span></h3>
+    <input type="search" id="companies-search" class="profile-input" placeholder="Rechercher (nom, raison sociale, SIRET)" style="margin-bottom:12px;"/>
     <div class="info-grid" id="companies-list"></div>
   </section>
 
