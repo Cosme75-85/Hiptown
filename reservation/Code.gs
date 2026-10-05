@@ -120,7 +120,9 @@ function getSpacesMeta() {
     hourlyPrice: s.hourlyPrice || null,
     halfDayPrice: s.halfDayPrice || null,
     fullDayPrice: s.fullDayPrice || null,
-    allowMultiDay: !!s.allowMultiDay
+    allowMultiDay: !!s.allowMultiDay,
+    availableFrom: s.availableFrom || null,
+    availableFromLabel: s.availableFrom ? frenchDay(parseDate(s.availableFrom)) : null
   }));
 }
 
@@ -147,6 +149,7 @@ function getAllMonthsAvailability(year, month) {
 function getMonthAvailability(space, year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = startOfToday();
+  const opening = openingDate(space);
 
   // Une seule lecture de l'agenda pour tout le mois, au lieu d'une par jour
   let slots = [];
@@ -167,6 +170,9 @@ function getMonthAvailability(space, year, month) {
 
     if (dateObj < today) {
       status = 'past';
+    } else if (opening && dateObj < opening) {
+      status = 'closed'; // espace pas encore ouvert (availableFrom dans Config.gs)
+      remaining = 0;
     } else if (fetchError) {
       status = 'error';
       remaining = 0;
@@ -228,6 +234,11 @@ function getDayAvailability(spaceId, dateString) {
 function computeDayAvailability(space, date) {
   const hours = [];
   let error = false;
+  const opening = openingDate(space);
+  if (opening && date < opening) {
+    for (let h = START_HOUR; h < END_HOUR; h++) hours.push({ hour: h, remaining: 0 });
+    return { spaceId: space.id, name: space.name, capacity: space.capacity, hours: hours, error: false, closed: true };
+  }
   try {
     const slots = getBookedSlots(space, setTime(date, START_HOUR), setTime(date, END_HOUR));
     for (let h = START_HOUR; h < END_HOUR; h++) {
@@ -356,6 +367,8 @@ function validateSlot(b) {
   if (!isValidDateString(b.dateString)) return 'Date invalide.';
   b.startDate = parseDate(b.dateString);
   if (b.startDate < startOfToday()) return 'Impossible de réserver une date passée.';
+  const opening = openingDate(space);
+  if (opening && b.startDate < opening) return openingMessage(space);
 
   // Réservation multi-jours : chaque jour de la plage est réservé en journée complète (8h-18h)
   b.isMultiDay = !!b.endDateString && b.endDateString !== b.dateString;
@@ -521,6 +534,8 @@ function checkRangeAvailability(spaceId, dateString, endDateString, quantity) {
   const start = setTime(parseDate(dateString), START_HOUR);
   const end = setTime(parseDate(endDateString), END_HOUR);
   if (end <= start) return { available: false };
+  const opening = openingDate(space);
+  if (opening && start < opening) return { available: false, message: openingMessage(space) };
   try {
     return { available: maxOverlapInRange(getBookedSlots(space, start, end), start, end) + (quantity || 1) <= space.capacity };
   } catch (err) {
@@ -970,6 +985,21 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 function findSpace(spaceId) {
   return SPACES.find(s => s.id === spaceId);
+}
+
+/** Premier jour réservable de l'espace (availableFrom dans Config.gs), ou null s'il est ouvert. */
+function openingDate(space) {
+  return space.availableFrom && isValidDateString(space.availableFrom) ? parseDate(space.availableFrom) : null;
+}
+
+function openingMessage(space) {
+  return space.name + ' sera disponible à partir du ' + frenchDay(openingDate(space)) + '.';
+}
+
+/** « 1er janvier 2027 » */
+function frenchDay(date) {
+  const d = date.getDate();
+  return (d === 1 ? '1er' : d) + ' ' + FRENCH_MONTHS[date.getMonth()] + ' ' + date.getFullYear();
 }
 
 function startOfToday() {

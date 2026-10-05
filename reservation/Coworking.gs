@@ -31,6 +31,8 @@ function getCoworkingSpaces() {
         photoUrl: s.photoUrl,
         maxPeople: s.maxPeople,
         allowMultiDay: s.allowMultiDay,
+        availableFrom: s.availableFrom,
+        availableFromLabel: s.availableFromLabel,
         credits: COWORKING.credits[s.id] || null
       })),
     // Repas en option, facturés (devis envoyé dès qu'un repas est choisi)
