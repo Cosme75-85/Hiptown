@@ -122,6 +122,17 @@ const TAG_COMPANY = 'portalCompanyId';    // entreprise coworking dont les créd
 const TAG_CREDITS = 'credits';            // crédits utilisés par la réservation
 const TAG_MEALS = 'meals';                // repas commandés par un coworker (JSON), facturés sur devis
 
+// ==================== RÉDUCTIONS CLIENTS (voir Reductions.gs) ====================
+// Remise en % accordée depuis le portail (Gestion > Réductions clients), par exemple
+// après un souci lors d'une réservation. Elle est gardée en mémoire et appliquée
+// automatiquement au prochain devis envoyé à l'adresse email du client.
+const DISCOUNTS = {
+  maxPercent: 50,                         // remise maximale autorisée
+  quoteLabel: 'Remise commerciale',       // libellé de la ligne sur le devis (le motif reste interne)
+  historySize: 200                        // nombre de réductions utilisées gardées dans l'historique
+};
+const TAG_DISCOUNT = 'discount';          // remise appliquée au devis de la réservation (JSON)
+
 // Civilités proposées dans le formulaire (utilisées dans « Bonjour Madame Dupont, »)
 const CIVILITIES = ['Madame', 'Monsieur'];
 

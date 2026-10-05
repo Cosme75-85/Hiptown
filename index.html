@@ -157,7 +157,42 @@
         <div class="outil-logo">🏢</div>
         <div class="outil-name">Gestion des entreprises</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-reductions">
+        <div class="outil-logo">🏷️</div>
+        <div class="outil-name">Réductions clients</div>
+      </a>
     </div>
+  </section>
+
+  <!-- ÉTAPE : RÉDUCTIONS CLIENTS (admin) — remise appliquée au prochain devis du client -->
+  <section id="step-reductions" hidden>
+    <button class="back-btn" id="back-from-reductions">← Retour</button>
+    <h2 class="step-title" style="margin-bottom:4px;">🏷️ Réductions clients</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Un souci lors d'une réservation ? Accordez une remise : elle est gardée en mémoire et
+      appliquée automatiquement au <b>prochain devis</b> envoyé à l'email du client
+      (réservation de salle, ou repas pour un coworker), puis elle disparaît.
+    </p>
+
+    <div class="pin-box" style="max-width:100%;text-align:left;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;">Nouvelle réduction</h3>
+      <label class="profile-label" for="discount-email">Email du client *</label>
+      <input type="email" id="discount-email" class="profile-input" list="discount-emails" maxlength="100" placeholder="email utilisé pour réserver"/>
+      <datalist id="discount-emails"></datalist>
+      <label class="profile-label" for="discount-percent">Remise (%) *</label>
+      <div id="discount-quick" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"></div>
+      <input type="number" id="discount-percent" class="profile-input" min="1" max="50" step="1" placeholder="ex. 10"/>
+      <label class="profile-label" for="discount-reason">Motif (interne, n'apparaît pas sur le devis)</label>
+      <input type="text" id="discount-reason" class="profile-input" maxlength="300" placeholder="ex. vidéoprojecteur en panne le 3 octobre"/>
+      <p class="profile-help" id="discount-message" role="status" hidden></p>
+      <button class="direct-btn" id="discount-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer la réduction</button>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">En attente (prochaine réservation)</h3>
+    <div class="info-grid" id="discount-pending-list"></div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Déjà utilisées</h3>
+    <div class="info-grid" id="discount-history-list"></div>
   </section>
 
   <!-- ÉTAPE : MES INFORMATIONS (client coworking) -->

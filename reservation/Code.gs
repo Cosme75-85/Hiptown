@@ -81,6 +81,16 @@ function doPost(e) {
     if (body.action === 'modifyCoworking') {
       return jsonResponse(modifyCoworkingBooking(body.idToken, body.payload));
     }
+    // Réductions clients, gérées par l'équipe depuis le portail (voir Reductions.gs)
+    if (body.action === 'getDiscounts') {
+      return jsonResponse(getDiscounts(body.idToken));
+    }
+    if (body.action === 'setDiscount') {
+      return jsonResponse(setDiscount(body.idToken, body.payload));
+    }
+    if (body.action === 'deleteDiscount') {
+      return jsonResponse(deleteDiscount(body.idToken, body.payload));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });
@@ -406,6 +416,12 @@ function bookRoom(rawBooking) {
 
     const title = booking.title || 'Réservation - ' + space.name;
     const summary = summarizeBooking(booking, computeQuote(space, booking), title);
+    // Remise accordée à ce client : signalée au gérant, appliquée au devis à la validation
+    const discount = getPendingDiscount(booking.requesterEmail);
+    if (discount) {
+      summary.push(['Réduction en attente', '-' + discount.percent + ' % sur le devis à la validation'
+        + (discount.reason ? ' (motif : ' + discount.reason + ')' : '')]);
+    }
 
     const event = cal.createEvent(PENDING_PREFIX + title, start, end, {
       description: summary.map(([label, value]) => label + ' : ' + value)
@@ -651,7 +667,8 @@ function applyApprovalAction(action, event) {
     try {
       quote = createQuoteForEvent(event);
       if (quote) {
-        quoteStatus = 'Devis n°' + quote.number + ' joint à l\'email. ' + (quote.driveError
+        quoteStatus = 'Devis n°' + quote.number + ' joint à l\'email. '
+          + (quote.discount ? 'Remise de ' + quote.discount.percent + ' % appliquée. ' : '') + (quote.driveError
           ? '⚠️ Copie Drive impossible (lancer testDevis dans Apps Script pour autoriser Drive) : ' + quote.driveError
           : 'Copie dans le dossier Drive « ' + DEVIS.driveFolderName + ' ».');
         event.setDescription(event.getDescription() + '\nDevis : ' + quote.number);
@@ -674,8 +691,9 @@ function applyApprovalAction(action, event) {
         'Lors de votre arrivée le jour J, appelez-nous ou scannez le QR code en bas, nous descendrons vous accueillir. Vous retrouverez en pièce jointe le plan d\'accès à notre bâtiment avec nos contacts.',
         quote
           ? 'Vous trouverez également en pièce jointe votre devis n°<b>' + quote.number + '</b>. La facture correspondante vous sera envoyée par email à la suite de cette réservation.'
-          : 'La facture correspondante vous sera envoyée par email à la suite de cette réservation.'
-      ], 'À bientôt', attachments);
+          : 'La facture correspondante vous sera envoyée par email à la suite de cette réservation.',
+        quote && quote.discount && discountSentence(quote.discount)
+      ].filter(Boolean), 'À bientôt', attachments);
     }
     return 'Réservation confirmée pour "' + cleanTitle + '". ' + quoteStatus;
   }
@@ -907,6 +925,14 @@ function computeQuote(space, q) {
   addLine('parking', 'Place de parking – ' + (isFullDay ? 'journée' : 'demi-journée'),
     (q.parkingQuantity || 0) * days, isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
 
+  // Remise accordée par l'équipe (Reductions.gs) : une ligne négative sur l'ensemble du devis
+  const subtotal = round(lines.reduce((sum, l) => sum + l.total, 0));
+  const discountPercent = Math.min(Number(q.discountPercent) || 0, 100);
+  if (discountPercent > 0 && subtotal > 0) {
+    const amount = round(subtotal * discountPercent / 100);
+    lines.push({ type: 'discount', label: (q.discountLabel || 'Remise') + ' (-' + discountPercent + ' %)', qty: 1, unitPrice: -amount, total: -amount });
+  }
+
   const totalOf = type => round(lines.filter(l => l.type === type).reduce((sum, l) => sum + l.total, 0));
   const totalHT = round(lines.reduce((sum, l) => sum + l.total, 0));
   const totalVAT = round(totalHT * PRICES.vatRate);
@@ -917,7 +943,8 @@ function computeQuote(space, q) {
     breakfastPrice: totalOf('breakfast'),
     lunchPrice: totalOf('lunch'),
     parkingPrice: totalOf('parking'),
-    totalExtras: round(totalHT - totalOf('room')),
+    totalExtras: round(subtotal - totalOf('room')),
+    discount: totalOf('discount'), // montant HT de la remise (négatif), 0 sans remise
     grandTotal: totalHT, // alias historique du total HT
     totalHT: totalHT,
     totalVAT: totalVAT,

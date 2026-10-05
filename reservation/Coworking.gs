@@ -758,7 +758,7 @@ function handleMealsOrder(user, booking, event, title, start, end, kind) {
   let quote = null;
   let quoteError = '';
   try {
-    quote = createMealsQuote(user, booking);
+    quote = createMealsQuote(user, booking, event);
     event.setDescription(withDescriptionFields(event.getDescription() || '', {
       'Devis repas': 'Devis repas : ' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC)'
     }));
@@ -770,8 +770,12 @@ function handleMealsOrder(user, booking, event, title, start, end, kind) {
   return quote;
 }
 
-/** Devis des repas seuls (la salle est couverte par les crédits), avec copie dans le dossier Drive des devis. */
-function createMealsQuote(user, b) {
+/**
+ * Devis des repas seuls (la salle est couverte par les crédits), avec copie dans le dossier Drive des devis.
+ * Remise (Reductions.gs) : celle déjà appliquée à cette réservation si son devis est refait
+ * après une modification, sinon la remise en attente du coworker, utilisée par ce devis.
+ */
+function createMealsQuote(user, b, event) {
   const data = {
     spaceId: b.space.id,
     dateString: b.dateString,
@@ -790,13 +794,26 @@ function createMealsQuote(user, b) {
     mealsOnly: true
   };
   const number = nextQuoteNumber();
+  const kept = eventDiscount(event);
+  const pending = kept ? null : getPendingDiscount(user.email);
+  const discount = kept || pending;
+  if (discount) {
+    data.discountPercent = discount.percent;
+    data.discountLabel = DISCOUNTS.quoteLabel;
+  }
   const pdf = buildQuotePdf(b.space, data, number);
+  if (pending && takePendingDiscount(user.email, {
+    quoteNumber: number,
+    bookingLabel: 'Repas coworking – ' + b.space.name + ' – ' + b.dateString + ' – ' + data.company
+  })) {
+    setEventDiscount(event, pending);
+  }
   try {
     getQuoteFolder().createFile(pdf);
   } catch (err) {
     Logger.log('⚠️ Copie Drive du devis ' + number + ' impossible : ' + err.message);
   }
-  return { number: number, pdf: pdf, totalTTC: computeQuote(b.space, data).totalTTC };
+  return { number: number, pdf: pdf, totalTTC: computeQuote(b.space, data).totalTTC, discount: discount };
 }
 
 /** Paragraphe « restauration » des emails au coworker (null sans repas). */
@@ -806,6 +823,7 @@ function mealsParagraph(b, quote, isChange) {
     + b.numberOfPeople + ' personne(s). ' + (quote
       ? 'Votre devis n°<b>' + quote.number + '</b> (' + quote.totalTTC.toFixed(2) + ' € TTC) est en pièce jointe'
         + (isChange ? ' et remplace le précédent' : '') + ' ; la facture vous sera envoyée à la suite de la réunion.'
+        + (quote.discount ? ' ' + discountSentence(quote.discount) : '')
       : 'Votre devis vous sera envoyé par l\'équipe Hiptown.');
 }
 
@@ -824,6 +842,7 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
     ['Créneau', when],
     ['Repas', mealsLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')],
     quote && ['Devis', 'n°' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC), joint à cet email'],
+    quote && quote.discount && ['Remise', '-' + quote.discount.percent + ' %' + (quote.discount.reason ? ' (motif : ' + quote.discount.reason + ')' : '')],
     quoteError && ['⚠️ Devis', 'non généré (' + quoteError + ') : à envoyer à la main']
   ].filter(Boolean);
   try {
