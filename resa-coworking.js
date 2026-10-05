@@ -13,7 +13,7 @@ import { auth } from "./firebase-config.js";
 const BASE_URL = PORTAIL.reservationUrl;
 const MIDDAY_HOUR = 13; // séparation matin / après-midi
 const MONTH_NAMES = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-const STATUS_LABELS = { available: "disponible", full: "complet", past: "passé", error: "indisponible" };
+const STATUS_LABELS = { available: "disponible", full: "complet", past: "passé", error: "indisponible", closed: "pas encore ouvert" };
 
 const $ = id => document.getElementById(id);
 
@@ -210,6 +210,7 @@ function renderSpaces() {
     + (space.photoUrl ? '<img class="rc-space-photo" src="' + escapeHtml(space.photoUrl) + '" alt="' + escapeHtml(space.name) + '" loading="lazy">' : "")
     + '<div class="rc-space-header"><h3 class="rc-space-name">' + escapeHtml(space.name) + "</h3>"
     + (space.maxPeople ? '<span class="rc-badge">Jusqu\'à ' + space.maxPeople + " personnes</span>" : "") + "</div>"
+    + (space.availableFromLabel ? '<p class="rc-opening-note">Disponible à partir du ' + escapeHtml(space.availableFromLabel) + "</p>" : "")
     + '<div class="rc-month-grid" id="rc-grid-' + space.id + '" data-space-id="' + space.id + '">'
     + '<div class="rc-loading">Chargement...</div></div>'
     + "</article>"
@@ -702,7 +703,9 @@ function openEditModal(b) {
   $("rc-edit-title").textContent = "Modifier : " + b.spaceName;
   $("rc-edit-current").textContent = "Actuellement : " + describeSlot(b);
   $("rc-edit-date").value = b.dateString;
-  $("rc-edit-date").min = todayString;
+  const space = SPACES.find(s => s.id === b.spaceId);
+  // Salle pas encore ouverte : pas de date avant son ouverture (le serveur refuse de toute façon)
+  $("rc-edit-date").min = space && space.availableFrom > todayString ? space.availableFrom : todayString;
   $("rc-edit-end-block").hidden = !b.allowMultiDay;
   $("rc-edit-end-date").value = b.endDateString || "";
   $("rc-edit-end-date").min = b.dateString;
@@ -712,7 +715,6 @@ function openEditModal(b) {
   $("rc-edit-meals").hidden = !MEALS;
   $("rc-edit-breakfast").checked = !!b.wantsBreakfast;
   $("rc-edit-lunch").checked = !!b.wantsLunch;
-  const space = SPACES.find(s => s.id === b.spaceId);
   $("rc-edit-people").max = (space && space.maxPeople) || "";
   updateEditForm();
   $("rc-edit-overlay").classList.add("rc-open");
