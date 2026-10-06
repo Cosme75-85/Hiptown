@@ -81,6 +81,10 @@ function doPost(e) {
     if (body.action === 'modifyCoworking') {
       return jsonResponse(modifyCoworkingBooking(body.idToken, body.payload));
     }
+    // Tableau de bord du portail : toutes les réservations à venir du compte (voir MesReservations.gs)
+    if (body.action === 'getMyUpcomingBookings') {
+      return jsonResponse(getMyUpcomingBookings(body.idToken));
+    }
     // Réductions clients, gérées par l'équipe depuis le portail (voir Reductions.gs)
     if (body.action === 'getDiscounts') {
       return jsonResponse(getDiscounts(body.idToken));

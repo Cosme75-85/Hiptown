@@ -13,6 +13,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 | `Remerciement.gs` | Email de remerciement envoyé 3 jours après la réservation | ✅ |
 | `Coworking.gs` | Réservations des coworkers depuis le portail (sans paiement) | ✅ |
 | `Reductions.gs` | Réductions clients appliquées au prochain devis | ✅ |
+| `MesReservations.gs` | Liste « Mes prochaines réservations » du tableau de bord du portail (lecture seule) | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
