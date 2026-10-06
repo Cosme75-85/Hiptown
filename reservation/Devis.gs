@@ -42,14 +42,26 @@ function createQuoteForEvent(event) {
   if (!space) return null;
 
   const number = nextQuoteNumber();
+  // Remise en attente pour ce client (Reductions.gs) : appliquée à ce devis, puis effacée
+  const email = getRequesterEmail(event);
+  const pending = getPendingDiscount(email);
+  if (pending) {
+    booking.discountPercent = pending.percent;
+    booking.discountLabel = DISCOUNTS.quoteLabel;
+  }
   const pdf = buildQuotePdf(space, booking, number);
+  const discount = pending && takePendingDiscount(email, {
+    quoteNumber: number,
+    bookingLabel: space.name + ' – ' + booking.dateString + ' – ' + booking.company
+  });
+  if (discount) setEventDiscount(event, discount);
   let driveError = null;
   try {
     getQuoteFolder().createFile(pdf);
   } catch (err) {
     driveError = err.message;
   }
-  return { number: number, pdf: pdf, driveError: driveError };
+  return { number: number, pdf: pdf, driveError: driveError, discount: pending };
 }
 
 /** Dossier Drive des devis, créé automatiquement au premier devis. */

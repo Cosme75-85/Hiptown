@@ -11,6 +11,7 @@ import {
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
   listUnseenBreakfastOrders, markBreakfastOrderSeen, createCompany, updateCompany
 } from "./admin.js";
+import { renderDiscountsPanel } from "./reductions.js";
 
 const stepAuth    = document.getElementById("step-auth");
 const stepPending = document.getElementById("step-pending");
@@ -18,6 +19,7 @@ const stepAdmin   = document.getElementById("step-admin");
 const stepProfile = document.getElementById("step-profile");
 const stepGestion   = document.getElementById("step-gestion");
 const stepCompanies = document.getElementById("step-companies");
+const stepReductions = document.getElementById("step-reductions");
 const authError   = document.getElementById("auth-error");
 
 let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
@@ -27,7 +29,7 @@ let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'é
 // masque en plus les 3 nouvelles sections.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -252,7 +254,7 @@ document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(
 //  PANNEAU ADMIN + NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
-// Menu « Gestion » : deux cases, Gestion des comptes et Gestion des entreprises
+// Menu « Gestion » : Gestion des comptes, Gestion des entreprises et Réductions clients
 function openGestionMenu() {
   hideAllAuth();
   stepGestion.hidden = false;
@@ -274,7 +276,16 @@ document.getElementById("open-gestion-entreprises")?.addEventListener("click", (
   stepCompanies.hidden = false;
   renderCompaniesPanel();
 });
+document.getElementById("open-gestion-reductions")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  hideAllAuth();
+  stepReductions.hidden = false;
+  // Comptes visibles par l'admin, proposés dans le champ email
+  const users = await listAllUsers(adminScope()).catch(() => []);
+  renderDiscountsPanel(users);
+});
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 
 /**
