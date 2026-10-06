@@ -796,13 +796,12 @@ function createMealsQuote(user, b, event) {
     mealsOnly: true
   };
   const number = nextQuoteNumber();
-  const kept = eventDiscount(event);
-  const pending = kept ? null : getPendingDiscount(user.email);
+  let kept = eventDiscount(event);
+  let pending = kept ? null : getPendingDiscount(user.email);
+  // Une remise sur la salle (payée en crédits) ou sur un repas non commandé attend un prochain devis
+  if (pending && !applyDiscount(b.space, data, pending)) pending = null;
+  if (kept && !applyDiscount(b.space, data, kept)) kept = null;
   const discount = kept || pending;
-  if (discount) {
-    data.discountPercent = discount.percent;
-    data.discountLabel = DISCOUNTS.quoteLabel;
-  }
   const pdf = buildQuotePdf(b.space, data, number);
   if (pending && takePendingDiscount(user.email, {
     quoteNumber: number,
@@ -844,7 +843,7 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
     ['Créneau', when],
     ['Repas', mealsLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')],
     quote && ['Devis', 'n°' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC), joint à cet email'],
-    quote && quote.discount && ['Remise', '-' + quote.discount.percent + ' %' + (quote.discount.reason ? ' (motif : ' + quote.discount.reason + ')' : '')],
+    quote && quote.discount && ['Remise', describeDiscount(quote.discount) + (quote.discount.reason ? ' (motif : ' + quote.discount.reason + ')' : '')],
     quoteError && ['⚠️ Devis', 'non généré (' + quoteError + ') : à envoyer à la main']
   ].filter(Boolean);
   try {

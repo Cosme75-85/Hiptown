@@ -68,12 +68,14 @@ du client et copié dans le dossier Drive « Devis réservations Hiptown » (cr�
 ## Réductions clients (prochain devis)
 
 Depuis le portail : **Gestion > Réductions clients** (équipe Hiptown). On saisit l'email du
-client, la remise (-10 %, -15 %…, maximum `DISCOUNTS.maxPercent` dans `Config.gs`) et un motif
-interne. La remise est gardée en mémoire et appliquée automatiquement au **prochain devis**
+client, le type de remise (sur la totalité, sur la salle, sur le petit déjeuner, sur le déjeuner,
+ou petit déjeuner offert), le pourcentage (-10 %, -15 %…, maximum `DISCOUNTS.maxPercent` dans
+`Config.gs`) et un motif interne. Les types se règlent dans `DISCOUNTS.kinds`. Une remise sur un
+repas (ou sur la salle, pour un coworker qui la paie en crédits) attend un devis où cette ligne existe. La remise est gardée en mémoire et appliquée automatiquement au **prochain devis**
 envoyé à cet email :
 
 - réservation de salle : quand la demande est validée, le devis comporte une ligne
-  « Remise commerciale (-10 %) » et l'email de confirmation le mentionne ; l'email de
+  « Remise commerciale salle (-10 %) » (ou « Petit déjeuner offert »…) et l'email de confirmation le mentionne ; l'email de
   validation reçu par le gérant signale la réduction en attente ;
 - coworker : sur le devis de ses prochains repas (gardée si la réservation est modifiée).
 

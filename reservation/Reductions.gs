@@ -20,7 +20,38 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
-/** Remise en attente pour cette adresse : { email, percent, reason, createdBy, createdAt } ou null. */
+/** Type de remise (DISCOUNTS.kinds) ; les remises créées avant les types portent sur tout le devis. */
+function discountKind(discount) {
+  return isDiscountKind(discount && discount.kind) ? DISCOUNTS.kinds[discount.kind] : DISCOUNTS.kinds.total;
+}
+
+function isDiscountKind(id) {
+  return typeof id === 'string' && Object.prototype.hasOwnProperty.call(DISCOUNTS.kinds, id);
+}
+
+/** Ex. « -10 % sur la salle de réunion », « petit déjeuner offert ». */
+function describeDiscount(discount) {
+  const kind = discountKind(discount);
+  return kind.percent ? kind.label.toLowerCase() : '-' + discount.percent + ' % ' + kind.label.toLowerCase();
+}
+
+/**
+ * Ajoute la remise aux données du devis (data, comme pour computeQuote) si elle porte
+ * sur au moins une ligne du devis. Renvoie true si elle s'applique, false sinon (data inchangé).
+ */
+function applyDiscount(space, data, discount) {
+  const kind = discountKind(discount);
+  const fields = {
+    discountPercent: discount.percent,
+    discountLineTypes: kind.lineTypes,
+    discountLabel: kind.percent ? kind.quoteLabel : kind.quoteLabel + ' (-' + discount.percent + ' %)'
+  };
+  if (!(computeQuote(space, Object.assign({}, data, fields)).discount < 0)) return false;
+  Object.assign(data, fields);
+  return true;
+}
+
+/** Remise en attente pour cette adresse : { email, kind, percent, reason, createdBy, createdAt } ou null. */
 function getPendingDiscount(email) {
   const key = normalizeEmail(email);
   if (!key) return null;
@@ -79,12 +110,15 @@ function eventDiscount(event) {
 }
 
 function setEventDiscount(event, discount) {
-  event.setTag(TAG_DISCOUNT, JSON.stringify({ percent: discount.percent, reason: String(discount.reason || '').slice(0, 300) }));
+  event.setTag(TAG_DISCOUNT, JSON.stringify({ kind: discount.kind || 'total', percent: discount.percent, reason: String(discount.reason || '').slice(0, 300) }));
 }
 
 /** Phrase pour l'email du client quand son devis comporte une remise. */
 function discountSentence(discount) {
-  return 'Comme convenu avec l\'équipe Hiptown, une remise de <b>' + discount.percent + ' %</b> a été appliquée sur ce devis.';
+  const kind = discountKind(discount);
+  return 'Comme convenu avec l\'équipe Hiptown, ' + (kind.percent
+    ? kind.clientText + ', comme indiqué sur ce devis.'
+    : 'une remise de <b>' + discount.percent + ' % ' + kind.label.toLowerCase() + '</b> a été appliquée sur ce devis.');
 }
 
 // ==================== GESTION DEPUIS LE PORTAIL (équipe Hiptown) ====================
@@ -115,7 +149,10 @@ function getDiscounts(idToken) {
     })
     .filter(d => d && d.percent > 0)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  return { success: true, pending: pending, history: readDiscountHistory(), maxPercent: DISCOUNTS.maxPercent };
+  const withText = d => Object.assign({}, d, { description: describeDiscount(d) });
+  const kinds = Object.keys(DISCOUNTS.kinds).map(id => ({ id: id, label: DISCOUNTS.kinds[id].label, fixed: !!DISCOUNTS.kinds[id].percent }));
+  return { success: true, pending: pending.map(withText), history: readDiscountHistory().map(withText),
+    maxPercent: DISCOUNTS.maxPercent, kinds: kinds };
 }
 
 /** Accorde (ou remplace) la remise d'un client sur sa prochaine réservation. */
@@ -128,14 +165,16 @@ function setDiscount(idToken, raw) {
   }
   raw = raw || {};
   const email = normalizeEmail(cleanText(raw.email, MAX_TEXT_LENGTH));
-  const percent = Number(raw.percent);
+  const kindId = isDiscountKind(raw.kind) ? raw.kind : 'total';
+  const kind = DISCOUNTS.kinds[kindId];
+  const percent = kind.percent || Number(raw.percent);
   const reason = cleanText(raw.reason, 300);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { success: false, message: 'Adresse email invalide.' };
-  if (!(Number.isInteger(percent) && percent >= 1 && percent <= DISCOUNTS.maxPercent)) {
+  if (!kind.percent && !(Number.isInteger(percent) && percent >= 1 && percent <= DISCOUNTS.maxPercent)) {
     return { success: false, message: 'La remise doit être comprise entre 1 et ' + DISCOUNTS.maxPercent + ' %.' };
   }
 
-  const discount = { email: email, percent: percent, reason: reason, createdBy: admin, createdAt: new Date().toISOString() };
+  const discount = { email: email, kind: kindId, percent: percent, reason: reason, createdBy: admin, createdAt: new Date().toISOString() };
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -147,7 +186,7 @@ function setDiscount(idToken, raw) {
   } finally {
     lock.releaseLock();
   }
-  return { success: true, message: 'Remise de ' + percent + ' % enregistrée : elle sera appliquée au prochain devis de ' + email + '.' };
+  return { success: true, message: 'Réduction enregistrée (' + describeDiscount(discount) + ') : elle sera appliquée au prochain devis de ' + email + '.' };
 }
 
 /** Retire la remise en attente d'un client (avant qu'elle ne soit utilisée). */

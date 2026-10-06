@@ -126,13 +126,23 @@ const TAG_CREDITS = 'credits';            // crédits utilisés par la réservat
 const TAG_MEALS = 'meals';                // repas commandés par un coworker (JSON), facturés sur devis
 
 // ==================== RÉDUCTIONS CLIENTS (voir Reductions.gs) ====================
-// Remise en % accordée depuis le portail (Gestion > Réductions clients), par exemple
+// Remise accordée depuis le portail (Gestion > Réductions clients), par exemple
 // après un souci lors d'une réservation. Elle est gardée en mémoire et appliquée
 // automatiquement au prochain devis envoyé à l'adresse email du client.
+// Types de remise : sur quelles lignes du devis elle porte (types de computeQuote :
+// room, breakfast, lunch, parking ; null = tout le devis). percent fixé = pas de % à choisir.
+// Le motif saisi reste interne : seul quoteLabel apparaît sur le devis.
 const DISCOUNTS = {
-  maxPercent: 50,                         // remise maximale autorisée
-  quoteLabel: 'Remise commerciale',       // libellé de la ligne sur le devis (le motif reste interne)
-  historySize: 200                        // nombre de réductions utilisées gardées dans l'historique
+  maxPercent: 50,                         // remise maximale autorisée (hors « offert »)
+  historySize: 200,                       // nombre de réductions utilisées gardées dans l'historique
+  kinds: {
+    total:         { label: 'Sur la totalité du devis', quoteLabel: 'Remise commerciale',               lineTypes: null },
+    room:          { label: 'Sur la salle de réunion',  quoteLabel: 'Remise commerciale salle',         lineTypes: ['room'] },
+    breakfast:     { label: 'Sur le petit déjeuner',    quoteLabel: 'Remise commerciale petit déjeuner', lineTypes: ['breakfast'] },
+    lunch:         { label: 'Sur le déjeuner',          quoteLabel: 'Remise commerciale déjeuner',      lineTypes: ['lunch'] },
+    breakfastFree: { label: 'Petit déjeuner offert',    quoteLabel: 'Petit déjeuner offert',            lineTypes: ['breakfast'], percent: 100,
+                     clientText: 'le <b>petit déjeuner vous est offert</b>' }
+  }
 };
 const TAG_DISCOUNT = 'discount';          // remise appliquée au devis de la réservation (JSON)
 

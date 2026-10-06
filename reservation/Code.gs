@@ -447,7 +447,7 @@ function bookRoom(rawBooking) {
     // Remise accordée à ce client : signalée au gérant, appliquée au devis à la validation
     const discount = getPendingDiscount(booking.requesterEmail);
     if (discount) {
-      summary.push(['Réduction en attente', '-' + discount.percent + ' % sur le devis à la validation'
+      summary.push(['Réduction en attente', describeDiscount(discount) + ', appliquée au devis à la validation'
         + (discount.reason ? ' (motif : ' + discount.reason + ')' : '')]);
     }
 
@@ -698,7 +698,7 @@ function applyApprovalAction(action, event) {
       quote = createQuoteForEvent(event);
       if (quote) {
         quoteStatus = 'Devis n°' + quote.number + ' joint à l\'email. '
-          + (quote.discount ? 'Remise de ' + quote.discount.percent + ' % appliquée. ' : '') + (quote.driveError
+          + (quote.discount ? 'Réduction appliquée : ' + describeDiscount(quote.discount) + '. ' : '') + (quote.driveError
           ? '⚠️ Copie Drive impossible (lancer testDevis dans Apps Script pour autoriser Drive) : ' + quote.driveError
           : 'Copie dans le dossier Drive « ' + DEVIS.driveFolderName + ' ».');
         event.setDescription(event.getDescription() + '\nDevis : ' + quote.number);
@@ -955,12 +955,16 @@ function computeQuote(space, q) {
   addLine('parking', 'Place de parking – ' + (isFullDay ? 'journée' : 'demi-journée'),
     (q.parkingQuantity || 0) * days, isFullDay ? PRICES.parkingFullDay : PRICES.parkingHalfDay);
 
-  // Remise accordée par l'équipe (Reductions.gs) : une ligne négative sur l'ensemble du devis
+  // Remise accordée par l'équipe (Reductions.gs) : une ligne négative, calculée sur les lignes
+  // visées (q.discountLineTypes : salle, petit déjeuner…) ou sur tout le devis
   const subtotal = round(lines.reduce((sum, l) => sum + l.total, 0));
   const discountPercent = Math.min(Number(q.discountPercent) || 0, 100);
-  if (discountPercent > 0 && subtotal > 0) {
-    const amount = round(subtotal * discountPercent / 100);
-    lines.push({ type: 'discount', label: (q.discountLabel || 'Remise') + ' (-' + discountPercent + ' %)', qty: 1, unitPrice: -amount, total: -amount });
+  const discountBase = round(lines
+    .filter(l => !q.discountLineTypes || q.discountLineTypes.indexOf(l.type) !== -1)
+    .reduce((sum, l) => sum + l.total, 0));
+  if (discountPercent > 0 && discountBase > 0) {
+    const amount = round(discountBase * discountPercent / 100);
+    lines.push({ type: 'discount', label: q.discountLabel || 'Remise (-' + discountPercent + ' %)', qty: 1, unitPrice: -amount, total: -amount });
   }
 
   const totalOf = type => round(lines.filter(l => l.type === type).reduce((sum, l) => sum + l.total, 0));

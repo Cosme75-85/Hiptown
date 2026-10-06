@@ -13,6 +13,32 @@ const QUICK_PERCENTS = [10, 15, 20, 25];
 const $ = id => document.getElementById(id);
 
 let maxPercent = 50;
+// Types de remise (remplacés par la liste envoyée par l'outil de réservation, Config.gs DISCOUNTS.kinds)
+let kinds = [
+  { id: "total", label: "Sur la totalité du devis" },
+  { id: "room", label: "Sur la salle de réunion" },
+  { id: "breakfast", label: "Sur le petit déjeuner" },
+  { id: "lunch", label: "Sur le déjeuner" },
+  { id: "breakfastFree", label: "Petit déjeuner offert", fixed: true }
+];
+
+function renderKinds() {
+  const select = $("discount-kind");
+  const current = select.value;
+  select.innerHTML = kinds.map(k => `<option value="${escapeHtml(k.id)}">${escapeHtml(k.label)}</option>`).join("");
+  if (kinds.some(k => k.id === current)) select.value = current;
+  updatePercentField();
+}
+
+/** Le pourcentage n'est demandé que pour les remises qui en ont un (pas pour « offert »). */
+function updatePercentField() {
+  const kind = kinds.find(k => k.id === $("discount-kind").value);
+  $("discount-percent-wrap").hidden = !!kind?.fixed;
+}
+
+function describe(d) {
+  return d.description || `-${d.percent} %`;
+}
 
 function escapeHtml(text) {
   return String(text ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -72,6 +98,7 @@ async function refreshLists() {
   }
   maxPercent = res.maxPercent || maxPercent;
   $("discount-percent").max = maxPercent;
+  if (Array.isArray(res.kinds) && res.kinds.length) { kinds = res.kinds; renderKinds(); }
 
   pendingBox.innerHTML = res.pending.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucune réduction en attente.</p>';
   res.pending.forEach(d => pendingBox.appendChild(pendingCard(d)));
@@ -83,7 +110,7 @@ async function refreshLists() {
     card.innerHTML = `
       <div class="info-item" style="gap:10px;">
         <span style="flex:1;min-width:0;">
-          <b>-${d.percent} %</b> · ${escapeHtml(d.email)}<br>
+          <b>${escapeHtml(describe(d))}</b> · ${escapeHtml(d.email)}<br>
           <span style="font-size:11px;color:#94a3b8;">Utilisée le ${escapeHtml(frDate(d.usedAt))}
             ${d.quoteNumber ? " · devis n°" + escapeHtml(d.quoteNumber) : ""}
             ${d.bookingLabel ? " · " + escapeHtml(d.bookingLabel) : ""}
@@ -100,14 +127,14 @@ function pendingCard(d) {
   card.innerHTML = `
     <div class="info-item" style="gap:10px;">
       <span style="flex:1;min-width:0;">
-        <b>-${d.percent} %</b> · ${escapeHtml(d.email)}<br>
+        <b>${escapeHtml(describe(d))}</b> · ${escapeHtml(d.email)}<br>
         <span style="font-size:11px;color:#94a3b8;">Accordée le ${escapeHtml(frDate(d.createdAt))}${d.createdBy ? " par " + escapeHtml(d.createdBy) : ""}
           ${d.reason ? "<br>Motif : " + escapeHtml(d.reason) : ""}</span>
       </span>
       <button class="direct-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Retirer</button>
     </div>`;
   card.querySelector("button").addEventListener("click", async (e) => {
-    if (!confirm(`Retirer la réduction de ${d.percent} % pour ${d.email} ?`)) return;
+    if (!confirm(`Retirer la réduction (${describe(d)}) pour ${d.email} ?`)) return;
     e.target.disabled = true;
     try {
       const res = await call("deleteDiscount", { email: d.email });
@@ -119,6 +146,11 @@ function pendingCard(d) {
     refreshLists();
   });
   return card;
+}
+
+if ($("discount-kind")) {
+  renderKinds();
+  $("discount-kind").addEventListener("change", updatePercentField);
 }
 
 // Boutons -10 %, -15 %… qui remplissent le champ pourcentage
@@ -134,17 +166,19 @@ if (quick) {
 
 $("discount-save")?.addEventListener("click", async () => {
   const email = $("discount-email").value.trim().toLowerCase();
-  const percent = Number($("discount-percent").value);
+  const kind = $("discount-kind").value;
+  const fixed = !!kinds.find(k => k.id === kind)?.fixed;
+  const percent = fixed ? 100 : Number($("discount-percent").value);
   const reason = $("discount-reason").value.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage("Adresse email invalide.", true); return; }
-  if (!(Number.isInteger(percent) && percent >= 1 && percent <= maxPercent)) {
+  if (!fixed && !(Number.isInteger(percent) && percent >= 1 && percent <= maxPercent)) {
     showMessage(`La remise doit être un nombre entier entre 1 et ${maxPercent} %.`, true);
     return;
   }
   const btn = $("discount-save");
   btn.disabled = true;
   try {
-    const res = await call("setDiscount", { email, percent, reason });
+    const res = await call("setDiscount", { email, kind, percent, reason });
     showMessage(res.message, !res.success);
     if (res.success) {
       $("discount-email").value = $("discount-percent").value = $("discount-reason").value = "";
