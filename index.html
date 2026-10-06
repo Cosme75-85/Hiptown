@@ -171,7 +171,8 @@
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Un souci lors d'une réservation ? Accordez une remise : elle est gardée en mémoire et
       appliquée automatiquement au <b>prochain devis</b> envoyé à l'email du client
-      (réservation de salle, ou repas pour un coworker), puis elle disparaît.
+      (réservation de salle, ou repas pour un coworker), puis elle disparaît. Une remise sur
+      un repas attend une réservation où ce repas est commandé.
     </p>
 
     <div class="pin-box" style="max-width:100%;text-align:left;">
@@ -179,9 +180,13 @@
       <label class="profile-label" for="discount-email">Email du client *</label>
       <input type="email" id="discount-email" class="profile-input" list="discount-emails" maxlength="100" placeholder="email utilisé pour réserver"/>
       <datalist id="discount-emails"></datalist>
-      <label class="profile-label" for="discount-percent">Remise (%) *</label>
-      <div id="discount-quick" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"></div>
-      <input type="number" id="discount-percent" class="profile-input" min="1" max="50" step="1" placeholder="ex. 10"/>
+      <label class="profile-label" for="discount-kind">Type de remise *</label>
+      <select id="discount-kind" class="profile-input"></select>
+      <div id="discount-percent-wrap">
+        <label class="profile-label" for="discount-percent">Remise (%) *</label>
+        <div id="discount-quick" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"></div>
+        <input type="number" id="discount-percent" class="profile-input" min="1" max="50" step="1" placeholder="ex. 10"/>
+      </div>
       <label class="profile-label" for="discount-reason">Motif (interne, n'apparaît pas sur le devis)</label>
       <input type="text" id="discount-reason" class="profile-input" maxlength="300" placeholder="ex. vidéoprojecteur en panne le 3 octobre"/>
       <p class="profile-help" id="discount-message" role="status" hidden></p>

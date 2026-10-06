@@ -44,11 +44,9 @@ function createQuoteForEvent(event) {
   const number = nextQuoteNumber();
   // Remise en attente pour ce client (Reductions.gs) : appliquée à ce devis, puis effacée
   const email = getRequesterEmail(event);
-  const pending = getPendingDiscount(email);
-  if (pending) {
-    booking.discountPercent = pending.percent;
-    booking.discountLabel = DISCOUNTS.quoteLabel;
-  }
+  // (une remise sur un service non commandé, ex. le petit déjeuner, attend une prochaine réservation)
+  let pending = getPendingDiscount(email);
+  if (pending && !applyDiscount(space, booking, pending)) pending = null;
   const pdf = buildQuotePdf(space, booking, number);
   const discount = pending && takePendingDiscount(email, {
     quoteNumber: number,
