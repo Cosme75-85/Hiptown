@@ -953,6 +953,9 @@ footer {
 .rc-day.full { background: var(--rc-busy); cursor: not-allowed; }
 .rc-day.past { background: var(--rc-past); color: var(--rc-past-text); cursor: default; }
 .rc-day.error { background: #fff4a2; cursor: not-allowed; }
+.rc-day.closed { background: repeating-linear-gradient(45deg, var(--rc-past) 0 4px, var(--rc-past-text) 4px 5px); color: var(--rc-past-text); cursor: not-allowed; }
+.rc-dot.rc-closed { background: repeating-linear-gradient(45deg, var(--rc-past) 0 2px, var(--rc-past-text) 2px 3px); }
+.rc-opening-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: #fff4a2; font-size: 13px; font-weight: 600; color: var(--navy); }
 .rc-loading { grid-column: 1 / -1; text-align: center; color: var(--text-soft); font-size: 13px; padding: 12px 0; }
 
 .rc-overlay {

@@ -158,6 +158,9 @@
     .day.full { background: var(--busy); cursor: not-allowed; }
     .day.past { background: var(--gris-chaud-light); color: var(--gris-chaud); cursor: default; }
     .day.error { background: var(--citron-light); cursor: not-allowed; }
+    .day.closed { background: repeating-linear-gradient(45deg, var(--gris-chaud-light) 0 4px, var(--gris-chaud) 4px 5px); color: var(--gris-chaud); cursor: not-allowed; }
+    .dot.closed { background: repeating-linear-gradient(45deg, var(--gris-chaud-light) 0 2px, var(--gris-chaud) 2px 3px); }
+    .opening-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: var(--citron-light); font-size: 13px; font-weight: 600; color: var(--navy); }
     .day .remaining { font-size: 9px; font-weight: 500; }
     .loading-mini { grid-column: 1 / -1; text-align: center; color: var(--text-soft); font-size: 13px; padding: 12px 0; }
 
@@ -307,6 +310,7 @@
           <span><i class="dot free"></i> Disponible</span>
           <span><i class="dot busy"></i> Complet</span>
           <span><i class="dot past"></i> Passé</span>
+          <span><i class="dot closed"></i> Pas encore ouvert</span>
         </div>
       </div>
 
@@ -511,6 +515,7 @@
             + (space.photoUrl ? '<img class="space-photo" src="' + space.photoUrl + '" alt="' + escapeHtml(space.name) + '" loading="lazy">' : '')
             + '<div class="space-header"><h3 class="space-name">' + escapeHtml(space.name) + '</h3>'
             + (badge ? '<span class="badge">' + escapeHtml(badge) + '</span>' : '') + '</div>'
+            + (space.availableFromLabel ? '<p class="opening-note">Disponible à partir du ' + escapeHtml(space.availableFromLabel) + '</p>' : '')
             + '<div class="month-grid" id="grid-' + space.id + '" data-space-id="' + space.id + '">'
             + '<div class="loading-mini">Chargement...</div></div>'
             + '</article>';
@@ -567,7 +572,7 @@
         });
     }
 
-    const STATUS_LABELS = { available: 'disponible', full: 'complet', past: 'passé', error: 'indisponible' };
+    const STATUS_LABELS = { available: 'disponible', full: 'complet', past: 'passé', error: 'indisponible', closed: 'pas encore ouvert' };
 
     function renderMonthGrid(spaceId, data) {
       const grid = $('grid-' + spaceId);
