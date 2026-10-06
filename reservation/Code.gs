@@ -137,11 +137,11 @@ function getAllMonthsAvailability(year, month) {
   const result = {};
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return result;
   SPACES.forEach(space => {
-    result[space.id] = withCache(
+    result[space.id] = markClosedDays(space, withCache(
       'month:' + space.id + ':' + year + '-' + month,
       () => getMonthAvailability(space, year, month),
       data => !data.days.some(d => d.status === 'error')
-    );
+    ));
   });
   return result;
 }
@@ -149,7 +149,6 @@ function getAllMonthsAvailability(year, month) {
 function getMonthAvailability(space, year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = startOfToday();
-  const opening = openingDate(space);
 
   // Une seule lecture de l'agenda pour tout le mois, au lieu d'une par jour
   let slots = [];
@@ -170,9 +169,6 @@ function getMonthAvailability(space, year, month) {
 
     if (dateObj < today) {
       status = 'past';
-    } else if (opening && dateObj < opening) {
-      status = 'closed'; // espace pas encore ouvert (availableFrom dans Config.gs)
-      remaining = 0;
     } else if (fetchError) {
       status = 'error';
       remaining = 0;
@@ -218,11 +214,30 @@ function getMonthAvailability(space, year, month) {
   return { year: year, month: month, days: days };
 }
 
+/**
+ * Jours avant l'ouverture de l'espace (availableFrom dans Config.gs) : « closed ».
+ * Appliqué APRÈS le cache, pour qu'un changement de date d'ouverture se voie
+ * tout de suite, sans attendre l'expiration des disponibilités mémorisées.
+ */
+function markClosedDays(space, data) {
+  const opening = openingDate(space);
+  if (!opening || !data || !data.days) return data;
+  data.days.forEach(d => {
+    if (d.status !== 'past' && new Date(data.year, data.month - 1, d.day) < opening) {
+      d.status = 'closed';
+      d.remaining = 0;
+    }
+  });
+  return data;
+}
+
 // ==================== DISPONIBILITÉ SUR UNE JOURNÉE (pour le choix d'horaire) ====================
 
 function getDayAvailability(spaceId, dateString) {
   const space = findSpace(spaceId);
   if (!space || !isValidDateString(dateString)) return { hours: [], capacity: 0 };
+  const opening = openingDate(space);
+  if (opening && parseDate(dateString) < opening) return computeDayAvailability(space, parseDate(dateString));
 
   return withCache(
     'day:' + spaceId + ':' + dateString,
