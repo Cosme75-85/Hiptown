@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Mes prochaines réservations (tableau de bord)
+//  PORTAIL HIPTOWN — Mes prochaines réservations (page à part)
+//  Ouverte par la tuile « Mes prochaines réservations » ou par le lien bleu
+//  de l'outil de réservation des salles (portail#mes-reservations).
 //  Toutes les réservations à venir de la personne connectée, quel que soit
 //  l'outil utilisé : demandes de salle (en attente ou confirmées, retrouvées
 //  par l'email du compte) et réservations coworking.
@@ -38,9 +40,8 @@ function describeSlot(b) {
 }
 
 async function load() {
-  const box = $("my-bookings");
   const token = ++requestToken;
-  if (!auth.currentUser || !SPACES_WITH_LIST.includes(currentSpace)) { box.hidden = true; return; }
+  if (!auth.currentUser || !SPACES_WITH_LIST.includes(currentSpace)) return showMessage("Connectez-vous pour voir vos réservations.");
   try {
     const idToken = await auth.currentUser.getIdToken();
     const res = await fetch(BASE_URL, {
@@ -65,14 +66,12 @@ async function load() {
 
 /** Message à la place de la liste (aucune réservation, erreur). */
 function showMessage(text) {
-  $("my-bookings").hidden = false;
   $("my-bookings-list").innerHTML = '<p class="my-bookings-help">' + escapeHtml(text) + "</p>";
   $("my-bookings-more").hidden = true;
 }
 
 function render() {
   if (!bookings.length) return showMessage("Aucune réservation à venir.");
-  $("my-bookings").hidden = false;
   const shown = showAll ? bookings : bookings.slice(0, SHOWN_AT_FIRST);
   $("my-bookings-list").innerHTML = shown.map(bookingCard).join("");
   const more = $("my-bookings-more");
@@ -187,19 +186,31 @@ function downloadIcs(b) {
 
 // ==================== ÉVÉNEMENTS ====================
 
-// Connexion : on charge la liste pour les clients (salle de réunion et coworking)
-document.addEventListener("hiptown-dashboard", e => {
-  currentSpace = e.detail && e.detail.space;
+const PAGE_HASH = "#mes-reservations"; // lien bleu de l'outil de réservation des salles
+
+/** Affiche la page et recharge la liste (toujours à jour, ex. après une annulation coworking). */
+function openPage() {
   bookings = [];
   showAll = false;
-  $("my-bookings").hidden = true;
+  $("my-bookings-list").innerHTML = '<p class="my-bookings-help">Chargement...</p>';
+  $("my-bookings-more").hidden = true;
   load();
+}
+
+// Connexion : on retient l'espace ; arrivée par le lien bleu -> on ouvre directement la page
+document.addEventListener("hiptown-dashboard", e => {
+  currentSpace = e.detail && e.detail.space;
+  if (location.hash !== PAGE_HASH) return;
+  history.replaceState(null, "", location.pathname + location.search); // un rechargement ramène au tableau de bord
+  window.hideAll();
+  $("step-mes-resa").hidden = false;
+  openPage();
 });
 
-// Retour au tableau de bord (ex. après une annulation dans la tuile coworking) : on rafraîchit
-new MutationObserver(() => {
-  if (!$("step-dashboard").hidden && currentSpace) load();
-}).observe($("step-dashboard"), { attributes: true, attributeFilter: ["hidden"] });
+// Tuile « Mes prochaines réservations »
+document.addEventListener("hiptown-tile-action", e => {
+  if (e.detail === "mesresa") openPage();
+});
 
 $("my-bookings-more").addEventListener("click", () => {
   showAll = !showAll;
