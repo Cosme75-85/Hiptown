@@ -12,7 +12,7 @@ import { auth } from "./firebase-config.js";
 
 const BASE_URL = PORTAIL.reservationUrl;
 const SHOWN_AT_FIRST = 3; // au-delà, bouton « Voir les autres »
-const SPACES_WITH_LIST = ["salle", "coworking"]; // l'équipe Hiptown n'en a pas besoin
+const SPACES_WITH_LIST = ["salle", "coworking", "hiptown"]; // l'équipe aussi : ses propres réservations
 
 const $ = id => document.getElementById(id);
 
@@ -49,19 +49,30 @@ async function load() {
       body: JSON.stringify({ action: "getMyUpcomingBookings", idToken: idToken })
     }).then(r => r.json());
     if (token !== requestToken) return;
-    if (!res.success || !Array.isArray(res.bookings)) { box.hidden = true; return; }
+    if (!res.success || !Array.isArray(res.bookings)) {
+      // « Action inconnue » : l'outil de réservation n'a pas encore la nouvelle version
+      return showMessage(res.message === "Action inconnue."
+        ? "Liste indisponible : l'outil de réservation n'est pas encore à jour (déploiement Apps Script)."
+        : res.message || "Liste indisponible pour le moment.");
+    }
     bookings = res.bookings;
     contactEmail = res.contactEmail || "";
     render();
   } catch (err) {
-    if (token === requestToken) box.hidden = true; // outil pas encore mis à jour ou hors ligne : on n'affiche rien
+    if (token === requestToken) showMessage("Liste indisponible pour le moment, merci de réessayer plus tard.");
   }
 }
 
+/** Message à la place de la liste (aucune réservation, erreur). */
+function showMessage(text) {
+  $("my-bookings").hidden = false;
+  $("my-bookings-list").innerHTML = '<p class="my-bookings-help">' + escapeHtml(text) + "</p>";
+  $("my-bookings-more").hidden = true;
+}
+
 function render() {
-  const box = $("my-bookings");
-  box.hidden = bookings.length === 0;
-  if (!bookings.length) return;
+  if (!bookings.length) return showMessage("Aucune réservation à venir.");
+  $("my-bookings").hidden = false;
   const shown = showAll ? bookings : bookings.slice(0, SHOWN_AT_FIRST);
   $("my-bookings-list").innerHTML = shown.map(bookingCard).join("");
   const more = $("my-bookings-more");
