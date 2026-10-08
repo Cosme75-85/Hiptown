@@ -365,12 +365,6 @@
         <div id="notif-dropdown" style="display:none;position:absolute;right:0;top:38px;width:300px;max-height:420px;overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-md);box-shadow:0 8px 28px rgba(30,24,71,0.15);z-index:20;padding:8px;"></div>
       </div>
     </div>
-    <!-- Mes prochaines réservations (mes-reservations.js) -->
-    <div class="rc-mine my-bookings" id="my-bookings" hidden>
-      <div class="rc-mine-title">📅 Mes prochaines réservations</div>
-      <div class="rc-mine-list" id="my-bookings-list"></div>
-      <button type="button" class="rc-option my-bookings-more" id="my-bookings-more" hidden></button>
-    </div>
     <div class="tiles-grid" id="tiles-grid"></div>
     <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
   </section>
@@ -663,6 +657,16 @@
   </section>
 
   <!-- PAGE RÉSERVATION DES SALLES (ESPACE COWORKING) — logique dans resa-coworking.js -->
+  <!-- MES PROCHAINES RÉSERVATIONS (mes-reservations.js) : tuile, ou lien bleu de l'outil de réservation (#mes-reservations) -->
+  <section id="step-mes-resa" hidden>
+    <button class="back-btn" id="back-from-mes-resa">← Retour</button>
+    <h2 class="step-title">📅 Mes prochaines réservations</h2>
+    <div class="rc-mine my-bookings" id="my-bookings">
+      <div class="rc-mine-list" id="my-bookings-list"><p class="my-bookings-help">Chargement...</p></div>
+      <button type="button" class="rc-option my-bookings-more" id="my-bookings-more" hidden></button>
+    </div>
+  </section>
+
   <section id="step-resa-cowork" hidden>
     <button class="back-btn" id="back-from-resa-cowork">← Retour</button>
     <h2 class="step-title">📅 Réserver une salle de réunion</h2>

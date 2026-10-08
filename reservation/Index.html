@@ -78,6 +78,9 @@
       white-space: nowrap;
     }
     .category-nav a:hover { background: var(--citron-light); }
+    /* Lien vers « Mes prochaines réservations » du portail (autre page) */
+    .category-nav a.nav-my-bookings { background: #0369a1; color: var(--white); }
+    .category-nav a.nav-my-bookings:hover { background: #075985; }
 
     /* Mois + légende */
     .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: var(--gutter); }
@@ -427,6 +430,8 @@
   <script><?!= sharedScript ?></script>
   <script>
     const MIDDAY_HOUR = 13; // séparation matin / après-midi
+    // Portail client Hiptown : le lien bleu « Mes prochaines réservations » y ouvre la liste du client connecté
+    const PORTAL_URL = 'https://cosme75-85.github.io/Hiptown/';
     const MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
     const $ = id => document.getElementById(id);
@@ -523,6 +528,7 @@
         pageHtml += '</div>';
       });
 
+      navHtml += '<a class="nav-my-bookings" href="' + PORTAL_URL + '#mes-reservations" target="_top">📅 Mes prochaines réservations</a>';
       $('categoryNav').innerHTML = navHtml;
       $('spacesContainer').innerHTML = pageHtml;
     }
