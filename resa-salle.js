@@ -9,7 +9,6 @@
 const $ = id => document.getElementById(id);
 
 let contact = null;  // coordonnées du compte connecté
-let loadedFor = "";  // adresse déjà chargée dans le cadre (évite de recharger à chaque ouverture)
 
 function frameUrl() {
   const params = new URLSearchParams({ embed: "1" });
@@ -27,10 +26,9 @@ document.addEventListener("hiptown-tile-action", e => {
   if (e.detail !== "resasalle") return;
   const url = frameUrl();
   $("resa-salle-open").href = url;
-  if (loadedFor !== url) {
-    $("resa-salle-frame").src = url;
-    loadedFor = url;
-  }
+  // Rechargé à chaque ouverture : disponibilités toujours à jour (la page garde sinon
+  // en mémoire les mois déjà affichés). Le paramètre t force le navigateur à recharger.
+  $("resa-salle-frame").src = url + "&t=" + Date.now();
 });
 
 // Lien bleu de l'outil : on ouvre « Mes prochaines réservations » dans le portail
