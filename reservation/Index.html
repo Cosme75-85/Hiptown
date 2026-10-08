@@ -528,8 +528,17 @@
         pageHtml += '</div>';
       });
 
-      navHtml += '<a class="nav-my-bookings" href="' + PORTAL_URL + '#mes-reservations" target="_top">📅 Mes prochaines réservations</a>';
+      // Dans le portail : le portail ouvre sa page sans recharger ; sinon, lien vers le portail
+      navHtml += EMBEDDED
+        ? '<a class="nav-my-bookings" href="#" id="navMyBookings">📅 Mes prochaines réservations</a>'
+        : '<a class="nav-my-bookings" href="' + PORTAL_URL + '#mes-reservations" target="_top">📅 Mes prochaines réservations</a>';
       $('categoryNav').innerHTML = navHtml;
+      if (EMBEDDED) {
+        $('navMyBookings').addEventListener('click', e => {
+          e.preventDefault();
+          window.top.postMessage({ hiptown: 'mes-reservations' }, '*');
+        });
+      }
       $('spacesContainer').innerHTML = pageHtml;
     }
 
@@ -745,7 +754,10 @@
         ? 'Du ' + formatDate(b.dateString) + ' au ' + formatDate(b.endDateString) + ' (journée complète)'
         : formatDate(b.dateString) + ', de ' + b.startHour + 'h à ' + b.endHour + 'h';
 
-      // La saisie (nom, email...) est conservée si le client change de créneau
+      // La saisie (nom, email...) est conservée si le client change de créneau.
+      // Depuis le portail, les champs vides reprennent les coordonnées du compte.
+      [['firstName', 'firstName'], ['lastName', 'lastName'], ['company', 'company'], ['requesterEmail', 'email']]
+        .forEach(([field, key]) => { if (!$(field).value && PREFILL[key]) $(field).value = PREFILL[key]; });
       $('numberOfPeople').max = b.space.maxPeople || '';
       $('formStep').hidden = false;
       $('submitBtn').hidden = false;

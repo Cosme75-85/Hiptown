@@ -238,7 +238,12 @@ function routeToDashboard(client, space) {
     window.showDashboardFromAuth(client, space);
   }
   // Prévient les autres modules (ex. crédits coworking dans le bandeau, resa-coworking.js)
-  document.dispatchEvent(new CustomEvent("hiptown-dashboard", { detail: { space } }));
+  // (et préremplissage de la réservation de salle intégrée, resa-salle.js)
+  const { profile } = session;
+  document.dispatchEvent(new CustomEvent("hiptown-dashboard", { detail: {
+    space,
+    contact: { firstName: profile.firstName || "", lastName: profile.lastName || "", company: companyNameOf(session), email: profile.email || "" }
+  } }));
   if (space === "hiptown") applySiteAccess();
   if (notifBellWrap) {
     const isAdmin = space === "hiptown";

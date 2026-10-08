@@ -48,11 +48,31 @@ function doGet(e) {
     'const START_HOUR = ' + START_HOUR + ';',
     'const END_HOUR = ' + END_HOUR + ';',
     'const PRICES = ' + JSON.stringify(PRICES) + ';',
-    computeQuote.toString()
+    computeQuote.toString(),
+    // Page intégrée au portail client (?embed=1) : coordonnées du compte préremplies
+    'const EMBEDDED = ' + !!(e && e.parameter && e.parameter.embed === '1') + ';',
+    'const PREFILL = ' + JSON.stringify(portalPrefill(e && e.parameter)).replace(/</g, '\\u003c') + ';'
   ].join('\n');
   return template.evaluate()
     .setTitle('Réservation d\'espaces')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    // Autorise l'affichage dans le portail client (iframe de la tuile « Réserver une salle »)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Coordonnées envoyées par le portail dans l'adresse de la page, pour préremplir le formulaire.
+ * Simple confort de saisie : le client peut les modifier, et bookRoom revérifie tout.
+ */
+function portalPrefill(params) {
+  const p = params || {};
+  const email = cleanText(p.email, MAX_TEXT_LENGTH).toLowerCase();
+  return {
+    firstName: cleanText(p.firstName, MAX_TEXT_LENGTH),
+    lastName: cleanText(p.lastName, MAX_TEXT_LENGTH),
+    company: cleanText(p.company, MAX_TEXT_LENGTH),
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
+  };
 }
 
 /**
