@@ -275,7 +275,8 @@
     renderIdentity(client);
     buildTiles(currentSpace, client.id);
     hideAll(); stepDashboard.hidden = false;
-    if (PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
+    // Pas de banderole des événements pour les clients « salles de réunion »
+    if (currentSpace !== "salle" && PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
