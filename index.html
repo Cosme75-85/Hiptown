@@ -657,6 +657,13 @@
   </section>
 
   <!-- PAGE RÉSERVATION DES SALLES (ESPACE COWORKING) — logique dans resa-coworking.js -->
+  <!-- RÉSERVER UNE SALLE (clients salle de réunion) : l'outil de réservation affiché dans le portail (resa-salle.js) -->
+  <section id="step-resa-salle" class="resa-salle-step" hidden>
+    <button class="back-btn" id="back-from-resa-salle">← Retour</button>
+    <iframe id="resa-salle-frame" class="resa-salle-frame" title="Réserver une salle" allow="clipboard-write"></iframe>
+    <p class="resa-salle-fallback">La page ne s'affiche pas ? <a id="resa-salle-open" href="#" target="_blank" rel="noopener">Ouvrir la réservation dans un nouvel onglet</a></p>
+  </section>
+
   <!-- MES PROCHAINES RÉSERVATIONS (mes-reservations.js) : tuile, ou lien bleu de l'outil de réservation (#mes-reservations) -->
   <section id="step-mes-resa" hidden>
     <button class="back-btn" id="back-from-mes-resa">← Retour</button>
@@ -824,5 +831,6 @@
 <script type="module" src="breakfast.js"></script>
 <script type="module" src="resa-coworking.js"></script>
 <script type="module" src="mes-reservations.js"></script>
+<script type="module" src="resa-salle.js"></script>
 </body>
 </html>

@@ -1099,3 +1099,10 @@ footer {
 .my-bookings-help { font-size: 12px; color: var(--text-soft); margin-top: 8px; }
 .my-bookings-more { margin-top: 10px; min-height: 40px; padding: 6px 12px; }
 .my-bookings .rc-bk-actions a.rc-option { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* Réserver une salle : outil de réservation affiché dans le portail */
+.resa-salle-frame { display: block; width: 100%; height: calc(100vh - 140px); min-height: 520px; border: 0; border-radius: 12px; background: #f6f5f4; }
+.resa-salle-fallback { font-size: 12px; color: var(--text-soft); margin-top: 8px; text-align: center; }
+.resa-salle-fallback a { color: var(--navy); }
+/* Assez large pour la liste des types de salles à gauche (ordinateur) */
+.container:has(#step-resa-salle:not([hidden])) { max-width: 1180px; }
