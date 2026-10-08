@@ -432,6 +432,10 @@
     const MIDDAY_HOUR = 13; // séparation matin / après-midi
     // Portail client Hiptown : le lien bleu « Mes prochaines réservations » y ouvre la liste du client connecté
     const PORTAL_URL = 'https://cosme75-85.github.io/Hiptown/';
+    // Écrits par Code.gs : valeurs par défaut si Code.gs n'a pas encore la version qui les envoie
+    // (sinon toute la page s'arrête et plus aucune disponibilité ne s'affiche)
+    const IS_EMBEDDED = typeof EMBEDDED !== 'undefined' && EMBEDDED === true;
+    const PREFILLED = typeof PREFILL !== 'undefined' && PREFILL ? PREFILL : {};
     const MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
     const $ = id => document.getElementById(id);
@@ -529,11 +533,11 @@
       });
 
       // Dans le portail : le portail ouvre sa page sans recharger ; sinon, lien vers le portail
-      navHtml += EMBEDDED
+      navHtml += IS_EMBEDDED
         ? '<a class="nav-my-bookings" href="#" id="navMyBookings">📅 Mes prochaines réservations</a>'
         : '<a class="nav-my-bookings" href="' + PORTAL_URL + '#mes-reservations" target="_top">📅 Mes prochaines réservations</a>';
       $('categoryNav').innerHTML = navHtml;
-      if (EMBEDDED) {
+      if (IS_EMBEDDED) {
         $('navMyBookings').addEventListener('click', e => {
           e.preventDefault();
           window.top.postMessage({ hiptown: 'mes-reservations' }, '*');
@@ -757,7 +761,7 @@
       // La saisie (nom, email...) est conservée si le client change de créneau.
       // Depuis le portail, les champs vides reprennent les coordonnées du compte.
       [['firstName', 'firstName'], ['lastName', 'lastName'], ['company', 'company'], ['requesterEmail', 'email']]
-        .forEach(([field, key]) => { if (!$(field).value && PREFILL[key]) $(field).value = PREFILL[key]; });
+        .forEach(([field, key]) => { if (!$(field).value && PREFILLED[key]) $(field).value = PREFILLED[key]; });
       $('numberOfPeople').max = b.space.maxPeople || '';
       $('formStep').hidden = false;
       $('submitBtn').hidden = false;
