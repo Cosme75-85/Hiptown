@@ -23,7 +23,7 @@ function getMyUpcomingBookings(idToken) {
   const bookings = [];
   try {
     SPACES.forEach(space => {
-      listEventsByEmail(space, account.email, now, to).forEach(ev => {
+      listMyEvents(space, account, now, to).forEach(ev => {
         if (ev.end <= now) return;
         const isCoworking = ev.title.indexOf(COWORKING.titlePrefix) === 0;
         let status;
@@ -70,6 +70,22 @@ function getMyUpcomingBookings(idToken) {
   }
   bookings.sort((a, b) => a.start - b.start);
   return { success: true, bookings: bookings, contactEmail: OWNER_EMAIL };
+}
+
+/**
+ * Réservations d'un espace faites par ce compte : par l'email (demandes de salle, coworking),
+ * et pour les salles coworking aussi par le compte du portail (tag portalUid), au cas où
+ * l'email enregistré dans l'événement diffère de celui du compte. Sans doublon.
+ */
+function listMyEvents(space, account, from, to) {
+  const byId = {};
+  listEventsByEmail(space, account.email, from, to).forEach(ev => { byId[ev.id] = ev; });
+  if (COWORKING.spaceIds.indexOf(space.id) !== -1) {
+    listOwnEvents(space, account.uid, from, to).forEach(ev => {
+      if (!byId[ev.id]) byId[ev.id] = Object.assign({}, ev, { portalUid: account.uid });
+    });
+  }
+  return Object.keys(byId).map(id => byId[id]);
 }
 
 /**

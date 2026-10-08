@@ -24,6 +24,7 @@
   const stepResaCowork     = document.getElementById("step-resa-cowork");
   const stepMesResa        = document.getElementById("step-mes-resa");
   const stepResaSalle      = document.getElementById("step-resa-salle");
+  const stepSalles         = document.getElementById("step-salles");
 
   const welcomeTitle   = document.getElementById("welcome-title");
   const welcomeSub     = document.getElementById("welcome-sub");
@@ -113,6 +114,7 @@
     marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
     resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: null, action: "resasalle" },
     resacowork:{ title: "Réserver une salle de réunion", desc: "Les 4 salles, sans paiement",   icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "resacowork" },
+    salles:    { title: "Salle de réunion",          desc: "Réserver et mes réservations",           icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "salles" },
     mesresa:   { title: "Mes prochaines réservations", desc: "Salles réservées à venir",       icon: "📅", bg: "#e0f2fe", color: "#0369a1", url: null, action: "mesresa" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     mesinfos:  { title: "Mes informations",          desc: "Mon contrat, mes factures",              icon: "👤", bg: "#e0f2fe", color: "#0369a1", url: null, action: "mesinfos" },
@@ -133,9 +135,9 @@
   };
 
   const SPACE_TILES = {
-    salle:     ["accueil", "resasalle", "mesresa", "salleinfo", "adresses", "services", "tarifssalle", "tarifscoworking", "avis"],
-    coworking: ["resacowork", "mesresa", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
-    hiptown:   ["hiptools", "hipespaces", "gestion", "mesresa", "accueil", "incident"],
+    salle:     ["accueil", "salles", "salleinfo", "adresses", "services", "tarifssalle", "tarifscoworking", "avis"],
+    coworking: ["salles", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
+    hiptown:   ["hiptools", "hipespaces", "gestion", "salles", "accueil", "incident"],
   };
 
   // ── Données des sites ─────────────────────────────────
@@ -235,7 +237,7 @@
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
     [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepMesInfos, stepContrat, stepInfoCowork,
-     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork, stepMesResa, stepResaSalle]
+     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork, stepMesResa, stepResaSalle, stepSalles]
     .forEach(function(s) { s.hidden = true; });
     eventsBanner.hidden = true;
   }
@@ -324,6 +326,25 @@
     modal.style.display = "flex";
   }
 
+  /** Ouvre la page d'une tuile (ou d'un bouton de la page « Salle de réunion »). */
+  function openTileAction(action) {
+    hideAll();
+    if (action === "info")       stepInfo.hidden           = false;
+    if (action === "services")   openServices(false);
+    if (action === "complem")    openServices(true);
+    if (action === "mesinfos")   stepMesInfos.hidden       = false;
+    if (action === "infocowork") stepInfoCowork.hidden     = false;
+    if (action === "salleinfo")  stepSalleInfo.hidden      = false;
+    if (action === "hiptools")   stepHiptownOutils.hidden  = false;
+    if (action === "hipespaces") stepHiptownEspaces.hidden = false;
+    if (action === "resacowork") stepResaCowork.hidden     = false;
+    if (action === "mesresa")    stepMesResa.hidden        = false;
+    if (action === "resasalle")  stepResaSalle.hidden      = false;
+    if (action === "salles")     stepSalles.hidden         = false;
+    document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: action }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function buildTiles(space, clientId) {
     tilesGrid.innerHTML = "";
     const baseIds = SPACE_TILES[space] || [];
@@ -367,20 +388,7 @@
       if (tile.action) {
         el.addEventListener("click", function (e) {
           e.preventDefault();
-          hideAll();
-          if (tile.action === "info")       stepInfo.hidden           = false;
-          if (tile.action === "services")   openServices(false);
-          if (tile.action === "complem")    openServices(true);
-          if (tile.action === "mesinfos")   stepMesInfos.hidden       = false;
-          if (tile.action === "infocowork") stepInfoCowork.hidden     = false;
-          if (tile.action === "salleinfo")  stepSalleInfo.hidden      = false;
-          if (tile.action === "hiptools")   stepHiptownOutils.hidden  = false;
-          if (tile.action === "hipespaces") stepHiptownEspaces.hidden = false;
-          if (tile.action === "resacowork") stepResaCowork.hidden     = false;
-          if (tile.action === "mesresa")    stepMesResa.hidden        = false;
-          if (tile.action === "resasalle")  stepResaSalle.hidden      = false;
-          document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: tile.action }));
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          openTileAction(tile.action);
         });
       }
 
@@ -475,10 +483,23 @@
   document.getElementById("back-from-contrat").addEventListener("click", function () { showStep(stepMesInfos); });
 
   // ── Retours ───────────────────────────────────────────
-  [backFromSalleInfo, backFromHipOutils, backFromHipEspaces, backFromResaCowork,
+  [backFromSalleInfo, backFromHipOutils, backFromHipEspaces,
    document.getElementById("back-from-mes-infos"), document.getElementById("back-from-info-cowork"),
-   document.getElementById("back-from-mes-resa"), document.getElementById("back-from-resa-salle")].forEach(function (btn) {
+   document.getElementById("back-from-salles")].forEach(function (btn) {
     btn.addEventListener("click", function () { showStep(stepDashboard); });
+  });
+  // Réserver et « Mes prochaines réservations » : retour à la page « Salle de réunion »
+  [backFromResaCowork, document.getElementById("back-from-mes-resa"), document.getElementById("back-from-resa-salle")].forEach(function (btn) {
+    btn.addEventListener("click", function () { openTileAction("salles"); });
+  });
+  // Page « Salle de réunion » : clients salle -> outil de réservation ; coworkers et équipe -> réservation sans paiement
+  document.getElementById("salles-book").addEventListener("click", function (e) {
+    e.preventDefault();
+    openTileAction(currentSpace === "salle" ? "resasalle" : "resacowork");
+  });
+  document.getElementById("salles-mine").addEventListener("click", function (e) {
+    e.preventDefault();
+    openTileAction("mesresa");
   });
   // En coworking, « Informations » et « Mes services » sont rangées dans « Informations du coworking »
   [backFromInfo, backFromServ].forEach(function (btn) {
@@ -558,6 +579,7 @@
 
   // ── Pont vers app-auth.js ──────────────────────────────
   window.hideAll = hideAll;
+  window.openTileAction = openTileAction;
   window.renderIdentity = renderIdentity;
   window.showDashboardFromAuth = function (client, space) {
     currentSpace       = space;

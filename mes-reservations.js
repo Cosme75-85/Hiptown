@@ -229,8 +229,7 @@ $("my-bookings-list").addEventListener("click", e => {
   }
   // Coworking : la tuile de réservation contient déjà « Modifier » et « Annuler »
   if (e.target.closest("[data-manage]")) {
-    const tile = document.querySelector('#tiles-grid [data-id="resacowork"]');
-    if (tile) tile.click();
+    window.openTileAction("resacowork");
   }
 });
 
