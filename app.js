@@ -140,6 +140,9 @@
     hiptown:   ["hiptools", "hipespaces", "gestion", "salles", "accueil", "incident"],
   };
 
+  // Tuiles réservées au personnel Hiptown (jamais affichées à un client, même ajoutées à la main)
+  const STAFF_ONLY_TILES = ["gestion"];
+
   // ── Données des sites ─────────────────────────────────
   const SITES = {
     nabo02: { name: "NABO02 — Place de la Bourse CCI Tetris", tools: [
@@ -354,7 +357,12 @@
     const hidden = currentHiddenTiles || [];
 
     let tileIds = baseIds.slice();
-    extra.forEach(function(id) { if (!tileIds.includes(id)) tileIds.push(id); });
+    // Une tuile réservée au personnel Hiptown n'est jamais ajoutée à un compte client
+    extra.forEach(function(id) {
+      if (tileIds.includes(id)) return;
+      if (space !== "hiptown" && STAFF_ONLY_TILES.includes(id)) return;
+      tileIds.push(id);
+    });
     tileIds = tileIds.filter(function(id) { return !hidden.includes(id); });
 
     const order   = getSavedOrder(clientId, tileIds);
