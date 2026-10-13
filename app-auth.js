@@ -21,7 +21,7 @@ const stepProfile = document.getElementById("step-profile");
 const stepGestion   = document.getElementById("step-gestion");
 const stepCompanies = document.getElementById("step-companies");
 const stepReductions = document.getElementById("step-reductions");
-const stepSalles = document.getElementById("step-salles");
+const stepGestionSalles = document.getElementById("step-gestion-salles");
 const authError   = document.getElementById("auth-error");
 
 let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
@@ -31,7 +31,7 @@ let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'é
 // masque en plus les 3 nouvelles sections.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepSalles].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -294,11 +294,11 @@ document.getElementById("open-gestion-reductions")?.addEventListener("click", as
 document.getElementById("open-gestion-salles")?.addEventListener("click", (e) => {
   e.preventDefault();
   hideAllAuth();
-  stepSalles.hidden = false;
+  stepGestionSalles.hidden = false;
   renderRoomsPanel();
 });
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
-document.getElementById("back-from-salles")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 
