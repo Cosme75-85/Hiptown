@@ -263,17 +263,47 @@
     <div class="info-grid" id="rooms-archived-list"></div>
   </section>
 
-  <!-- ÉTAPE : SERVICES EN OPTION (admin) — prix et clients concernés (services.js) -->
+  <!-- ÉTAPE : SERVICES EN OPTION (admin) — ajout, prix, clients concernés, retrait (services.js) -->
   <section id="step-gestion-services" hidden>
     <button class="back-btn" id="back-from-gestion-services">← Retour</button>
     <h2 class="step-title" style="margin-bottom:4px;">🥐 Services</h2>
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Les services proposés en option au moment de réserver une salle, avec leurs prix € HT.
-      Décochez un type de client pour ne plus lui proposer le service. Les changements
-      s'appliquent aux nouvelles réservations et aux devis envoyés ensuite.
+      Cochez « Salle de réunion » et/ou « Coworking » pour choisir qui peut les commander ;
+      l'équipe Hiptown y a toujours accès. Chaque ville gère ses propres services.
+      Les changements s'appliquent aux nouvelles réservations et aux devis envoyés ensuite.
+      Un service retiré n'est plus proposé ; les devis déjà faits restent justes.
     </p>
     <p class="profile-help" id="service-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
+    <button class="direct-btn" id="service-add" type="button" style="background:var(--navy);color:#fff;margin:0 0 16px;">+ Ajouter un service</button>
+
+    <div class="pin-box" id="service-form" hidden style="max-width:100%;text-align:left;margin-bottom:24px;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;">Nouveau service</h3>
+      <label class="profile-label" for="service-new-label">Nom *</label>
+      <input type="text" id="service-new-label" class="profile-input" maxlength="60" placeholder="ex. Vidéoprojecteur"/>
+      <div id="service-new-city-wrap" hidden>
+        <label class="profile-label" for="service-new-city">Ville</label>
+        <select id="service-new-city" class="profile-input"></select>
+      </div>
+      <label class="profile-label" for="service-new-pricing">Facturation</label>
+      <select id="service-new-pricing" class="profile-input">
+        <option value="person">Par personne (le client coche une case)</option>
+        <option value="unit">À l'unité (le client choisit une quantité)</option>
+        <option value="unitDay">Par unité, à la demi-journée ou à la journée</option>
+      </select>
+      <p class="profile-help">La facturation ne se change plus ensuite : les réservations déjà faites en dépendent.</p>
+      <div id="service-new-fields"></div>
+      <p class="profile-help" id="service-form-message" role="status" hidden></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <button class="direct-btn" id="service-save" type="button" style="background:var(--navy);color:#fff;flex:1;margin-top:0;">Ajouter</button>
+        <button class="direct-btn" id="service-cancel" type="button" style="flex:1;margin-top:0;">Annuler</button>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:8px 0 10px;">En ligne</h3>
     <div class="info-grid" id="services-list"></div>
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Retirés</h3>
+    <div class="info-grid" id="services-archived-list"></div>
   </section>
 
   <!-- ÉTAPE : RÉDUCTIONS CLIENTS (admin) — remise appliquée au prochain devis du client -->
@@ -897,9 +927,8 @@
           <label for="rc-notes">Note (optionnel)</label>
           <textarea id="rc-notes" maxlength="2000"></textarea>
           <fieldset class="rc-meals" id="rc-meals" hidden>
-            <legend>Restauration (en option, facturée)</legend>
-            <div class="rc-check-row"><input type="checkbox" id="rc-breakfast"/><label for="rc-breakfast" id="rc-breakfast-label">Petit déjeuner</label></div>
-            <div class="rc-check-row"><input type="checkbox" id="rc-lunch"/><label for="rc-lunch" id="rc-lunch-label">Déjeuner</label></div>
+            <legend>Services en option (facturés)</legend>
+            <div id="rc-services"></div>
             <p class="rc-meals-total" id="rc-meals-total" hidden></p>
             <p class="rc-meals-total" id="rc-meals-late" hidden></p>
           </fieldset>
@@ -935,9 +964,8 @@
         <label for="rc-edit-people">Nombre de personnes *</label>
         <input type="number" id="rc-edit-people" min="1" inputmode="numeric"/>
         <fieldset class="rc-meals" id="rc-edit-meals" hidden>
-          <legend>Restauration (en option, facturée)</legend>
-          <div class="rc-check-row"><input type="checkbox" id="rc-edit-breakfast"/><label for="rc-edit-breakfast" id="rc-edit-breakfast-label">Petit déjeuner</label></div>
-          <div class="rc-check-row"><input type="checkbox" id="rc-edit-lunch"/><label for="rc-edit-lunch" id="rc-edit-lunch-label">Déjeuner</label></div>
+          <legend>Services en option (facturés)</legend>
+          <div id="rc-edit-services"></div>
           <p class="rc-meals-total" id="rc-edit-meals-total" hidden></p>
           <p class="rc-meals-total" id="rc-edit-meals-late" hidden></p>
         </fieldset>

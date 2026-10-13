@@ -48,9 +48,11 @@ function doGet(e) {
     'const SPACES = ' + JSON.stringify(getSpacesMeta()) + ';',
     'const START_HOUR = ' + START_HOUR + ';',
     'const END_HOUR = ' + END_HOUR + ';',
-    'const PRICES = ' + JSON.stringify(currentPrices()) + ';',
-    // Services proposés aux clients salle de réunion (Gestion > Services, voir Services.gs)
-    'const SERVICES_OFFERED = ' + JSON.stringify(offeredServices('salle')) + ';',
+    // Tarifs, avec les services proposés aux clients salle de réunion (Gestion > Services, voir Services.gs)
+    // (toutes villes : la page ne montre que ceux de la ville de la salle choisie)
+    'const PRICES = ' + JSON.stringify(Object.assign({}, PRICES, { services: offeredServiceList('salle') })) + ';',
+    'const MAX_SERVICE_QUANTITY = ' + MAX_SERVICE_QUANTITY + ';',
+    requestedServices.toString(),
     computeQuote.toString(),
     // Page intégrée au portail client (?embed=1) : coordonnées du compte préremplies
     'const EMBEDDED = ' + !!(e && e.parameter && e.parameter.embed === '1') + ';',
@@ -135,6 +137,9 @@ function doPost(e) {
     if (body.action === 'saveService') {
       return jsonResponse(saveService(body.idToken, body.payload));
     }
+    if (body.action === 'setServiceArchived') {
+      return jsonResponse(setServiceArchived(body.idToken, body.payload));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });
@@ -163,6 +168,7 @@ function getSpacesMeta() {
       onlyHalfOrFullDay: !!s.onlyHalfOrFullDay,
       badgeLabel: s.badgeLabel || null,
       category: s.category || 'Autres espaces',
+      city: cityOf(s),
       hourlyPrice: s.hourlyPrice || null,
       halfDayPrice: s.halfDayPrice || null,
       fullDayPrice: s.fullDayPrice || null,
@@ -381,10 +387,7 @@ function validateBooking(raw) {
     title: cleanText(raw.title, MAX_TEXT_LENGTH),
     notes: cleanText(raw.notes, MAX_NOTES_LENGTH),
     numberOfPeople: toInt(raw.numberOfPeople),
-    parkingQuantity: raw.parkingQuantity ? toInt(raw.parkingQuantity) : 0,
     spaceQuantity: space.quantitySelectable ? toInt(raw.spaceQuantity) : 1,
-    wantsBreakfast: raw.wantsBreakfast === true,
-    wantsLunch: raw.wantsLunch === true,
     wantsOther: raw.wantsOther === true,
     dateString: String(raw.dateString || ''),
     endDateString: raw.endDateString ? String(raw.endDateString) : '',
@@ -404,16 +407,12 @@ function validateBooking(raw) {
   if (space.maxPeople && b.numberOfPeople > space.maxPeople) {
     return { error: space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.' };
   }
-  if (!(b.parkingQuantity >= 0 && b.parkingQuantity <= MAX_PARKING)) {
-    return { error: 'Nombre de places de parking invalide (maximum ' + MAX_PARKING + ').' };
+  // Services (Gestion > Services) : un service retiré pendant que le client remplissait le formulaire est refusé
+  const services = cleanRequestedServices(raw, 'salle', cityOf(space));
+  if (services.refused.length) {
+    return { error: services.refused.join(', ') + ' : plus proposé à la réservation. Merci de recharger la page.' };
   }
-  // Service retiré depuis le portail pendant que le client remplissait le formulaire
-  const notOffered = [b.wantsBreakfast && 'breakfast', b.wantsLunch && 'lunch', b.parkingQuantity > 0 && 'parking']
-    .filter(id => id && !serviceOffered('salle', id));
-  if (notOffered.length) {
-    return { error: notOffered.map(serviceLabel).join(', ') + ' : plus proposé à la réservation. '
-      + 'Merci de recharger la page.' };
-  }
+  b.services = services.services;
   if (!(b.spaceQuantity >= 1 && b.spaceQuantity <= space.capacity)) {
     return { error: 'Nombre de postes invalide.' };
   }
@@ -546,9 +545,7 @@ function bookingForQuote(b) {
     numberOfDays: b.numberOfDays,
     spaceQuantity: b.spaceQuantity,
     numberOfPeople: b.numberOfPeople,
-    wantsBreakfast: b.wantsBreakfast,
-    wantsLunch: b.wantsLunch,
-    parkingQuantity: b.parkingQuantity,
+    services: b.services,
     civility: b.civility,
     firstName: b.firstName,
     lastName: b.lastName,
@@ -563,13 +560,10 @@ function bookingForQuote(b) {
 function summarizeBooking(b, quote, title) {
   const euros = n => n.toFixed(2) + ' €HT';
 
-  const services = [];
-  if (b.wantsBreakfast) services.push('Petit déjeuner (' + euros(quote.breakfastPrice) + ')');
-  if (b.wantsLunch) services.push('Déjeuner (' + euros(quote.lunchPrice) + ')');
-  if (b.parkingQuantity > 0) {
-    services.push(b.parkingQuantity + ' place(s) de parking' + (b.isMultiDay ? ' × ' + b.numberOfDays + ' jours' : '')
-      + ' (' + euros(quote.parkingPrice) + ')');
-  }
+  // Services : les lignes du devis, hors location et remise
+  const services = quote.lines
+    .filter(l => l.type !== 'room' && l.type !== 'discount')
+    .map(l => l.label + (l.qty > 1 ? ' × ' + l.qty : '') + ' (' + euros(l.total) + ')');
   if (b.wantsOther) services.push('Autre (voir note)');
 
   return [
@@ -974,8 +968,9 @@ function occupancy(slots, from, to) {
  *
  * @param {Object} space  l'espace (tarifs horaire / demi-journée / journée)
  * @param {Object} q      startHour, endHour, numberOfDays, spaceQuantity,
- *                        numberOfPeople, wantsBreakfast, wantsLunch, parkingQuantity
- * @param {Object} prices tarifs en vigueur : currentPrices() côté serveur, PRICES dans la page
+ *                        numberOfPeople, services ({ id: quantité }, voir requestedServices)
+ * @param {Object} prices tarifs en vigueur, avec la liste des services :
+ *                        currentPrices() côté serveur, PRICES dans la page
  * @return {Object} lines (lignes du devis : label, qty, unitPrice, total),
  *                  totaux par type, totalHT, totalVAT, totalTTC
  */
@@ -991,10 +986,10 @@ function computeQuote(space, q, prices) {
     if (qty > 0 && unitPrice > 0) lines.push({ type: type, label: label, qty: qty, unitPrice: unitPrice, total: round(qty * unitPrice) });
   };
 
-  // Location de l'espace (sauf devis « repas seuls » des coworkers, dont la salle est sur crédits)
+  // Location de l'espace (sauf devis « services seuls » des coworkers, dont la salle est sur crédits)
   const spaceLabel = space.name + (space.maxPeople ? ' (' + space.maxPeople + ' pers.)' : '');
   if (q.mealsOnly) {
-    // rien : seulement les repas
+    // rien : seulement les services
   } else if (space.quantitySelectable) {
     const deskPrices = isFullDay ? prices.deskFullDay : prices.deskHalfDay;
     addLine('room', spaceLabel + ' – ' + q.spaceQuantity + ' poste(s) – ' + period, 1, deskPrices[q.spaceQuantity >= 2 ? 1 : 0]);
@@ -1005,11 +1000,14 @@ function computeQuote(space, q, prices) {
     else addLine('room', spaceLabel + ' – à l\'heure', duration, space.hourlyPrice);
   }
 
-  // Services : repas comptés une fois par personne, parking par place et par jour
-  addLine('breakfast', 'Petit déjeuner', q.wantsBreakfast ? q.numberOfPeople : 0, prices.breakfast);
-  addLine('lunch', 'Déjeuner', q.wantsLunch ? q.numberOfPeople : 0, prices.lunch);
-  addLine('parking', 'Place de parking – ' + (isFullDay ? 'journée' : 'demi-journée'),
-    (q.parkingQuantity || 0) * days, isFullDay ? prices.parkingFullDay : prices.parkingHalfDay);
+  // Services (voir Services.gs) : par personne (une fois), à l'unité (une fois), ou par unité et par jour
+  const wanted = requestedServices(q);
+  (prices.services || []).forEach(s => {
+    const n = wanted[s.id] || 0;
+    if (s.pricing === 'person') addLine(s.id, s.label, n ? q.numberOfPeople : 0, s.price);
+    else if (s.pricing === 'unit') addLine(s.id, s.label, n, s.price);
+    else addLine(s.id, s.label + ' – ' + (isFullDay ? 'journée' : 'demi-journée'), n * days, isFullDay ? s.fullDayPrice : s.halfDayPrice);
+  });
 
   // Remise accordée par l'équipe (Reductions.gs) : une ligne négative, calculée sur les lignes
   // visées (q.discountLineTypes : salle, petit déjeuner…) ou sur tout le devis
@@ -1030,9 +1028,6 @@ function computeQuote(space, q, prices) {
   return {
     lines: lines,
     roomPrice: totalOf('room'),
-    breakfastPrice: totalOf('breakfast'),
-    lunchPrice: totalOf('lunch'),
-    parkingPrice: totalOf('parking'),
     totalExtras: round(subtotal - totalOf('room')),
     discount: totalOf('discount'), // montant HT de la remise (négatif), 0 sans remise
     grandTotal: totalHT, // alias historique du total HT

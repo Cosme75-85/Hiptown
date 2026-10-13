@@ -94,7 +94,6 @@ const CACHE_TTL_SECONDS = 600; // 10 minutes
 // Limites vérifiées côté serveur : on ne fait jamais confiance au navigateur,
 // une requête peut être fabriquée à la main sans passer par le formulaire.
 const MAX_MULTI_DAYS = 31;       // durée max d'une réservation multi-jours
-const MAX_PARKING = 10;          // places de parking max par demande
 const MAX_TEXT_LENGTH = 100;     // prénom, nom, entreprise, email, titre
 const MAX_NOTES_LENGTH = 2000;   // note libre
 

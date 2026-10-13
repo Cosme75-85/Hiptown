@@ -9,7 +9,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 |---|---|---|
 | `Config.gs` | **Tout ce qui se règle** : horaires, tarifs de départ des services, emails, liste initiale des espaces | ✅ |
 | `Salles.gs` | Liste des salles gérée depuis le portail (ajout, modification, retrait, indisponibilités) | ✅ |
-| `Services.gs` | Prix des services en option et clients à qui ils sont proposés, gérés depuis le portail | ✅ |
+| `Services.gs` | Services en option (ajout, prix, clients concernés, retrait), gérés depuis le portail | ✅ |
 | `Code.gs` | La logique : disponibilités, demandes, emails, approbation | ✅ |
 | `Devis.gs` | Devis PDF joint à l'email de confirmation | ✅ |
 | `Remerciement.gs` | Email de remerciement envoyé 3 jours après la réservation | ✅ |
