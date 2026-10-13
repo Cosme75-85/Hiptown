@@ -71,17 +71,6 @@ export async function rejectUser(uid) {
 }
 
 /**
- * Change le rôle ou l'entreprise d'un utilisateur déjà approuvé.
- */
-export async function updateUserAccess(uid, { role, companyId, status }) {
-  const patch = {};
-  if (role !== undefined) patch.role = role;
-  if (companyId !== undefined) patch.companyId = companyId;
-  if (status !== undefined) patch.status = status;
-  await updateDoc(doc(db, "users", uid), patch);
-}
-
-/**
  * Corrige la fiche d'un compte (nom, entreprise, rôle, statut, site...).
  * Remarque : l'e-mail modifié ici est celui de la fiche ; l'e-mail de
  * connexion (Firebase Auth) ne peut être changé que par l'utilisateur.

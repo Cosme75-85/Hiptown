@@ -184,24 +184,6 @@ header p {
   margin-bottom: 22px;
 }
 
-.pin-dots {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
-.pin-dots span {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--navy);
-  background: transparent;
-  transition: background 0.15s;
-}
-
-.pin-dots span.filled { background: var(--navy); }
-
 .pin-error {
   color: #ef4444;
   font-size: 13px;
@@ -210,31 +192,6 @@ header p {
 }
 
 .pin-error[hidden] { display: none; }
-
-.pin-keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.pin-key {
-  padding: 16px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--white);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--navy);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, transform 0.1s;
-}
-
-.pin-key:hover  { background: var(--yellow); border-color: var(--yellow); }
-.pin-key:active { transform: scale(0.95); }
-.pin-back       { font-size: 18px; color: var(--text-soft); }
-.pin-clear      { font-size: 15px; color: #ef4444; border-color: #fecaca; }
-.pin-clear:hover { background: #fee2e2; border-color: #ef4444; }
 
 .direct-btn {
   margin-top: 20px;
@@ -571,51 +528,6 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 .service-card-form { text-align: left; font-size: 13px; }
 .service-card-desc a { justify-content: center; }
 
-/* ── SERVICES COMPLÉMENTAIRES ── */
-.complem-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.complem-card {
-  background: var(--white);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.complem-card:hover {
-  border-color: var(--yellow);
-  box-shadow: 0 4px 16px rgba(30,24,71,0.10);
-}
-
-.complem-card-icon { font-size: 28px; flex-shrink: 0; }
-.complem-card-body { flex: 1; }
-
-.complem-card-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
-
-.complem-card-desc {
-  font-size: 12px;
-  color: var(--text-soft);
-  margin-top: 4px;
-  line-height: 1.4;
-  display: none;
-}
-
-.complem-card.open .complem-card-desc { display: block; }
-.complem-card.open { border-color: var(--teal); }
-.complem-chevron { font-size: 12px; color: var(--text-pale); flex-shrink: 0; }
-
 /* ── LOGOUT ── */
 .logout-btn {
   margin-top: 24px;
@@ -645,7 +557,6 @@ footer {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 400px) {
-  .pin-key { padding: 13px; font-size: 18px; }
   .tiles-grid { grid-template-columns: repeat(2, 1fr); }
   .services-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -705,18 +616,6 @@ footer {
 .choice-arrow {
   font-size: 20px;
   color: var(--text-pale);
-}
-
-/* ── BANNIÈRE CHOIX SALLE ── */
-.choice-banner {
-  background: var(--navy);
-  color: var(--yellow);
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-  padding: 10px 16px;
-  border-radius: var(--radius-md);
-  margin-top: -4px;
 }
 
 /* ── LIENS DANS LISTE SERVICES ── */

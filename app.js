@@ -61,7 +61,7 @@
       const card = document.createElement("div");
       card.className = "event-card";
       var imgHtml = ev.image
-        ? '<img src="' + ev.image + '" alt="' + ev.title + '"/>'
+        ? '<img src="' + ev.image + '" alt="' + ev.title + '" loading="lazy"/>'
         : '<div class="event-card-no-img">\uD83D\uDCC5</div>';
       card.innerHTML = imgHtml +
         '<div class="event-info">' +
