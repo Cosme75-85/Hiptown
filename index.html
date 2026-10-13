@@ -742,7 +742,7 @@
   </section>
 
   <!-- PAGE RÉSERVATION DES SALLES (ESPACE COWORKING) — logique dans resa-coworking.js -->
-  <!-- SALLE DE RÉUNION : regroupe « Réserver une salle » et « Mes prochaines réservations » (app.js) -->
+  <!-- SALLE DE RÉUNION : réserver, mes prochaines réservations, et pour les clients salle : utilisation et tarifs (app.js) -->
   <section id="step-salles" hidden>
     <button class="back-btn" id="back-from-salles">← Retour</button>
     <h2 class="step-title">📅 Salle de réunion</h2>
@@ -756,6 +756,17 @@
         <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">📅</div>
         <div class="tile-title">Mes prochaines réservations</div>
         <div class="tile-desc">Salles réservées à venir</div>
+      </a>
+      <!-- Clients salle de réunion uniquement (affichées par app.js) -->
+      <a class="tile" href="#" id="salles-usage" hidden>
+        <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">🗓️</div>
+        <div class="tile-title">Utilisation des salles</div>
+        <div class="tile-desc">Internet, écran, sortie...</div>
+      </a>
+      <a class="tile" href="#" id="salles-tarifs" hidden>
+        <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">💶</div>
+        <div class="tile-title">Tarifs</div>
+        <div class="tile-desc">Salles de réunion et coworking</div>
       </a>
     </div>
   </section>
