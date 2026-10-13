@@ -261,8 +261,14 @@ document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(
 //  PANNEAU ADMIN + NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
-// Menu « Gestion » : Gestion des comptes, Gestion des entreprises et Réductions clients
+// Menu « Gestion » : comptes, entreprises, réductions et salles de réunion.
+// Réservé au personnel Hiptown (rôle admin) : pour tout autre compte, rien ne s'ouvre,
+// même si la tuile apparaissait par erreur (ancienne page en cache, tuile ajoutée à la main).
+// Les données restent de toute façon protégées côté serveur (règles Firestore, Apps Script).
+const isHiptownStaff = () => session?.space === "hiptown";
+
 function openGestionMenu() {
+  if (!isHiptownStaff()) return;
   hideAllAuth();
   stepGestion.hidden = false;
 }
@@ -271,32 +277,23 @@ document.getElementById("back-from-gestion")?.addEventListener("click", () => {
   hideAllAuth();
   document.getElementById("step-dashboard").hidden = false;
 });
-document.getElementById("open-gestion-comptes")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  hideAllAuth();
-  stepAdmin.hidden = false;
-  renderAdminPanel();
-});
-document.getElementById("open-gestion-entreprises")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  hideAllAuth();
-  stepCompanies.hidden = false;
-  renderCompaniesPanel();
-});
-document.getElementById("open-gestion-reductions")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  hideAllAuth();
-  stepReductions.hidden = false;
-  // Comptes visibles par l'admin, proposés dans le champ email
-  const users = await listAllUsers(adminScope()).catch(() => []);
-  renderDiscountsPanel(users);
-});
-document.getElementById("open-gestion-salles")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  hideAllAuth();
-  stepGestionSalles.hidden = false;
-  renderRoomsPanel();
-});
+
+/** Bouton du menu Gestion : affiche sa page puis la remplit, pour le personnel Hiptown seulement. */
+function onGestionButton(buttonId, section, render) {
+  document.getElementById(buttonId)?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (!isHiptownStaff()) return;
+    hideAllAuth();
+    section.hidden = false;
+    render();
+  });
+}
+onGestionButton("open-gestion-comptes", stepAdmin, renderAdminPanel);
+onGestionButton("open-gestion-entreprises", stepCompanies, renderCompaniesPanel);
+// Comptes visibles par l'admin, proposés dans le champ email des réductions
+onGestionButton("open-gestion-reductions", stepReductions, async () =>
+  renderDiscountsPanel(await listAllUsers(adminScope()).catch(() => [])));
+onGestionButton("open-gestion-salles", stepGestionSalles, renderRoomsPanel);
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
