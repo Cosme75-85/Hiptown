@@ -130,12 +130,14 @@
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
     gestion:   { title: "Gestion",                   desc: "Comptes et entreprises",                 icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "gestion" },
     suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
-    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", image: "https://drive.google.com/thumbnail?id=13iZvHQuzoO4M7Za6OEEtyJUBF-1Tv6ho&sz=w2000" },
-    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", image: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },
+    tarifs: { title: "Tarifs", desc: "Salles de réunion et coworking", icon: "💶", bg: "#e0f2fe", color: "#0369a1", images: [
+      { title: "Tarifs salles de réunion", src: "https://drive.google.com/thumbnail?id=13iZvHQuzoO4M7Za6OEEtyJUBF-1Tv6ho&sz=w2000" },
+      { title: "Tarifs Coworking",         src: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },
+    ] },
   };
 
   const SPACE_TILES = {
-    salle:     ["accueil", "salles", "salleinfo", "adresses", "services", "tarifssalle", "tarifscoworking", "avis"],
+    salle:     ["accueil", "salles", "salleinfo", "adresses", "services", "tarifs", "avis"],
     coworking: ["salles", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "gestion", "salles", "accueil", "incident"],
   };
@@ -305,25 +307,27 @@
     localStorage.setItem("tiles_" + clientId, JSON.stringify(order));
   }
 
-  // ── Affichage d'image en plein écran (lightbox) ────────
-  function openImageModal(src, title) {
+  // ── Affichage d'images en plein écran (lightbox) ───────
+  // Une ou plusieurs grilles (ex. tuile « Tarifs ») : les unes sous les autres, on fait défiler.
+  function openImageModal(images) {
     let modal = document.getElementById("image-modal-overlay");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "image-modal-overlay";
-      modal.style.cssText = "position:fixed;inset:0;background:rgba(21,15,51,0.9);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;";
+      modal.style.cssText = "position:fixed;inset:0;background:rgba(21,15,51,0.9);overflow-y:auto;z-index:1000;padding:56px 16px 24px;";
       modal.innerHTML =
-        '<div style="position:relative;max-width:100%;max-height:100%;">' +
-        '<button id="image-modal-close" style="position:absolute;top:-40px;right:0;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;">✕</button>' +
-        '<img id="image-modal-img" style="max-width:100%;max-height:85vh;border-radius:8px;display:block;"/>' +
-        '</div>';
+        '<button id="image-modal-close" aria-label="Fermer" style="position:fixed;top:12px;right:16px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;">✕</button>' +
+        '<div id="image-modal-list" style="max-width:900px;margin:0 auto;"></div>';
       document.body.appendChild(modal);
       modal.addEventListener("click", function (e) { if (e.target === modal) modal.style.display = "none"; });
       document.getElementById("image-modal-close").addEventListener("click", function () { modal.style.display = "none"; });
     }
-    document.getElementById("image-modal-img").src = src;
-    document.getElementById("image-modal-img").alt = title || "";
-    modal.style.display = "flex";
+    document.getElementById("image-modal-list").innerHTML = images.map(function (img) {
+      return '<h3 style="color:#fff;margin:0 0 10px;font-size:18px;">' + img.title + '</h3>' +
+        '<img src="' + img.src + '" alt="' + img.title + '" style="width:100%;height:auto;border-radius:8px;display:block;margin-bottom:24px;"/>';
+    }).join("");
+    modal.scrollTop = 0;
+    modal.style.display = "block";
   }
 
   /** Ouvre la page d'une tuile (ou d'un bouton de la page « Salle de réunion »). */
@@ -378,10 +382,10 @@
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
 
-      if (tile.image) {
+      if (tile.images) {
         el.addEventListener("click", function (e) {
           e.preventDefault();
-          openImageModal(tile.image, tile.title);
+          openImageModal(tile.images);
         });
       }
 
