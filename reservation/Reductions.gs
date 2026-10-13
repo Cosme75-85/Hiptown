@@ -46,7 +46,7 @@ function applyDiscount(space, data, discount) {
     discountLineTypes: kind.lineTypes,
     discountLabel: kind.percent ? kind.quoteLabel : kind.quoteLabel + ' (-' + discount.percent + ' %)'
   };
-  if (!(computeQuote(space, Object.assign({}, data, fields)).discount < 0)) return false;
+  if (!(computeQuote(space, Object.assign({}, data, fields), currentPrices()).discount < 0)) return false;
   Object.assign(data, fields);
   return true;
 }

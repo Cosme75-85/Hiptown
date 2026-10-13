@@ -13,6 +13,7 @@ import {
 } from "./admin.js";
 import { renderDiscountsPanel } from "./reductions.js";
 import { renderRoomsPanel } from "./salles.js";
+import { renderServicesPanel } from "./services.js";
 
 const stepAuth    = document.getElementById("step-auth");
 const stepPending = document.getElementById("step-pending");
@@ -22,16 +23,17 @@ const stepGestion   = document.getElementById("step-gestion");
 const stepCompanies = document.getElementById("step-companies");
 const stepReductions = document.getElementById("step-reductions");
 const stepGestionSalles = document.getElementById("step-gestion-salles");
+const stepGestionServices = document.getElementById("step-gestion-services");
 const authError   = document.getElementById("auth-error");
 
 let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
 
 // ── Utilitaire : masquer toutes les sections, y compris les nouvelles ──
 // Remplace la fonction hideAll() existante dans app.js : appelle-la puis
-// masque en plus les 3 nouvelles sections.
+// masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -294,8 +296,10 @@ onGestionButton("open-gestion-entreprises", stepCompanies, renderCompaniesPanel)
 onGestionButton("open-gestion-reductions", stepReductions, async () =>
   renderDiscountsPanel(await listAllUsers(adminScope()).catch(() => [])));
 onGestionButton("open-gestion-salles", stepGestionSalles, renderRoomsPanel);
+onGestionButton("open-gestion-services", stepGestionServices, renderServicesPanel);
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-gestion-services")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 

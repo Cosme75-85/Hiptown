@@ -175,6 +175,10 @@
         <div class="outil-logo">🚪</div>
         <div class="outil-name">Salles de réunion</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-services">
+        <div class="outil-logo">🥐</div>
+        <div class="outil-name">Services</div>
+      </a>
     </div>
   </section>
 
@@ -257,6 +261,19 @@
     <div class="info-grid" id="rooms-list"></div>
     <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Retirées</h3>
     <div class="info-grid" id="rooms-archived-list"></div>
+  </section>
+
+  <!-- ÉTAPE : SERVICES EN OPTION (admin) — prix et clients concernés (services.js) -->
+  <section id="step-gestion-services" hidden>
+    <button class="back-btn" id="back-from-gestion-services">← Retour</button>
+    <h2 class="step-title" style="margin-bottom:4px;">🥐 Services</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Les services proposés en option au moment de réserver une salle, avec leurs prix € HT.
+      Décochez un type de client pour ne plus lui proposer le service. Les changements
+      s'appliquent aux nouvelles réservations et aux devis envoyés ensuite.
+    </p>
+    <p class="profile-help" id="service-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
+    <div class="info-grid" id="services-list"></div>
   </section>
 
   <!-- ÉTAPE : RÉDUCTIONS CLIENTS (admin) — remise appliquée au prochain devis du client -->

@@ -34,7 +34,8 @@ const END_HOUR = 18;    // heure de fermeture
 const PENDING_PREFIX = '[EN ATTENTE] ';
 const CONFIRMED_PREFIX = '[CONFIRMÉ] ';
 
-// Tarifs des services (€HT). Seul endroit où les modifier : la page les reçoit du serveur.
+// Tarifs de départ des services (€HT). Ils se changent ensuite depuis le portail
+// (Gestion > Services, voir Services.gs) : ceux-ci ne servent que tant que rien n'y est enregistré.
 // Les tarifs des salles sont dans leur fiche (portail : Gestion > Salles de réunion).
 const PRICES = {
   breakfast: 5.5,         // par personne

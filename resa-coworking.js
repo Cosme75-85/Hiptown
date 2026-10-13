@@ -22,7 +22,7 @@ let currentYear  = today.getFullYear();
 let currentMonth = today.getMonth() + 1; // 1-12
 
 let SPACES = [];          // salles reçues du serveur
-let MEALS = null;         // tarifs des repas en option { breakfast, lunch, vatRate } (€ HT par personne)
+let MEALS = null;         // repas en option { breakfast, lunch, vatRate, offered } (€ HT par personne), null si aucun
 let START_HOUR = 8;
 let END_HOUR = 18;
 let started = false;      // chargement fait à la première ouverture de la page
@@ -75,12 +75,15 @@ function showToast(message) {
 
 function euros(n) { return n.toFixed(2).replace(".", ",") + " €"; }
 
-/** Libellés avec les tarifs reçus du serveur (même tarifs que les devis). */
+/** Libellés avec les tarifs reçus du serveur (même tarifs que les devis) ; repas retirés masqués. */
 function renderMealLabels() {
   if (!MEALS) return;
   ["rc", "rc-edit"].forEach(prefix => {
     $(prefix + "-breakfast-label").textContent = "Petit déjeuner — " + euros(MEALS.breakfast) + " HT / personne";
     $(prefix + "-lunch-label").textContent = "Déjeuner — " + euros(MEALS.lunch) + " HT / personne";
+    ["breakfast", "lunch"].forEach(meal => {
+      $(prefix + "-" + meal).closest(".rc-check-row").hidden = !MEALS.offered[meal];
+    });
   });
 }
 
@@ -714,8 +717,9 @@ function openEditModal(b) {
   $("rc-edit-end").innerHTML = hourOptions(START_HOUR + 1, END_HOUR, b.endHour);
   $("rc-edit-people").value = b.numberOfPeople;
   $("rc-edit-meals").hidden = !MEALS;
-  $("rc-edit-breakfast").checked = !!b.wantsBreakfast;
-  $("rc-edit-lunch").checked = !!b.wantsLunch;
+  // Un repas retiré depuis Gestion > Services est décoché : il ne sera plus commandé
+  $("rc-edit-breakfast").checked = !!b.wantsBreakfast && !!MEALS && MEALS.offered.breakfast;
+  $("rc-edit-lunch").checked = !!b.wantsLunch && !!MEALS && MEALS.offered.lunch;
   $("rc-edit-people").max = (space && space.maxPeople) || "";
   updateEditForm();
   $("rc-edit-overlay").classList.add("rc-open");

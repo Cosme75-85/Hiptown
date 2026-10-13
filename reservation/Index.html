@@ -389,17 +389,17 @@
 
         <span class="field-label">Services additionnels</span>
         <div id="services">
-          <div class="check-row">
+          <div class="check-row" data-service="breakfast">
             <input type="checkbox" id="wantsBreakfast">
             <label for="wantsBreakfast">Petit déjeuner</label>
             <span class="price" id="breakfastPriceLabel"></span>
           </div>
-          <div class="check-row">
+          <div class="check-row" data-service="lunch">
             <input type="checkbox" id="wantsLunch">
             <label for="wantsLunch">Déjeuner</label>
             <span class="price" id="lunchPriceLabel"></span>
           </div>
-          <div class="check-row">
+          <div class="check-row" data-service="parking">
             <input type="checkbox" id="wantsParking">
             <label for="wantsParking">Place(s) de parking</label>
             <input type="number" id="parkingQuantity" class="qty" min="1" value="1" inputmode="numeric" aria-label="Nombre de places" hidden>
@@ -426,7 +426,7 @@
 
   <div class="toast" id="toast" role="status" hidden></div>
 
-  <!-- BASE_URL, SPACES, START_HOUR, END_HOUR, PRICES et computeQuote() : écrits par Code.gs (source unique) -->
+  <!-- BASE_URL, SPACES, START_HOUR, END_HOUR, PRICES, SERVICES_OFFERED et computeQuote() : écrits par Code.gs (source unique) -->
   <script><?!= sharedScript ?></script>
   <script>
     const MIDDAY_HOUR = 13; // séparation matin / après-midi
@@ -803,7 +803,7 @@
       // Même fonction que celle utilisée par le serveur pour facturer
       const q = computeQuote(b.space, Object.assign({
         startHour: b.startHour, endHour: b.endHour, numberOfDays: days, spaceQuantity: b.spaceQuantity
-      }, services));
+      }, services), PRICES);
 
       const lines = q.lines.map(l => l.label + (l.qty > 1 ? ' × ' + l.qty : '') + ' : ' + formatEuro(l.total));
 
@@ -908,6 +908,8 @@
     $('breakfastPriceLabel').textContent = formatEuro(PRICES.breakfast) + '/pers.';
     $('lunchPriceLabel').textContent = formatEuro(PRICES.lunch) + '/pers.';
     $('parkingPriceLabel').textContent = formatEuro(PRICES.parkingHalfDay) + ' demi-j. / ' + formatEuro(PRICES.parkingFullDay) + ' jour';
+    // Services retirés depuis le portail (Gestion > Services) : non proposés
+    document.querySelectorAll('[data-service]').forEach(row => { row.hidden = !SERVICES_OFFERED[row.dataset.service]; });
 
     renderSkeleton();
     loadMonth();

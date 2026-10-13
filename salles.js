@@ -27,7 +27,8 @@ function periodLabel(c) {
   return c.start === c.end ? `le ${frDate(c.start)}` : `du ${frDate(c.start)} au ${frDate(c.end)}`;
 }
 
-async function call(action, payload) {
+/** Appel à l'outil de réservation (Apps Script) avec le jeton du compte connecté. */
+export async function call(action, payload) {
   const idToken = await auth.currentUser.getIdToken();
   const res = await fetch(BASE_URL, {
     method: "POST",
