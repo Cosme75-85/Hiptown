@@ -22,7 +22,7 @@ let currentYear  = today.getFullYear();
 let currentMonth = today.getMonth() + 1; // 1-12
 
 let SPACES = [];          // salles reçues du serveur
-let MEALS = null;         // repas en option { breakfast, lunch, vatRate, offered } (€ HT par personne), null si aucun
+let MEALS = null;         // services en option { services, vatRate, maxQuantity, noticeHours } (€ HT), null si aucun
 let START_HOUR = 8;
 let END_HOUR = 18;
 let started = false;      // chargement fait à la première ouverture de la page
@@ -75,50 +75,95 @@ function showToast(message) {
 
 function euros(n) { return n.toFixed(2).replace(".", ",") + " €"; }
 
-/** Libellés avec les tarifs reçus du serveur (même tarifs que les devis) ; repas retirés masqués. */
-function renderMealLabels() {
+/** « 7,50 € HT la demi-journée, 15,00 € HT la journée » : tarifs reçus du serveur (mêmes que les devis). */
+function servicePriceText(s) {
+  if (s.pricing === "person") return euros(s.price) + " HT / personne";
+  if (s.pricing === "unit") return euros(s.price) + " HT / unité";
+  return euros(s.halfDayPrice) + " HT la demi-journée, " + euros(s.fullDayPrice) + " HT la journée (par unité)";
+}
+
+/** Une ligne par service proposé (Gestion > Services) dans les deux formulaires : case, et quantité si à l'unité. */
+function renderServiceRows() {
   if (!MEALS) return;
   ["rc", "rc-edit"].forEach(prefix => {
-    $(prefix + "-breakfast-label").textContent = "Petit déjeuner — " + euros(MEALS.breakfast) + " HT / personne";
-    $(prefix + "-lunch-label").textContent = "Déjeuner — " + euros(MEALS.lunch) + " HT / personne";
-    ["breakfast", "lunch"].forEach(meal => {
-      $(prefix + "-" + meal).closest(".rc-check-row").hidden = !MEALS.offered[meal];
-    });
+    $(prefix + "-services").innerHTML = MEALS.services.map(s => {
+      const id = prefix + "-svc-" + s.id;
+      return '<div class="rc-check-row"><input type="checkbox" id="' + id + '" data-service="' + s.id + '"/>'
+        + '<label for="' + id + '">' + escapeHtml(s.label) + " — " + escapeHtml(servicePriceText(s)) + "</label>"
+        + (s.pricing === "person" ? "" : '<input type="number" class="rc-qty" data-qty="' + s.id + '" min="1" max="'
+          + MEALS.maxQuantity + '" value="1" inputmode="numeric" aria-label="Quantité" hidden/>')
+        + "</div>";
+    }).join("");
   });
 }
 
-/** Total des repas cochés ; prefix = "rc" (réservation) ou "rc-edit" (modification). */
-function updateMealsTotal(prefix) {
+function serviceQuantityField(prefix, id) {
+  return $(prefix + "-services").querySelector('[data-qty="' + id + '"]');
+}
+
+/** Services cochés : { id: quantité } (1 pour un service par personne). */
+function readServices(prefix) {
+  const services = {};
+  if (!MEALS) return services;
+  $(prefix + "-services").querySelectorAll("[data-service]:checked").forEach(box => {
+    const qty = serviceQuantityField(prefix, box.dataset.service);
+    services[box.dataset.service] = qty ? (parseInt(qty.value, 10) || 0) : 1;
+  });
+  return services;
+}
+
+/** Coche les services donnés ; un service qui n'est plus proposé n'a pas de case et ne sera plus commandé. */
+function setServices(prefix, services) {
+  if (!MEALS) return;
+  $(prefix + "-services").querySelectorAll("[data-service]").forEach(box => {
+    const n = (services || {})[box.dataset.service] || 0;
+    box.checked = n > 0;
+    const qty = serviceQuantityField(prefix, box.dataset.service);
+    if (qty) { qty.value = n || 1; qty.hidden = !n; }
+  });
+}
+
+/** Nombre de jours d'une demande (1 sans date de fin). */
+function daysOf(p) {
+  return p.endDateString ? Math.round((new Date(p.endDateString) - new Date(p.dateString)) / 86400000) + 1 : 1;
+}
+
+/**
+ * Total des services cochés, calculé comme le devis : par personne, à l'unité, ou par unité
+ * et par jour (journée au-delà de 5h). prefix = "rc" (réservation) ou "rc-edit" (modification).
+ */
+function updateMealsTotal(prefix, slot) {
   const box = $(prefix + "-meals-total");
   const people = parseInt($(prefix + "-people").value, 10) || 0;
-  const perPerson = (MEALS && $(prefix + "-breakfast").checked ? MEALS.breakfast : 0)
-    + (MEALS && $(prefix + "-lunch").checked ? MEALS.lunch : 0);
-  box.hidden = !perPerson || !people;
+  const wanted = readServices(prefix);
+  const fullDay = slot && slot.endHour - slot.startHour > 5;
+  const ht = MEALS ? MEALS.services.reduce((sum, s) => {
+    const n = wanted[s.id] || 0;
+    if (!n) return sum;
+    if (s.pricing === "person") return sum + s.price * people;
+    if (s.pricing === "unit") return sum + s.price * n;
+    return sum + (fullDay ? s.fullDayPrice : s.halfDayPrice) * n * (slot ? daysOf(slot) : 1);
+  }, 0) : 0;
+  box.hidden = !ht;
   if (box.hidden) return;
-  const ht = perPerson * people;
-  box.textContent = "Total restauration : " + euros(ht) + " HT (" + euros(ht * (1 + MEALS.vatRate))
+  box.textContent = "Total des services : " + euros(ht) + " HT (" + euros(ht * (1 + MEALS.vatRate))
     + " TTC). Le devis vous est envoyé par email avec la confirmation.";
 }
 
 /**
- * Repas à commander au moins MEALS.noticeHours avant la réunion : trop tard, on ne peut plus
+ * Services à commander au moins MEALS.noticeHours avant la réunion : trop tard, on ne peut plus
  * en ajouter (on peut toujours décocher ceux déjà commandés). Le serveur revérifie.
  */
 function applyMealsDeadline(prefix, dateString, startHour) {
   if (!MEALS || !dateString) return;
   const [y, m, d] = dateString.split("-").map(Number);
   const late = new Date(y, m - 1, d, startHour).getTime() - Date.now() < (MEALS.noticeHours || 0) * 3600000;
-  ["breakfast", "lunch"].forEach(meal => {
-    const box = $(prefix + "-" + meal);
+  $(prefix + "-services").querySelectorAll("[data-service]").forEach(box => {
     box.disabled = late && !box.checked;
   });
   const hint = $(prefix + "-meals-late");
   hint.hidden = !late;
-  hint.textContent = "Les repas se commandent au moins " + MEALS.noticeHours + "h avant la réunion.";
-}
-
-function mealsText(b) {
-  return [b.wantsBreakfast && "Petit déjeuner", b.wantsLunch && "Déjeuner"].filter(Boolean).join(" + ");
+  hint.textContent = "Les services se commandent au moins " + MEALS.noticeHours + "h avant la réunion.";
 }
 
 // ==================== CRÉDITS ====================
@@ -399,10 +444,7 @@ function showFormStep() {
   $("rc-people").max = b.space.maxPeople || "";
 
   // Coût en crédits (le serveur revérifie le solde au moment de réserver)
-  const days = b.endDateString
-    ? Math.round((new Date(b.endDateString) - new Date(b.dateString)) / 86400000) + 1
-    : 1;
-  const cost = creditsFor(b.space, b.startHour, b.endHour, days);
+  const cost = creditsFor(b.space, b.startHour, b.endHour, daysOf(b));
   const costEl = $("rc-cost");
   const sameMonth = creditBalance && b.dateString.slice(0, 7) === currentYear + "-" + pad(currentMonth);
   costEl.hidden = !creditBalance || !cost;
@@ -413,7 +455,7 @@ function showFormStep() {
       : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
   $("rc-meals").hidden = !MEALS;
   applyMealsDeadline("rc", b.dateString, b.startHour);
-  updateMealsTotal("rc");
+  updateMealsTotal("rc", b);
   $("rc-form-step").hidden = false;
   $("rc-submit").hidden = false;
   $("rc-form-step").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -423,8 +465,7 @@ function resetForm() {
   $("rc-people").value = 1;
   $("rc-title").value = "";
   $("rc-notes").value = "";
-  $("rc-breakfast").checked = false;
-  $("rc-lunch").checked = false;
+  setServices("rc", {});
 }
 
 async function confirmBooking() {
@@ -438,8 +479,7 @@ async function confirmBooking() {
     startHour: b.startHour,
     endHour: b.endHour,
     numberOfPeople: parseInt($("rc-people").value, 10) || 0,
-    wantsBreakfast: $("rc-breakfast").checked,
-    wantsLunch: $("rc-lunch").checked,
+    services: readServices("rc"),
     title: $("rc-title").value.trim(),
     notes: $("rc-notes").value.trim()
   };
@@ -612,7 +652,7 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(when) + "</div>"
     + '<ul class="rc-bk-facts"><li>' + hours + "</li><li>👥 " + b.numberOfPeople + " personne(s)</li>"
     + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "")
-    + (mealsText(b) ? "<li>🍽 " + escapeHtml(mealsText(b)) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + ")" : "") + "</li>" : "")
+    + (b.servicesLabel ? "<li>🧾 " + escapeHtml(b.servicesLabel) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + ")" : "") + "</li>" : "")
     + "</ul>"
     + (b.notes ? '<p class="rc-bk-note">📝 ' + escapeHtml(b.notes) + "</p>" : "")
     + '<div class="rc-bk-actions">'
@@ -639,7 +679,7 @@ function calendarDetails(b) {
     "Réservation Hiptown : " + b.spaceName,
     b.endDateString ? "Journée complète chaque jour (" + b.startHour + "h – " + b.endHour + "h)" : "",
     "Nombre de personnes : " + b.numberOfPeople,
-    mealsText(b) ? "Restauration : " + mealsText(b) : "",
+    b.servicesLabel ? "Services : " + b.servicesLabel : "",
     b.notes ? "Note : " + b.notes : "",
     "Pour annuler ou modifier : votre espace client Hiptown."
   ].filter(Boolean).join("\n");
@@ -717,9 +757,7 @@ function openEditModal(b) {
   $("rc-edit-end").innerHTML = hourOptions(START_HOUR + 1, END_HOUR, b.endHour);
   $("rc-edit-people").value = b.numberOfPeople;
   $("rc-edit-meals").hidden = !MEALS;
-  // Un repas retiré depuis Gestion > Services est décoché : il ne sera plus commandé
-  $("rc-edit-breakfast").checked = !!b.wantsBreakfast && !!MEALS && MEALS.offered.breakfast;
-  $("rc-edit-lunch").checked = !!b.wantsLunch && !!MEALS && MEALS.offered.lunch;
+  setServices("rc-edit", b.services);
   $("rc-edit-people").max = (space && space.maxPeople) || "";
   updateEditForm();
   $("rc-edit-overlay").classList.add("rc-open");
@@ -743,8 +781,7 @@ function editPayload() {
     startHour: multi ? START_HOUR : Number($("rc-edit-start").value),
     endHour: multi ? END_HOUR : Number($("rc-edit-end").value),
     numberOfPeople: parseInt($("rc-edit-people").value, 10) || 0,
-    wantsBreakfast: $("rc-edit-breakfast").checked,
-    wantsLunch: $("rc-edit-lunch").checked
+    services: readServices("rc-edit")
   };
 }
 
@@ -755,12 +792,11 @@ function updateEditForm() {
   $("rc-edit-end-date").min = p.dateString;
   $("rc-edit-hours-block").hidden = !!p.endDateString;
   applyMealsDeadline("rc-edit", p.dateString, p.startHour);
-  updateMealsTotal("rc-edit");
+  updateMealsTotal("rc-edit", p);
   const space = SPACES.find(s => s.id === editing.spaceId);
   const costEl = $("rc-edit-cost");
   if (!space || editing.credits === null || !p.dateString || p.startHour >= p.endHour) { costEl.hidden = true; return; }
-  const days = p.endDateString ? Math.round((new Date(p.endDateString) - new Date(p.dateString)) / 86400000) + 1 : 1;
-  costEl.textContent = "Nouveau coût : " + creditsFor(space, p.startHour, p.endHour, days) + " crédit(s) (avant : " + editing.credits + ")";
+  costEl.textContent = "Nouveau coût : " + creditsFor(space, p.startHour, p.endHour, daysOf(p)) + " crédit(s) (avant : " + editing.credits + ")";
   costEl.hidden = false;
 }
 
@@ -800,7 +836,7 @@ function start() {
       SPACES = data.spaces;
       START_HOUR = data.startHour;
       MEALS = data.meals || null;
-      renderMealLabels();
+      renderServiceRows();
       END_HOUR = data.endHour;
       renderSpaces();
       loadMonth();
@@ -884,11 +920,22 @@ $("rc-mine-next").addEventListener("click", () => {
 document.addEventListener("click", e => {
   document.querySelectorAll("#rc-mine-list .rc-addcal[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
 });
-["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end", "rc-edit-breakfast", "rc-edit-lunch"]
+["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end"]
   .forEach(id => $(id).addEventListener("change", updateEditForm));
 $("rc-edit-people").addEventListener("input", updateEditForm);
-["rc-breakfast", "rc-lunch"].forEach(id => $(id).addEventListener("change", () => updateMealsTotal("rc")));
-$("rc-people").addEventListener("input", () => updateMealsTotal("rc"));
+$("rc-people").addEventListener("input", () => updateMealsTotal("rc", pendingBooking));
+// Services : une case cochée affiche sa quantité (service à l'unité), puis le total est recalculé
+["rc", "rc-edit"].forEach(prefix => {
+  $(prefix + "-services").addEventListener("change", e => {
+    const qty = e.target.dataset.service && serviceQuantityField(prefix, e.target.dataset.service);
+    if (qty) qty.hidden = !e.target.checked;
+    if (prefix === "rc-edit") updateEditForm(); else updateMealsTotal("rc", pendingBooking);
+  });
+  $(prefix + "-services").addEventListener("input", e => {
+    if (!e.target.dataset.qty) return;
+    if (prefix === "rc-edit") updateEditForm(); else updateMealsTotal("rc", pendingBooking);
+  });
+});
 $("rc-edit-close").addEventListener("click", closeEditModal);
 $("rc-edit-submit").addEventListener("click", submitEdit);
 $("rc-edit-overlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeEditModal(); });

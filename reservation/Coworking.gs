@@ -36,7 +36,7 @@ function getCoworkingSpaces() {
         closureNote: s.closureNote,
         credits: findSpace(s.id).credits || null
       })),
-    // Repas en option, facturés (devis envoyé dès qu'un repas est choisi) ; null s'ils sont tous retirés
+    // Services en option, facturés (devis envoyé dès qu'un service est choisi) ; null s'il n'y en a aucun
     meals: coworkingMeals()
   };
 }
@@ -51,7 +51,7 @@ function bookCoworkingRoom(idToken, rawBooking) {
 
   const booking = validateCoworkingBooking(rawBooking);
   if (booking.error) return { success: false, message: booking.error };
-  if (hasMeals(booking) && mealsTooLate(setTime(booking.startDate, booking.startHour))) {
+  if (hasServices(booking) && mealsTooLate(setTime(booking.startDate, booking.startHour))) {
     return { success: false, message: mealsTooLateMessage() };
   }
 
@@ -85,7 +85,7 @@ function bookCoworkingRoom(idToken, rawBooking) {
     success: true,
     message: 'Réservation confirmée ! ' + booking.space.name + ' est à vous.'
       + (done.credits ? ' ' + done.credits.cost + ' crédit(s) utilisé(s), il en reste ' + done.credits.remaining + '.' : '')
-      + (quote ? ' Votre devis restauration est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
+      + (quote ? ' Votre devis des services est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
   };
 }
 
@@ -131,7 +131,7 @@ function createCoworkingEvent(user, booking) {
     ['Demandé par', fullName + (user.company ? ' (' + user.company + ')' : '')],
     ['Email', user.email],
     ['Nombre de personnes', booking.numberOfPeople],
-    hasMeals(booking) && mealsLine(booking),
+    hasServices(booking) && mealsLine(booking),
     user.chargesCredits && ['Crédits utilisés', cost],
     booking.notes && ['Note', booking.notes]
   ].filter(Boolean)
@@ -149,7 +149,7 @@ function createCoworkingEvent(user, booking) {
     event.setTag(TAG_COMPANY, user.companyId);
     event.setTag(TAG_CREDITS, String(cost));
   }
-  if (hasMeals(booking)) event.setTag(TAG_MEALS, mealsTag(booking));
+  if (hasServices(booking)) event.setTag(TAG_MEALS, mealsTag(booking));
 
   invalidateAvailabilityCache(); // la disponibilité vient de changer
 
@@ -174,9 +174,8 @@ function validateCoworkingBooking(raw) {
     title: cleanText(raw.title, MAX_TEXT_LENGTH),
     notes: cleanText(raw.notes, MAX_NOTES_LENGTH),
     numberOfPeople: toInt(raw.numberOfPeople),
-    // Un repas retiré depuis le portail (Gestion > Services) n'est plus commandé
-    wantsBreakfast: raw.wantsBreakfast === true && serviceOffered('coworking', 'breakfast'),
-    wantsLunch: raw.wantsLunch === true && serviceOffered('coworking', 'lunch'),
+    // Un service retiré depuis le portail (Gestion > Services) n'est plus commandé
+    services: cleanRequestedServices(raw, 'coworking').services,
     dateString: String(raw.dateString || ''),
     endDateString: raw.endDateString ? String(raw.endDateString) : '',
     startHour: toInt(raw.startHour),
@@ -361,8 +360,8 @@ function getMyCoworkingBookings(idToken) {
           endHour: slot.endHour,
           numberOfPeople: people ? Number(people) : 1,
           notes: note ? note.trim() : '',
-          wantsBreakfast: !!meals.wantsBreakfast,
-          wantsLunch: !!meals.wantsLunch,
+          services: requestedServices(meals),
+          servicesLabel: servicesLabel(meals),
           quoteNumber: (ev.description.match(/Devis repas : (\S+)/) || [])[1] || '',
           credits: user.chargesCredits ? (Number(ev.credits) || 0) : null
         });
@@ -499,15 +498,15 @@ function cancelCoworkingBooking(idToken, raw) {
     event.deleteEvent();
     invalidateAvailabilityCache(); // le créneau redevient libre
 
-    if (hasMeals(oldMeals)) {
+    if (hasServices(oldMeals)) {
       notifyTeamMeals('Annulation', user, space, title, null, start, end, null, oldMeals);
     }
     try {
       sendClientEmail(user.email, user.firstName, 'Réservation annulée — ' + space.name + ' — Hiptown', [
         'Votre réservation <b>"' + escapeHtml(title) + '"</b> (' + escapeHtml(space.name) + ', '
           + frenchWhen(eventSlot(start, end), start, end) + ') est bien annulée. La salle est libérée.',
-        hasMeals(oldMeals) && ('La restauration commandée (' + mealsLabel(oldMeals).toLowerCase()
-          + ') est annulée également : son devis n\'a plus cours.'),
+        hasServices(oldMeals) && ('Les services commandés (' + escapeHtml(servicesLabel(oldMeals).toLowerCase())
+          + ') sont annulés également : leur devis n\'a plus cours.'),
         refunded && ('Les <b>' + refunded + '</b> crédit(s) de cette réservation ont été rendus à votre entreprise.'),
         'Besoin d\'une autre salle ? Vous pouvez réserver à tout moment depuis votre espace client Hiptown.'
       ].filter(Boolean), 'À très bientôt');
@@ -528,10 +527,10 @@ function cancelCoworkingBooking(idToken, raw) {
 }
 
 /**
- * Déplace une réservation (date, horaires), change le nombre de personnes ou la restauration.
+ * Déplace une réservation (date, horaires), change le nombre de personnes ou les services.
  * Mêmes vérifications qu'une nouvelle réservation : règles de la salle, créneau libre
  * dans l'agenda réel (sans compter la réservation elle-même) et solde de crédits
- * (en rendant d'abord les crédits de l'ancien créneau). Avec restauration, un nouveau
+ * (en rendant d'abord les crédits de l'ancien créneau). Avec des services, un nouveau
  * devis remplace l'ancien.
  */
 function modifyCoworkingBooking(idToken, raw) {
@@ -570,9 +569,9 @@ function modifyCoworkingBooking(idToken, raw) {
   const space = booking.space;
   const title = done.title;
   let quote = null;
-  if (hasMeals(booking)) {
-    quote = handleMealsOrder(user, booking, done.event, title, start, end, hasMeals(done.oldMeals) ? 'Modification' : 'Nouvelle commande');
-  } else if (hasMeals(done.oldMeals)) {
+  if (hasServices(booking)) {
+    quote = handleMealsOrder(user, booking, done.event, title, start, end, hasServices(done.oldMeals) ? 'Modification' : 'Nouvelle commande');
+  } else if (hasServices(done.oldMeals)) {
     notifyTeamMeals('Annulation', user, space, title, null, done.oldStart, done.oldEnd, null, done.oldMeals);
   }
 
@@ -585,7 +584,7 @@ function modifyCoworkingBooking(idToken, raw) {
         + ' (pensez à supprimer l\'ancien créneau de votre agenda si vous l\'y aviez ajouté)',
       'Ancien créneau (libéré) : ' + frenchWhen(eventSlot(done.oldStart, done.oldEnd), done.oldStart, done.oldEnd) + '.',
       mealsParagraph(booking, quote, true),
-      !hasMeals(booking) && hasMeals(done.oldMeals) && 'La restauration commandée est annulée : son devis n\'a plus cours.',
+      !hasServices(booking) && hasServices(done.oldMeals) && 'Les services commandés sont annulés : leur devis n\'a plus cours.',
       done.credits && ('Crédits utilisés : <b>' + done.credits.cost + '</b> (au lieu de ' + done.credits.oldCost + '). Il reste <b>'
         + done.credits.remaining + '</b> crédit(s) à votre entreprise pour ' + done.credits.monthLabel + '.'),
       'Vous pouvez encore annuler ou modifier cette réservation jusqu\'à son début, depuis votre espace client.'
@@ -598,7 +597,7 @@ function modifyCoworkingBooking(idToken, raw) {
     success: true,
     message: 'Réservation modifiée !'
       + (done.credits ? ' ' + done.credits.cost + ' crédit(s) utilisé(s), il en reste ' + done.credits.remaining + '.' : '')
-      + (quote ? ' Votre nouveau devis restauration est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
+      + (quote ? ' Votre nouveau devis des services est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
   };
 }
 
@@ -616,13 +615,13 @@ function applyCoworkingChange(user, booking, raw, start, end) {
   const oldMeals = eventMeals(event);
   if (oldStart.getTime() === start.getTime() && oldEnd.getTime() === end.getTime()
       && oldPeople === booking.numberOfPeople && mealsTag(oldMeals) === mealsTag(booking)) {
-    return { success: false, message: 'Rien n\'a changé : modifiez l\'horaire, le nombre de personnes ou la restauration.' };
+    return { success: false, message: 'Rien n\'a changé : modifiez l\'horaire, le nombre de personnes ou les services.' };
   }
   // Repas à commander à l'avance : pas de nouvelle commande ni de changement (horaire, personnes,
   // repas) trop près de la réunion. Retirer les repas ou annuler reste possible (l'équipe est prévenue).
   const mealsChanged = mealsTag(oldMeals) !== mealsTag(booking) || oldPeople !== booking.numberOfPeople
     || oldStart.getTime() !== start.getTime();
-  if (hasMeals(booking) && mealsChanged && mealsTooLate(start)) {
+  if (hasServices(booking) && mealsChanged && mealsTooLate(start)) {
     return { success: false, message: mealsTooLateMessage() };
   }
 
@@ -650,8 +649,8 @@ function applyCoworkingChange(user, booking, raw, start, end) {
     event.setTag(TAG_COMPANY, user.companyId);
     event.setTag(TAG_CREDITS, String(cost));
   }
-  if (hasMeals(booking)) event.setTag(TAG_MEALS, mealsTag(booking));
-  else if (hasMeals(oldMeals)) event.deleteTag(TAG_MEALS);
+  if (hasServices(booking)) event.setTag(TAG_MEALS, mealsTag(booking));
+  else if (hasServices(oldMeals)) event.deleteTag(TAG_MEALS);
   invalidateAvailabilityCache();
 
   return {
@@ -667,7 +666,7 @@ function applyCoworkingChange(user, booking, raw, start, end) {
 
 /**
  * Description après modification : remplace les lignes Date/Horaire/Nombre de personnes/
- * Restauration/Crédits, retire le devis repas s'il n'y a plus de repas (le nouveau devis
+ * Services/Crédits, retire le devis repas s'il n'y a plus de service (le nouveau devis
  * est ajouté ensuite) et note la date de la dernière modification.
  */
 function updatedDescription(description, booking, cost) {
@@ -676,12 +675,13 @@ function updatedDescription(description, booking, cost) {
     'Date': line(dateLine(booking)),
     'Horaire': line(hourLine(booking)),
     'Nombre de personnes': 'Nombre de personnes : ' + booking.numberOfPeople,
-    'Restauration': hasMeals(booking) ? line(mealsLine(booking)) : null,
+    'Services': hasServices(booking) ? line(mealsLine(booking)) : null,
+    'Restauration': null, // ancien nom de la ligne « Services »
     'Crédits utilisés': cost ? 'Crédits utilisés : ' + cost : null,
     'Dernière modification': 'Dernière modification : '
       + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') + ' (depuis le portail)'
   };
-  if (!hasMeals(booking)) fields['Devis repas'] = null;
+  if (!hasServices(booking)) fields['Devis repas'] = null;
   return withDescriptionFields(description, fields);
 }
 
@@ -709,19 +709,19 @@ function withDescriptionFields(description, fields) {
   return lines.join('\n');
 }
 
-// ==================== RESTAURATION (PETIT DÉJEUNER, DÉJEUNER) ====================
-// Les coworkers ne paient pas la salle (crédits) mais peuvent commander des repas :
-// dès qu'un repas est choisi, un devis (repas seuls, tarifs de Gestion > Services) leur est envoyé
-// et l'équipe est prévenue pour préparer la commande.
+// ==================== SERVICES EN OPTION (REPAS, PARKING…) ====================
+// Les coworkers ne paient pas la salle (crédits) mais peuvent commander des services
+// (Gestion > Services) : dès qu'un service est choisi, un devis (services seuls) leur
+// est envoyé et l'équipe est prévenue pour préparer la commande.
+// (Les noms « meals » / « repas » datent de quand seuls les repas existaient.)
 
-/** Repas proposés aux coworkers, avec leurs tarifs (€ HT par personne), ou null s'il n'y en a aucun. */
+/** Services proposés aux coworkers, avec leurs tarifs (€ HT), ou null s'il n'y en a aucun. */
 function coworkingMeals() {
-  const offered = offeredServices('coworking');
-  if (!offered.breakfast && !offered.lunch) return null;
-  const prices = currentPrices();
+  const services = offeredServiceList('coworking');
+  if (!services.length) return null;
   return {
-    breakfast: prices.breakfast, lunch: prices.lunch, vatRate: prices.vatRate, offered: offered,
-    noticeHours: COWORKING.mealsNoticeHours || 0
+    services: services, vatRate: PRICES.vatRate,
+    maxQuantity: MAX_SERVICE_QUANTITY, noticeHours: COWORKING.mealsNoticeHours || 0
   };
 }
 
@@ -731,26 +731,17 @@ function mealsTooLate(start) {
 }
 
 function mealsTooLateMessage() {
-  return 'Les repas se commandent au moins ' + COWORKING.mealsNoticeHours + 'h avant la réunion : décochez '
-    + 'petit déjeuner et déjeuner, ou choisissez un créneau plus tard.';
-}
-
-function hasMeals(m) {
-  return !!(m && (m.wantsBreakfast || m.wantsLunch));
-}
-
-/** « Petit déjeuner + Déjeuner » */
-function mealsLabel(m) {
-  return [m.wantsBreakfast && 'Petit déjeuner', m.wantsLunch && 'Déjeuner'].filter(Boolean).join(' + ');
+  return 'Les services se commandent au moins ' + COWORKING.mealsNoticeHours + 'h avant la réunion : décochez-les, '
+    + 'ou choisissez un créneau plus tard.';
 }
 
 function mealsLine(b) {
-  return ['Restauration', mealsLabel(b) + ' pour ' + b.numberOfPeople + ' personne(s)'];
+  return ['Services', servicesLabel(b) + ' pour ' + b.numberOfPeople + ' personne(s)'];
 }
 
-/** Repas enregistrés dans l'événement (tag), sous la même forme que la demande. */
+/** Services enregistrés dans l'événement (tag) : { services: { id: quantité } }. */
 function mealsTag(m) {
-  return JSON.stringify({ wantsBreakfast: !!(m && m.wantsBreakfast), wantsLunch: !!(m && m.wantsLunch) });
+  return JSON.stringify({ services: requestedServices(m || {}) });
 }
 
 function eventMeals(event) {
@@ -766,7 +757,7 @@ function eventMeals(event) {
  * { number, pdf, totalTTC } ou null (pas de repas, ou devis impossible : l'équipe est prévenue).
  */
 function handleMealsOrder(user, booking, event, title, start, end, kind) {
-  if (!hasMeals(booking)) return null;
+  if (!hasServices(booking)) return null;
   let quote = null;
   let quoteError = '';
   try {
@@ -797,9 +788,7 @@ function createMealsQuote(user, b, event) {
     numberOfDays: b.numberOfDays,
     spaceQuantity: 1,
     numberOfPeople: b.numberOfPeople,
-    wantsBreakfast: b.wantsBreakfast,
-    wantsLunch: b.wantsLunch,
-    parkingQuantity: 0,
+    services: b.services,
     firstName: user.firstName,
     lastName: user.lastName,
     company: user.company || ((user.firstName + ' ' + user.lastName).trim()),
@@ -827,10 +816,10 @@ function createMealsQuote(user, b, event) {
   return { number: number, pdf: pdf, totalTTC: computeQuote(b.space, data, currentPrices()).totalTTC, discount: discount };
 }
 
-/** Paragraphe « restauration » des emails au coworker (null sans repas). */
+/** Paragraphe « services » des emails au coworker (null sans service). */
 function mealsParagraph(b, quote, isChange) {
-  if (!hasMeals(b)) return null;
-  return 'Restauration ' + (isChange ? 'prévue' : 'commandée') + ' : <b>' + mealsLabel(b) + '</b> pour '
+  if (!hasServices(b)) return null;
+  return 'Services ' + (isChange ? 'prévus' : 'commandés') + ' : <b>' + escapeHtml(servicesLabel(b)) + '</b> pour '
     + b.numberOfPeople + ' personne(s). ' + (quote
       ? 'Votre devis n°<b>' + quote.number + '</b> (' + quote.totalTTC.toFixed(2) + ' € TTC) est en pièce jointe'
         + (isChange ? ' et remplace le précédent' : '') + ' ; la facture vous sera envoyée à la suite de la réunion.'
@@ -840,7 +829,7 @@ function mealsParagraph(b, quote, isChange) {
 
 /**
  * Prévient l'équipe (OWNER_EMAIL) d'une commande, d'une modification ou d'une annulation
- * de repas, pour qu'elle prépare (ou décommande) la restauration.
+ * de services, pour qu'elle les prépare (ou les décommande).
  */
 function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, oldMeals, quoteError) {
   const meals = booking || oldMeals;
@@ -851,7 +840,7 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
     ['Réunion', title],
     ['Salle', space.name],
     ['Créneau', when],
-    ['Repas', mealsLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')],
+    ['Services', servicesLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')],
     quote && ['Devis', 'n°' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC), joint à cet email'],
     quote && quote.discount && ['Remise', describeDiscount(quote.discount) + (quote.discount.reason ? ' (motif : ' + quote.discount.reason + ')' : '')],
     quoteError && ['⚠️ Devis', 'non généré (' + quoteError + ') : à envoyer à la main']
@@ -859,8 +848,8 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
   try {
     MailApp.sendEmail({
       to: OWNER_EMAIL,
-      subject: '🍽 Repas coworking — ' + kind + ' — ' + space.name + ' — ' + when,
-      htmlBody: '<p><b>' + escapeHtml(kind) + ' de restauration</b> depuis l\'espace coworking du portail.</p>'
+      subject: '🧾 Services coworking — ' + kind + ' — ' + space.name + ' — ' + when,
+      htmlBody: '<p><b>' + escapeHtml(kind) + ' de services</b> depuis l\'espace coworking du portail.</p>'
         + '<table cellpadding="4">' + rows.map(([label, value]) =>
           '<tr><td><b>' + escapeHtml(label) + '</b></td><td>' + escapeHtml(value) + '</td></tr>').join('') + '</table>',
       attachments: quote ? [quote.pdf] : []

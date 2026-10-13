@@ -389,22 +389,8 @@
 
         <span class="field-label">Services additionnels</span>
         <div id="services">
-          <div class="check-row" data-service="breakfast">
-            <input type="checkbox" id="wantsBreakfast">
-            <label for="wantsBreakfast">Petit déjeuner</label>
-            <span class="price" id="breakfastPriceLabel"></span>
-          </div>
-          <div class="check-row" data-service="lunch">
-            <input type="checkbox" id="wantsLunch">
-            <label for="wantsLunch">Déjeuner</label>
-            <span class="price" id="lunchPriceLabel"></span>
-          </div>
-          <div class="check-row" data-service="parking">
-            <input type="checkbox" id="wantsParking">
-            <label for="wantsParking">Place(s) de parking</label>
-            <input type="number" id="parkingQuantity" class="qty" min="1" value="1" inputmode="numeric" aria-label="Nombre de places" hidden>
-            <span class="price" id="parkingPriceLabel"></span>
-          </div>
+          <!-- Services proposés (Gestion > Services du portail), créés par renderServiceRows() -->
+          <div id="serviceRows"></div>
           <div class="check-row">
             <input type="checkbox" id="wantsOther">
             <label for="wantsOther">Autre (précisez dans la note)</label>
@@ -426,7 +412,7 @@
 
   <div class="toast" id="toast" role="status" hidden></div>
 
-  <!-- BASE_URL, SPACES, START_HOUR, END_HOUR, PRICES, SERVICES_OFFERED et computeQuote() : écrits par Code.gs (source unique) -->
+  <!-- BASE_URL, SPACES, START_HOUR, END_HOUR, PRICES (avec les services), MAX_SERVICE_QUANTITY, requestedServices() et computeQuote() : écrits par Code.gs (source unique) -->
   <script><?!= sharedScript ?></script>
   <script>
     const MIDDAY_HOUR = 13; // séparation matin / après-midi
@@ -775,21 +761,41 @@
       document.querySelectorAll('#formStep input[type=checkbox]').forEach(box => { box.checked = false; });
       $('civility').value = '';
       $('numberOfPeople').value = 1;
-      $('parkingQuantity').value = 1;
-      $('parkingQuantity').hidden = true;
+      document.querySelectorAll('#serviceRows [data-qty]').forEach(qty => { qty.value = 1; qty.hidden = true; });
     }
 
-    function updateParkingField() {
-      $('parkingQuantity').hidden = !$('wantsParking').checked;
-      updatePriceSummary();
+    /** Prix affiché à côté d'un service. */
+    function servicePriceLabel(s) {
+      if (s.pricing === 'person') return formatEuro(s.price) + '/pers.';
+      if (s.pricing === 'unit') return formatEuro(s.price) + '/unité';
+      return formatEuro(s.halfDayPrice) + ' demi-j. / ' + formatEuro(s.fullDayPrice) + ' jour';
+    }
+
+    /** Une ligne par service proposé : une case, plus une quantité pour un service à l'unité. */
+    function renderServiceRows() {
+      $('serviceRows').innerHTML = PRICES.services.map(s =>
+        '<div class="check-row">'
+        + '<input type="checkbox" id="svc-' + s.id + '" data-service="' + s.id + '">'
+        + '<label for="svc-' + s.id + '">' + escapeHtml(s.label) + '</label>'
+        + (s.pricing === 'person' ? '' : '<input type="number" class="qty" data-qty="' + s.id + '" min="1" max="'
+          + MAX_SERVICE_QUANTITY + '" value="1" inputmode="numeric" aria-label="Quantité" hidden>')
+        + '<span class="price">' + escapeHtml(servicePriceLabel(s)) + '</span>'
+        + '</div>').join('');
+    }
+
+    function serviceQuantityField(id) {
+      return document.querySelector('#serviceRows [data-qty="' + id + '"]');
     }
 
     function readServices() {
+      const services = {};
+      document.querySelectorAll('#serviceRows [data-service]:checked').forEach(box => {
+        const qty = serviceQuantityField(box.dataset.service);
+        services[box.dataset.service] = qty ? (parseInt(qty.value, 10) || 0) : 1;
+      });
       return {
         numberOfPeople: parseInt($('numberOfPeople').value, 10) || 0,
-        wantsBreakfast: $('wantsBreakfast').checked,
-        wantsLunch: $('wantsLunch').checked,
-        parkingQuantity: $('wantsParking').checked ? (parseInt($('parkingQuantity').value, 10) || 0) : 0,
+        services: services,
         wantsOther: $('wantsOther').checked
       };
     }
@@ -896,7 +902,12 @@
     $('multiDayConfirm').addEventListener('click', selectMultiDay);
 
     $('formStep').addEventListener('input', updatePriceSummary);
-    $('wantsParking').addEventListener('change', updateParkingField);
+    // Service à l'unité coché : son champ quantité apparaît
+    $('serviceRows').addEventListener('change', e => {
+      const qty = e.target.dataset.service && serviceQuantityField(e.target.dataset.service);
+      if (qty) qty.hidden = !e.target.checked;
+      updatePriceSummary();
+    });
 
     $('cancelBtn').addEventListener('click', closeModal);
     $('submitBtn').addEventListener('click', confirmBooking);
@@ -905,11 +916,7 @@
 
     // ==================== DÉMARRAGE ====================
 
-    $('breakfastPriceLabel').textContent = formatEuro(PRICES.breakfast) + '/pers.';
-    $('lunchPriceLabel').textContent = formatEuro(PRICES.lunch) + '/pers.';
-    $('parkingPriceLabel').textContent = formatEuro(PRICES.parkingHalfDay) + ' demi-j. / ' + formatEuro(PRICES.parkingFullDay) + ' jour';
-    // Services retirés depuis le portail (Gestion > Services) : non proposés
-    document.querySelectorAll('[data-service]').forEach(row => { row.hidden = !SERVICES_OFFERED[row.dataset.service]; });
+    renderServiceRows();
 
     renderSkeleton();
     loadMonth();

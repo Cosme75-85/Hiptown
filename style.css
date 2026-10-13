@@ -898,6 +898,7 @@ footer {
 .rc-cost { font-size: 14px; font-weight: 600; margin-top: 8px; }
 .rc-meals { border: 1px solid var(--border); border-radius: 8px; padding: 4px 12px 8px; margin-top: 14px; }
 .rc-meals legend { font-size: 13px; font-weight: 700; padding: 0 4px; }
+.rc-modal .rc-check-row input.rc-qty { width: 70px; flex-shrink: 0; min-height: 36px; margin: 0; padding: 4px 8px; }
 #rc-edit-current { text-transform: none; }
 .rc-meals-total { font-size: 13px; color: var(--text-soft); margin-top: 4px; }
 .rc-mine { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
