@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hiptown — Portail client</title>
   <link rel="stylesheet" href="style.css"/>
+  <!-- Chargement en parallèle des modules (sinon le navigateur les découvre l'un après l'autre) -->
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"/>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"/>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"/>
+  <link rel="modulepreload" href="firebase-config.js"/>
+  <link rel="modulepreload" href="auth.js"/>
+  <link rel="modulepreload" href="profile.js"/>
+  <link rel="modulepreload" href="admin.js"/>
+  <link rel="modulepreload" href="reductions.js"/>
+  <link rel="modulepreload" href="salles.js"/>
 </head>
 <body>
 
