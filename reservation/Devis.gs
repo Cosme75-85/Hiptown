@@ -91,8 +91,9 @@ function buildQuoteHtml(space, booking, number) {
   const tz = Session.getScriptTimeZone();
   const frDate = date => Utilities.formatDate(date, tz, 'dd/MM/yyyy');
   const euros = n => n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' €';
-  const vatRate = PRICES.vatRate;
-  const quote = computeQuote(space, booking);
+  const prices = currentPrices();
+  const vatRate = prices.vatRate;
+  const quote = computeQuote(space, booking, prices);
 
   const today = new Date();
   const dueDate = new Date(today.getTime() + DEVIS.validityDays * DAY_MS);

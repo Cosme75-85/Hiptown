@@ -36,8 +36,8 @@ function getCoworkingSpaces() {
         closureNote: s.closureNote,
         credits: findSpace(s.id).credits || null
       })),
-    // Repas en option, facturés (devis envoyé dès qu'un repas est choisi)
-    meals: { breakfast: PRICES.breakfast, lunch: PRICES.lunch, vatRate: PRICES.vatRate, noticeHours: COWORKING.mealsNoticeHours || 0 }
+    // Repas en option, facturés (devis envoyé dès qu'un repas est choisi) ; null s'ils sont tous retirés
+    meals: coworkingMeals()
   };
 }
 
@@ -174,8 +174,9 @@ function validateCoworkingBooking(raw) {
     title: cleanText(raw.title, MAX_TEXT_LENGTH),
     notes: cleanText(raw.notes, MAX_NOTES_LENGTH),
     numberOfPeople: toInt(raw.numberOfPeople),
-    wantsBreakfast: raw.wantsBreakfast === true,
-    wantsLunch: raw.wantsLunch === true,
+    // Un repas retiré depuis le portail (Gestion > Services) n'est plus commandé
+    wantsBreakfast: raw.wantsBreakfast === true && serviceOffered('coworking', 'breakfast'),
+    wantsLunch: raw.wantsLunch === true && serviceOffered('coworking', 'lunch'),
     dateString: String(raw.dateString || ''),
     endDateString: raw.endDateString ? String(raw.endDateString) : '',
     startHour: toInt(raw.startHour),
@@ -710,8 +711,19 @@ function withDescriptionFields(description, fields) {
 
 // ==================== RESTAURATION (PETIT DÉJEUNER, DÉJEUNER) ====================
 // Les coworkers ne paient pas la salle (crédits) mais peuvent commander des repas :
-// dès qu'un repas est choisi, un devis (repas seuls, tarifs PRICES) leur est envoyé
+// dès qu'un repas est choisi, un devis (repas seuls, tarifs de Gestion > Services) leur est envoyé
 // et l'équipe est prévenue pour préparer la commande.
+
+/** Repas proposés aux coworkers, avec leurs tarifs (€ HT par personne), ou null s'il n'y en a aucun. */
+function coworkingMeals() {
+  const offered = offeredServices('coworking');
+  if (!offered.breakfast && !offered.lunch) return null;
+  const prices = currentPrices();
+  return {
+    breakfast: prices.breakfast, lunch: prices.lunch, vatRate: prices.vatRate, offered: offered,
+    noticeHours: COWORKING.mealsNoticeHours || 0
+  };
+}
 
 /** Vrai si la réunion commence dans moins de COWORKING.mealsNoticeHours : trop tard pour commander. */
 function mealsTooLate(start) {
@@ -812,7 +824,7 @@ function createMealsQuote(user, b, event) {
   } catch (err) {
     Logger.log('⚠️ Copie Drive du devis ' + number + ' impossible : ' + err.message);
   }
-  return { number: number, pdf: pdf, totalTTC: computeQuote(b.space, data).totalTTC, discount: discount };
+  return { number: number, pdf: pdf, totalTTC: computeQuote(b.space, data, currentPrices()).totalTTC, discount: discount };
 }
 
 /** Paragraphe « restauration » des emails au coworker (null sans repas). */
