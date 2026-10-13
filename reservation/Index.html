@@ -313,7 +313,7 @@
           <span><i class="dot free"></i> Disponible</span>
           <span><i class="dot busy"></i> Complet</span>
           <span><i class="dot past"></i> Passé</span>
-          <span><i class="dot closed"></i> Pas encore ouvert</span>
+          <span><i class="dot closed"></i> Fermé</span>
         </div>
       </div>
 
@@ -505,7 +505,7 @@
     }
 
     function renderSkeleton() {
-      // Regroupe les espaces par catégorie, dans l'ordre de Config.gs
+      // Regroupe les espaces par catégorie, dans l'ordre de la liste des salles
       const byCategory = new Map();
       SPACES.forEach(space => {
         if (!byCategory.has(space.category)) byCategory.set(space.category, []);
@@ -524,7 +524,7 @@
             + (space.photoUrl ? '<img class="space-photo" src="' + space.photoUrl + '" alt="' + escapeHtml(space.name) + '" loading="lazy">' : '')
             + '<div class="space-header"><h3 class="space-name">' + escapeHtml(space.name) + '</h3>'
             + (badge ? '<span class="badge">' + escapeHtml(badge) + '</span>' : '') + '</div>'
-            + (space.availableFromLabel ? '<p class="opening-note">Disponible à partir du ' + escapeHtml(space.availableFromLabel) + '</p>' : '')
+            + (space.closureNote ? '<p class="opening-note">' + escapeHtml(space.closureNote) + '</p>' : '')
             + '<div class="month-grid" id="grid-' + space.id + '" data-space-id="' + space.id + '">'
             + '<div class="loading-mini">Chargement...</div></div>'
             + '</article>';
@@ -591,7 +591,7 @@
         });
     }
 
-    const STATUS_LABELS = { available: 'disponible', full: 'complet', past: 'passé', error: 'indisponible', closed: 'pas encore ouvert' };
+    const STATUS_LABELS = { available: 'disponible', full: 'complet', past: 'passé', error: 'indisponible', closed: 'fermé' };
 
     function renderMonthGrid(spaceId, data) {
       const grid = $('grid-' + spaceId);
