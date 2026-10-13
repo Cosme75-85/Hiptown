@@ -123,15 +123,24 @@ function discountSentence(discount) {
 
 // ==================== GESTION DEPUIS LE PORTAIL (équipe Hiptown) ====================
 
-/** Vérifie que le jeton appartient à un compte Hiptown (admin) validé. Renvoie son email. */
-function getDiscountAdmin(idToken) {
+/**
+ * Fiche du compte Hiptown (admin) validé à qui appartient le jeton, avec son uid.
+ * Sa ville est dans « site » (aucune pour l'admin général). Lève une erreur sinon.
+ */
+function getAdminProfile(idToken) {
   const uid = tokenUid(idToken);
   if (!uid) throw new Error('Session expirée, merci de vous reconnecter au portail.');
   const profile = readFirestoreDoc('users/' + encodeURIComponent(uid), idToken);
   if (!profile || profile.status !== 'approved' || profile.role !== 'admin') {
     throw new Error('Réservé à l\'équipe Hiptown.');
   }
-  return normalizeEmail(profile.email) || uid;
+  return Object.assign({ uid: uid }, profile);
+}
+
+/** Vérifie que le jeton appartient à un compte Hiptown (admin) validé. Renvoie son email. */
+function getDiscountAdmin(idToken) {
+  const profile = getAdminProfile(idToken);
+  return normalizeEmail(profile.email) || profile.uid;
 }
 
 /** Liste des remises en attente et des dernières remises utilisées. */

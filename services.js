@@ -2,7 +2,8 @@
 //  PORTAIL HIPTOWN — Services en option (Gestion, équipe Hiptown)
 //  Ajouter, modifier ou retirer un service (repas, parking…), changer
 //  ses prix et choisir à qui il est proposé : clients salle de réunion
-//  et/ou coworkers. La liste est gardée par l'outil de réservation
+//  et/ou coworkers. Chaque ville gère ses propres services ; l'admin
+//  général voit et gère toutes les villes. La liste est gardée par l'outil de réservation
 //  (reservation/Services.gs) : formulaires et devis l'utilisent dès
 //  l'enregistrement.
 // ═══════════════════════════════════════════════════════
@@ -17,6 +18,12 @@ const PRICING_LABELS = {
   unit: "À l'unité",
   unitDay: "Par unité, à la demi-journée ou à la journée"
 };
+
+let adminCity = null; // ville de l'admin connecté, null pour l'admin général (toutes les villes)
+
+function cityName(id) {
+  return PORTAIL.cities?.[id]?.name || id;
+}
 
 function escapeHtml(text) {
   return String(text ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -92,6 +99,8 @@ async function refreshServices() {
     list.innerHTML = `<p style="color:#dc2626;padding:12px;">${escapeHtml(res.message)}</p>`;
     return;
   }
+  adminCity = res.city || null;
+  $("service-new-city-wrap").hidden = !!adminCity;
   const online = res.services.filter(s => !s.archived);
   const archived = res.services.filter(s => s.archived);
   list.innerHTML = online.length ? "" : '<p style="color:#94a3b8;padding:12px;">Aucun service en ligne.</p>';
@@ -109,7 +118,7 @@ function serviceCard(s) {
   card.innerHTML = `
     <label class="profile-label" style="margin-top:0;">Nom</label>
     <input type="text" class="profile-input" data-field="label" maxlength="60" value="${escapeHtml(s.label)}"/>
-    <p style="font-size:12px;color:#64748b;margin:6px 0 0;">Facturation : ${escapeHtml(PRICING_LABELS[s.pricing] || s.pricing)}</p>
+    <p style="font-size:12px;color:#64748b;margin:6px 0 0;">Facturation : ${escapeHtml(PRICING_LABELS[s.pricing] || s.pricing)}${adminCity ? "" : " · " + escapeHtml(cityName(s.city))}</p>
     ${fieldsHtml(s)}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
       <button class="direct-btn" type="button" data-act="save" style="${btn}background:var(--navy);color:#fff;">Enregistrer</button>
@@ -137,7 +146,7 @@ function archivedCard(s) {
   card.innerHTML = `
     <div class="info-item" style="gap:10px;flex-wrap:wrap;">
       <span style="flex:1;min-width:160px;"><b>${escapeHtml(s.label)}</b><br>
-        <span style="font-size:12px;color:#64748b;">${escapeHtml(PRICING_LABELS[s.pricing] || "")}</span></span>
+        <span style="font-size:12px;color:#64748b;">${escapeHtml(PRICING_LABELS[s.pricing] || "")}${adminCity ? "" : " · " + escapeHtml(cityName(s.city))}</span></span>
       <button class="direct-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Remettre en ligne</button>
     </div>`;
   card.querySelector("button").addEventListener("click", async (e) => {
@@ -155,6 +164,8 @@ function renderNewFields() {
 }
 
 function openForm() {
+  $("service-new-city").innerHTML = Object.entries(PORTAIL.cities || {})
+    .map(([id, c]) => `<option value="${escapeHtml(id)}" ${id === PORTAIL.defaultSite ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
   $("service-new-label").value = "";
   $("service-new-pricing").value = "person";
   renderNewFields();
@@ -174,7 +185,12 @@ $("service-cancel")?.addEventListener("click", closeForm);
 $("service-new-pricing")?.addEventListener("change", renderNewFields);
 $("service-save")?.addEventListener("click", async (e) => {
   e.target.disabled = true;
-  const payload = { label: $("service-new-label").value.trim(), pricing: $("service-new-pricing").value, ...readFields($("service-new-fields")) };
+  const payload = {
+    label: $("service-new-label").value.trim(),
+    pricing: $("service-new-pricing").value,
+    city: adminCity || $("service-new-city").value, // le serveur impose la ville d'un admin de ville
+    ...readFields($("service-new-fields"))
+  };
   if (await send("saveService", payload, "service-form-message")) {
     showMessage("service-message", $("service-form-message").textContent, false);
     closeForm();

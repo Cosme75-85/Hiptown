@@ -14,6 +14,10 @@
  * Un service retiré n'est plus proposé mais reste connu : les devis des réservations
  * qui l'ont déjà commandé restent justes. On peut le remettre en ligne.
  *
+ * Chaque service appartient à une ville : il n'est proposé que pour les salles de cette
+ * ville, et seule l'équipe de cette ville (ou l'admin général) peut le modifier. Les comptes
+ * Hiptown (admin) qui réservent une salle se voient proposer tous les services de la ville.
+ *
  * Rangement : une propriété du script (SERVICES_LIST, la liste complète). Tant que rien
  * n'y est enregistré, la liste part des 3 services d'origine, aux prix de PRICES (Config.gs)
  * ou à ceux déjà saisis dans le portail (ancienne propriété SERVICES).
@@ -25,10 +29,11 @@ const MAX_SERVICE_PRICE = 10000;   // € HT
 const MAX_SERVICE_QUANTITY = 10;   // quantité max d'un service par réservation (ex. places de parking)
 const MAX_SERVICES = 30;
 const PRICING_MODES = ['person', 'unit', 'unitDay'];
+const DEFAULT_CITY = 'bordeaux';   // ville des salles et services créés avant la gestion par ville
 
 let servicesMemo = null; // mémorisé le temps d'une requête
 
-/** Tous les services, retirés compris : { id, label, pricing, price, halfDayPrice, fullDayPrice, offered, archived }. */
+/** Tous les services, retirés compris : { id, label, city, pricing, price, halfDayPrice, fullDayPrice, offered, archived }. */
 function serviceCatalog() {
   if (servicesMemo) return servicesMemo;
   const props = PropertiesService.getScriptProperties();
@@ -52,13 +57,18 @@ function seedServices(props) {
   };
   return [
     { id: 'breakfast', label: 'Petit déjeuner', pricing: 'person', price: price('breakfast', 'breakfast'),
-      offered: { salle: offered('breakfast', 'salle', true), coworking: offered('breakfast', 'coworking', true) } },
+      city: DEFAULT_CITY, offered: { salle: offered('breakfast', 'salle', true), coworking: offered('breakfast', 'coworking', true) } },
     { id: 'lunch', label: 'Déjeuner', pricing: 'person', price: price('lunch', 'lunch'),
-      offered: { salle: offered('lunch', 'salle', true), coworking: offered('lunch', 'coworking', true) } },
+      city: DEFAULT_CITY, offered: { salle: offered('lunch', 'salle', true), coworking: offered('lunch', 'coworking', true) } },
     { id: 'parking', label: 'Place de parking', pricing: 'unitDay',
       halfDayPrice: price('parking', 'parkingHalfDay'), fullDayPrice: price('parking', 'parkingFullDay'),
-      offered: { salle: offered('parking', 'salle', true), coworking: false } }
+      city: DEFAULT_CITY, offered: { salle: offered('parking', 'salle', true), coworking: false } }
   ];
+}
+
+/** Ville d'une salle ou d'un service (Bordeaux pour ceux créés avant la gestion par ville). */
+function cityOf(item) {
+  return (item && item.city) || DEFAULT_CITY;
 }
 
 function findService(id) {
@@ -74,9 +84,15 @@ function currentPrices() {
   return Object.assign({}, PRICES, { services: serviceCatalog() });
 }
 
-/** Services en ligne proposés à ce type de client ('salle' ou 'coworking'), envoyés aux formulaires. */
-function offeredServiceList(audience) {
-  return serviceCatalog().filter(s => !s.archived && s.offered && s.offered[audience]);
+/**
+ * Services en ligne proposés à ce type de client ('salle', 'coworking', ou 'admin' : tous),
+ * dans cette ville (toutes les villes si city est vide), avec leur ville pour les formulaires.
+ */
+function offeredServiceList(audience, city) {
+  return serviceCatalog()
+    .filter(s => !s.archived && (!city || cityOf(s) === city)
+      && (audience === 'admin' || (s.offered && s.offered[audience])))
+    .map(s => Object.assign({}, s, { city: cityOf(s) }));
 }
 
 /**
@@ -98,16 +114,17 @@ function requestedServices(q) {
 }
 
 /**
- * Vérifie les services demandés par le client. Renvoie { services, refused } :
- * refused = libellés des services qui ne lui sont pas (ou plus) proposés, retirés de services.
+ * Vérifie les services demandés pour une salle de cette ville. Renvoie { services, refused } :
+ * refused = libellés des services qui ne sont pas (ou plus) proposés, retirés de services.
  */
-function cleanRequestedServices(q, audience) {
+function cleanRequestedServices(q, audience, city) {
+  const offered = offeredServiceList(audience, city).map(s => s.id);
   const wanted = requestedServices(q);
   const services = {};
   const refused = [];
   Object.keys(wanted).forEach(id => {
     const s = findService(id);
-    if (!s || s.archived || !s.offered || !s.offered[audience]) {
+    if (!s || offered.indexOf(id) === -1) {
       refused.push(s ? s.label : id);
       return;
     }
@@ -132,13 +149,27 @@ function hasServices(q) {
 
 // ==================== GESTION DEPUIS LE PORTAIL (équipe Hiptown) ====================
 
+/** Ville gérée par cet admin, ou null pour l'admin général (toutes les villes). */
+function adminCity(profile) {
+  return profile.site || null;
+}
+
+/** Services visibles dans Gestion > Services : ceux de sa ville (tous pour l'admin général). */
 function getServicesAdmin(idToken) {
+  let profile;
   try {
-    getDiscountAdmin(idToken);
+    profile = getAdminProfile(idToken);
   } catch (err) {
     return { success: false, message: err.message };
   }
-  return { success: true, services: serviceCatalog() };
+  const city = adminCity(profile);
+  return {
+    success: true,
+    city: city,
+    services: serviceCatalog()
+      .filter(s => !city || cityOf(s) === city)
+      .map(s => Object.assign({}, s, { city: cityOf(s) }))
+  };
 }
 
 /** Prix saisi dans le portail (texte ou nombre) ; vide n'est pas « gratuit ». NaN si invalide. */
@@ -182,10 +213,11 @@ function newServiceId(label, services) {
   return id;
 }
 
-/** Modifie les services sous verrou : change(liste) renvoie { message } ou { error }. */
+/** Modifie les services sous verrou : change(liste, ville de l'admin ou null) renvoie { message } ou { error }. */
 function updateServices(idToken, change) {
+  let city;
   try {
-    getDiscountAdmin(idToken);
+    city = adminCity(getAdminProfile(idToken));
   } catch (err) {
     return { success: false, message: err.message };
   }
@@ -198,7 +230,7 @@ function updateServices(idToken, change) {
   try {
     servicesMemo = null; // relit la dernière version, sous verrou
     const services = serviceCatalog().map(s => Object.assign({}, s));
-    const result = change(services);
+    const result = change(services, city);
     if (result.error) return { success: false, message: result.error };
     PropertiesService.getScriptProperties().setProperty(SERVICES_LIST_KEY, JSON.stringify(services));
     servicesMemo = services;
@@ -208,20 +240,32 @@ function updateServices(idToken, change) {
   }
 }
 
+/** Un admin de ville ne touche qu'aux services de sa ville ; l'admin général (city null) à tous. */
+function otherCityError(service, city) {
+  return city && cityOf(service) !== city
+    ? { error: 'Ce service appartient à une autre ville : seule son équipe peut le modifier.' }
+    : null;
+}
+
 /** Ajoute (sans id) ou modifie (avec id) un service. */
 function saveService(idToken, raw) {
-  return updateServices(idToken, services => {
+  return updateServices(idToken, (services, city) => {
     const index = raw && raw.id ? services.findIndex(s => s.id === raw.id) : -1;
     if (raw && raw.id && index === -1) return { error: 'Service introuvable : il a peut-être été supprimé.' };
-    const cleaned = cleanService(raw, index === -1 ? null : services[index]);
+    const existing = index === -1 ? null : services[index];
+    if (existing && otherCityError(existing, city)) return otherCityError(existing, city);
+    const cleaned = cleanService(raw, existing);
     if (cleaned.error) return cleaned;
-    if (index !== -1) {
-      services[index] = Object.assign({ id: raw.id, archived: services[index].archived }, cleaned);
+    if (existing) {
+      services[index] = Object.assign({ id: existing.id, city: cityOf(existing), archived: existing.archived }, cleaned);
       if (!services[index].archived) delete services[index].archived;
       return { message: cleaned.label + ' enregistré.' };
     }
     if (services.length >= MAX_SERVICES) return { error: 'Nombre maximum de services atteint (' + MAX_SERVICES + ').' };
-    services.push(Object.assign({ id: newServiceId(cleaned.label, services) }, cleaned));
+    // Nouveau service : ville de l'admin, ou celle choisie par l'admin général
+    const newCity = city || String((raw && raw.city) || '');
+    if (!/^[a-z0-9-]{1,40}$/.test(newCity)) return { error: 'Merci de choisir la ville du service.' };
+    services.push(Object.assign({ id: newServiceId(cleaned.label, services), city: newCity }, cleaned));
     return { message: cleaned.label + ' ajouté' + (cleaned.offered.salle || cleaned.offered.coworking
       ? ' : il est proposé à la réservation dès maintenant.' : ', mais il n\'est proposé à personne pour l\'instant.') };
   });
@@ -229,9 +273,10 @@ function saveService(idToken, raw) {
 
 /** Retire un service (plus proposé, devis existants conservés) ou le remet en ligne. */
 function setServiceArchived(idToken, raw) {
-  return updateServices(idToken, services => {
+  return updateServices(idToken, (services, city) => {
     const service = services.find(s => s.id === (raw && raw.id));
     if (!service) return { error: 'Service introuvable.' };
+    if (otherCityError(service, city)) return otherCityError(service, city);
     if (raw.archived) {
       service.archived = true;
       return { message: service.label + ' est retiré : il n\'est plus proposé à la réservation.' };

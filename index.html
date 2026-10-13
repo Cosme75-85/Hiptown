@@ -269,7 +269,8 @@
     <h2 class="step-title" style="margin-bottom:4px;">🥐 Services</h2>
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Les services proposés en option au moment de réserver une salle, avec leurs prix € HT.
-      Cochez « Salle de réunion » et/ou « Coworking » pour choisir qui peut les commander.
+      Cochez « Salle de réunion » et/ou « Coworking » pour choisir qui peut les commander ;
+      l'équipe Hiptown y a toujours accès. Chaque ville gère ses propres services.
       Les changements s'appliquent aux nouvelles réservations et aux devis envoyés ensuite.
       Un service retiré n'est plus proposé ; les devis déjà faits restent justes.
     </p>
@@ -280,6 +281,10 @@
       <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;">Nouveau service</h3>
       <label class="profile-label" for="service-new-label">Nom *</label>
       <input type="text" id="service-new-label" class="profile-input" maxlength="60" placeholder="ex. Vidéoprojecteur"/>
+      <div id="service-new-city-wrap" hidden>
+        <label class="profile-label" for="service-new-city">Ville</label>
+        <select id="service-new-city" class="profile-input"></select>
+      </div>
       <label class="profile-label" for="service-new-pricing">Facturation</label>
       <select id="service-new-pricing" class="profile-input">
         <option value="person">Par personne (le client coche une case)</option>

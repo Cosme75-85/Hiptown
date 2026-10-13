@@ -49,6 +49,7 @@ function doGet(e) {
     'const START_HOUR = ' + START_HOUR + ';',
     'const END_HOUR = ' + END_HOUR + ';',
     // Tarifs, avec les services proposés aux clients salle de réunion (Gestion > Services, voir Services.gs)
+    // (toutes villes : la page ne montre que ceux de la ville de la salle choisie)
     'const PRICES = ' + JSON.stringify(Object.assign({}, PRICES, { services: offeredServiceList('salle') })) + ';',
     'const MAX_SERVICE_QUANTITY = ' + MAX_SERVICE_QUANTITY + ';',
     requestedServices.toString(),
@@ -167,6 +168,7 @@ function getSpacesMeta() {
       onlyHalfOrFullDay: !!s.onlyHalfOrFullDay,
       badgeLabel: s.badgeLabel || null,
       category: s.category || 'Autres espaces',
+      city: cityOf(s),
       hourlyPrice: s.hourlyPrice || null,
       halfDayPrice: s.halfDayPrice || null,
       fullDayPrice: s.fullDayPrice || null,
@@ -406,7 +408,7 @@ function validateBooking(raw) {
     return { error: space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.' };
   }
   // Services (Gestion > Services) : un service retiré pendant que le client remplissait le formulaire est refusé
-  const services = cleanRequestedServices(raw, 'salle');
+  const services = cleanRequestedServices(raw, 'salle', cityOf(space));
   if (services.refused.length) {
     return { error: services.refused.join(', ') + ' : plus proposé à la réservation. Merci de recharger la page.' };
   }

@@ -610,6 +610,7 @@
     function openDayModal(spaceId, dateString) {
       const space = SPACES.find(s => s.id === spaceId);
       pendingBooking = { space: space, dateString: dateString, endDateString: null, startHour: null, endHour: null, spaceQuantity: 1 };
+      renderServiceRows(space);
 
       $('modalTitle').textContent = 'Réserver ' + space.name;
       $('modalDate').textContent = formatDate(dateString);
@@ -771,9 +772,9 @@
       return formatEuro(s.halfDayPrice) + ' demi-j. / ' + formatEuro(s.fullDayPrice) + ' jour';
     }
 
-    /** Une ligne par service proposé : une case, plus une quantité pour un service à l'unité. */
-    function renderServiceRows() {
-      $('serviceRows').innerHTML = PRICES.services.map(s =>
+    /** Une ligne par service proposé dans la ville de la salle : une case, plus une quantité pour un service à l'unité. */
+    function renderServiceRows(space) {
+      $('serviceRows').innerHTML = PRICES.services.filter(s => s.city === space.city).map(s =>
         '<div class="check-row">'
         + '<input type="checkbox" id="svc-' + s.id + '" data-service="' + s.id + '">'
         + '<label for="svc-' + s.id + '">' + escapeHtml(s.label) + '</label>'
@@ -916,7 +917,6 @@
 
     // ==================== DÉMARRAGE ====================
 
-    renderServiceRows();
 
     renderSkeleton();
     loadMonth();

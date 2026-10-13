@@ -34,6 +34,7 @@ function getCoworkingSpaces() {
         availableFrom: s.availableFrom,
         availableFromLabel: s.availableFromLabel,
         closureNote: s.closureNote,
+        city: s.city,
         credits: findSpace(s.id).credits || null
       })),
     // Services en option, facturés (devis envoyé dès qu'un service est choisi) ; null s'il n'y en a aucun
@@ -49,7 +50,7 @@ function bookCoworkingRoom(idToken, rawBooking) {
     return { success: false, message: err.message };
   }
 
-  const booking = validateCoworkingBooking(rawBooking);
+  const booking = validateCoworkingBooking(rawBooking, user);
   if (booking.error) return { success: false, message: booking.error };
   if (hasServices(booking) && mealsTooLate(setTime(booking.startDate, booking.startHour))) {
     return { success: false, message: mealsTooLateMessage() };
@@ -164,7 +165,7 @@ function createCoworkingEvent(user, booking) {
 }
 
 /** Vérifie la demande reçue du portail. Retourne { error } ou la demande nettoyée. */
-function validateCoworkingBooking(raw) {
+function validateCoworkingBooking(raw, user) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
   const space = findSpace(raw.spaceId);
   if (!space || !space.coworking || space.archived) return { error: 'Salle introuvable.' };
@@ -175,7 +176,7 @@ function validateCoworkingBooking(raw) {
     notes: cleanText(raw.notes, MAX_NOTES_LENGTH),
     numberOfPeople: toInt(raw.numberOfPeople),
     // Un service retiré depuis le portail (Gestion > Services) n'est plus commandé
-    services: cleanRequestedServices(raw, 'coworking').services,
+    services: cleanRequestedServices(raw, user.isHiptown ? 'admin' : 'coworking', cityOf(space)).services,
     dateString: String(raw.dateString || ''),
     endDateString: raw.endDateString ? String(raw.endDateString) : '',
     startHour: toInt(raw.startHour),
@@ -542,7 +543,7 @@ function modifyCoworkingBooking(idToken, raw) {
   }
 
   // Même contrôle que pour une nouvelle réservation (salle, personnes, repas, date, horaires)
-  const booking = validateCoworkingBooking(raw);
+  const booking = validateCoworkingBooking(raw, user);
   if (booking.error) return { success: false, message: booking.error };
   const start = setTime(booking.startDate, booking.startHour);
   const end = setTime(booking.endDate, booking.endHour);
@@ -715,9 +716,12 @@ function withDescriptionFields(description, fields) {
 // est envoyé et l'équipe est prévenue pour préparer la commande.
 // (Les noms « meals » / « repas » datent de quand seuls les repas existaient.)
 
-/** Services proposés aux coworkers, avec leurs tarifs (€ HT), ou null s'il n'y en a aucun. */
+/**
+ * Services en ligne de toutes les villes, avec leurs tarifs (€ HT), ou null s'il n'y en a aucun.
+ * Le portail propose ceux de la ville de la salle : cochés « Coworking », ou tous pour un compte Hiptown.
+ */
 function coworkingMeals() {
-  const services = offeredServiceList('coworking');
+  const services = offeredServiceList('admin');
   if (!services.length) return null;
   return {
     services: services, vatRate: PRICES.vatRate,
@@ -897,6 +901,7 @@ function getPortalUser(idToken) {
     lastName: cleanText(profile.lastName, MAX_TEXT_LENGTH),
     company: cleanText(company, MAX_TEXT_LENGTH),
     chargesCredits: chargesCredits,
+    isHiptown: profile.role === 'admin', // équipe Hiptown : tous les services de la ville lui sont proposés
     companyId: chargesCredits ? String(profile.companyId) : '',
     monthlyCredits: chargesCredits ? Math.max(0, Number(companyDoc.credits) || 0) : 0
   };

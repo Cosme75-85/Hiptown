@@ -23,6 +23,7 @@ let currentMonth = today.getMonth() + 1; // 1-12
 
 let SPACES = [];          // salles reçues du serveur
 let MEALS = null;         // services en option { services, vatRate, maxQuantity, noticeHours } (€ HT), null si aucun
+let isTeam = false;       // compte Hiptown : tous les services de la ville lui sont proposés
 let START_HOUR = 8;
 let END_HOUR = 18;
 let started = false;      // chargement fait à la première ouverture de la page
@@ -82,19 +83,23 @@ function servicePriceText(s) {
   return euros(s.halfDayPrice) + " HT la demi-journée, " + euros(s.fullDayPrice) + " HT la journée (par unité)";
 }
 
-/** Une ligne par service proposé (Gestion > Services) dans les deux formulaires : case, et quantité si à l'unité. */
-function renderServiceRows() {
-  if (!MEALS) return;
-  ["rc", "rc-edit"].forEach(prefix => {
-    $(prefix + "-services").innerHTML = MEALS.services.map(s => {
-      const id = prefix + "-svc-" + s.id;
-      return '<div class="rc-check-row"><input type="checkbox" id="' + id + '" data-service="' + s.id + '"/>'
-        + '<label for="' + id + '">' + escapeHtml(s.label) + " — " + escapeHtml(servicePriceText(s)) + "</label>"
-        + (s.pricing === "person" ? "" : '<input type="number" class="rc-qty" data-qty="' + s.id + '" min="1" max="'
-          + MEALS.maxQuantity + '" value="1" inputmode="numeric" aria-label="Quantité" hidden/>')
-        + "</div>";
-    }).join("");
-  });
+/** Services proposés pour une salle (Gestion > Services) : ceux de sa ville cochés « Coworking », tous pour l'équipe Hiptown. */
+function servicesFor(space) {
+  return MEALS && space ? MEALS.services.filter(s => s.city === space.city && (isTeam || s.offered.coworking)) : [];
+}
+
+/** Une ligne par service proposé pour cette salle ; prefix = "rc" ou "rc-edit". Case, et quantité si à l'unité. */
+function renderServiceRows(prefix, space) {
+  const list = servicesFor(space);
+  $(prefix + "-meals").hidden = !list.length;
+  $(prefix + "-services").innerHTML = list.map(s => {
+    const id = prefix + "-svc-" + s.id;
+    return '<div class="rc-check-row"><input type="checkbox" id="' + id + '" data-service="' + s.id + '"/>'
+      + '<label for="' + id + '">' + escapeHtml(s.label) + " — " + escapeHtml(servicePriceText(s)) + "</label>"
+      + (s.pricing === "person" ? "" : '<input type="number" class="rc-qty" data-qty="' + s.id + '" min="1" max="'
+        + MEALS.maxQuantity + '" value="1" inputmode="numeric" aria-label="Quantité" hidden/>')
+      + "</div>";
+  }).join("");
 }
 
 function serviceQuantityField(prefix, id) {
@@ -248,6 +253,7 @@ document.addEventListener("hiptown-dashboard", e => {
   const box = $("header-credits");
   if (box) box.hidden = true; // masqué tant que le solde n'est pas chargé (et pour les autres espaces)
   if (e.detail && e.detail.space === "coworking") refreshHeaderCredits();
+  isTeam = !!(e.detail && e.detail.space === "hiptown");
 });
 
 // ==================== SALLES ET CALENDRIERS DU MOIS ====================
@@ -338,6 +344,7 @@ function renderMonthGrid(spaceId, data) {
 function openDayModal(spaceId, dateString) {
   const space = SPACES.find(s => s.id === spaceId);
   pendingBooking = { space: space, dateString: dateString, endDateString: null, startHour: null, endHour: null };
+  renderServiceRows("rc", space);
 
   $("rc-modal-title").textContent = "Réserver " + space.name;
   $("rc-modal-date").textContent = formatDate(dateString);
@@ -453,7 +460,6 @@ function showFormStep() {
     + (sameMonth ? (cost > creditBalance.remaining
       ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
       : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
-  $("rc-meals").hidden = !MEALS;
   applyMealsDeadline("rc", b.dateString, b.startHour);
   updateMealsTotal("rc", b);
   $("rc-form-step").hidden = false;
@@ -756,7 +762,7 @@ function openEditModal(b) {
   $("rc-edit-start").innerHTML = hourOptions(START_HOUR, END_HOUR - 1, b.startHour);
   $("rc-edit-end").innerHTML = hourOptions(START_HOUR + 1, END_HOUR, b.endHour);
   $("rc-edit-people").value = b.numberOfPeople;
-  $("rc-edit-meals").hidden = !MEALS;
+  renderServiceRows("rc-edit", space);
   setServices("rc-edit", b.services);
   $("rc-edit-people").max = (space && space.maxPeople) || "";
   updateEditForm();
@@ -836,7 +842,6 @@ function start() {
       SPACES = data.spaces;
       START_HOUR = data.startHour;
       MEALS = data.meals || null;
-      renderServiceRows();
       END_HOUR = data.endHour;
       renderSpaces();
       loadMonth();
