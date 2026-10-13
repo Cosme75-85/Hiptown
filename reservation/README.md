@@ -7,7 +7,8 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 
 | Fichier | Rôle | À copier dans Apps Script |
 |---|---|---|
-| `Config.gs` | **Tout ce qui se règle** : espaces, agendas, horaires, tarifs, emails | ✅ |
+| `Config.gs` | **Tout ce qui se règle** : horaires, tarifs des services, emails, liste initiale des espaces | ✅ |
+| `Salles.gs` | Liste des salles gérée depuis le portail (ajout, modification, retrait, indisponibilités) | ✅ |
 | `Code.gs` | La logique : disponibilités, demandes, emails, approbation | ✅ |
 | `Devis.gs` | Devis PDF joint à l'email de confirmation | ✅ |
 | `Remerciement.gs` | Email de remerciement envoyé 3 jours après la réservation | ✅ |
@@ -25,7 +26,7 @@ Le code qui tourne est celui de script.google.com : ce dossier en est la copie
 de référence (historique, retour arrière possible). Après chaque modification :
 
 1. Ouvrir le projet sur script.google.com.
-2. Pour chacun des 8 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
+2. Pour chacun des 10 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
    dans Apps Script (le créer avec **+ > Script** s'il n'existe pas, sans taper « .gs »),
    tout sélectionner (Ctrl+A), supprimer, coller le contenu du fichier GitHub.
 3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ceux-là : deux fichiers qui
@@ -52,6 +53,28 @@ clasp login
 echo '{"scriptId":"TON_ID_DE_SCRIPT","rootDir":"."}' > .clasp.json
 clasp push
 ```
+
+## Gestion des salles (portail : Gestion > Salles de réunion)
+
+L'équipe Hiptown gère les salles depuis le portail, sans toucher au code :
+
+- **Ajouter** une salle : nom, catégorie, photo, personnes max, tarifs, couleur, réservable
+  sur plusieurs jours, proposée ou non aux coworkers (avec son barème en crédits).
+  Agenda Google : coller l'identifiant d'un agenda existant (partagé avec le compte qui fait
+  tourner l'outil), ou laisser vide pour qu'un agenda soit créé automatiquement.
+  L'agenda d'une salle ne se change plus ensuite (ses réservations y sont rangées).
+- **Modifier** une salle : tout sauf l'agenda. Visible au prochain chargement de la page de réservation.
+- **Retirer** une salle : elle n'est plus proposée, mais ses réservations déjà faites sont
+  conservées (agenda, liens de validation, devis, « Mes réservations »). « Remettre en ligne » l'annule.
+- **Indisponibilités** : périodes (premier et dernier jour inclus) pendant lesquelles la salle
+  est affichée « Fermé » et toute nouvelle réservation est refusée, sur le site public comme
+  dans l'espace coworking. Les réservations déjà faites ne sont pas annulées : le portail
+  indique combien il y en a sur la période. Les périodes terminées disparaissent toutes seules.
+
+Au premier démarrage, la liste vient de `DEFAULT_SPACES` dans `Config.gs` (les dates
+`availableFrom` y deviennent des indisponibilités). Dès le premier enregistrement depuis le
+portail, la liste est gardée dans les propriétés du script et `DEFAULT_SPACES` ne sert plus.
+Une salle ajoutée depuis le portail reçoit l'email de remerciement générique (`THANKS.default`).
 
 ## Devis automatiques
 
@@ -115,9 +138,10 @@ Pas d'email de remerciement 3 jours après pour ces réservations.
 Le serveur vérifie le compte : le portail envoie le jeton de connexion Firebase, et
 `Coworking.gs` relit la fiche du compte dans Firestore avec ce jeton. Seuls les comptes
 validés « coworking » ou « admin » peuvent réserver (réglage `COWORKING` dans `Config.gs`).
+Les salles proposées sont celles cochées « Proposée aux coworkers » dans Gestion > Salles de réunion.
 
 **Crédits** : chaque réservation d'un coworker coûte des crédits selon le barème
-`COWORKING.credits` de `Config.gs`. Le plafond mensuel est le champ « Nombre de crédits »
+de la salle (Gestion > Salles de réunion). Le plafond mensuel est le champ « Nombre de crédits »
 de la fiche entreprise du portail. Le solde n'est stocké nulle part : il est recalculé
 depuis les agendas (crédits des réservations de l'entreprise qui commencent dans le mois).
 Il repart donc du plafond chaque mois sans cumul, et supprimer une réservation dans

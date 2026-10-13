@@ -23,7 +23,7 @@ function getCoworkingSpaces() {
     startHour: START_HOUR,
     endHour: END_HOUR,
     spaces: getSpacesMeta()
-      .filter(s => COWORKING.spaceIds.indexOf(s.id) !== -1)
+      .filter(s => findSpace(s.id).coworking)
       .map(s => ({
         id: s.id,
         name: s.name,
@@ -33,7 +33,8 @@ function getCoworkingSpaces() {
         allowMultiDay: s.allowMultiDay,
         availableFrom: s.availableFrom,
         availableFromLabel: s.availableFromLabel,
-        credits: COWORKING.credits[s.id] || null
+        closureNote: s.closureNote,
+        credits: findSpace(s.id).credits || null
       })),
     // Repas en option, facturés (devis envoyé dès qu'un repas est choisi)
     meals: { breakfast: PRICES.breakfast, lunch: PRICES.lunch, vatRate: PRICES.vatRate, noticeHours: COWORKING.mealsNoticeHours || 0 }
@@ -165,9 +166,8 @@ function createCoworkingEvent(user, booking) {
 /** Vérifie la demande reçue du portail. Retourne { error } ou la demande nettoyée. */
 function validateCoworkingBooking(raw) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
-  if (COWORKING.spaceIds.indexOf(raw.spaceId) === -1) return { error: 'Salle introuvable.' };
   const space = findSpace(raw.spaceId);
-  if (!space) return { error: 'Salle introuvable.' };
+  if (!space || !space.coworking || space.archived) return { error: 'Salle introuvable.' };
 
   const b = {
     space: space,
@@ -244,12 +244,13 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits, qu
 // ==================== CRÉDITS ====================
 
 /**
- * Crédits d'une réservation selon le barème COWORKING.credits.
+ * Crédits d'une réservation selon le barème en crédits de la salle (Gestion > Salles de réunion).
  * Même découpage que le devis des salles (computeQuote) : plusieurs jours = une journée
  * par jour, plus de 5h = journée, 5h = demi-journée, sinon tarif horaire × heures.
  */
 function computeCoworkingCredits(spaceId, b) {
-  const rate = COWORKING.credits[spaceId];
+  const space = findSpace(spaceId);
+  const rate = space && space.credits;
   if (!rate) return 0;
   const duration = b.endHour - b.startHour;
   const days = b.numberOfDays || 1;
@@ -272,9 +273,8 @@ function getCreditBalance(user, year, month, excludeEventId) {
   const from = new Date(year, month - 1, 1);
   const to = new Date(year, month, 1);
   let used = 0;
-  COWORKING.spaceIds.forEach(spaceId => {
-    const space = findSpace(spaceId);
-    const cal = space && CalendarApp.getCalendarById(space.calendarId);
+  getCoworkingSpaceList().forEach(space => {
+    const cal = CalendarApp.getCalendarById(space.calendarId);
     if (!cal) return;
     cal.getEvents(from, to).forEach(event => {
       if (event.getStartTime() < from) return; // commencée le mois précédent : comptée sur ce mois-là
@@ -335,9 +335,7 @@ function getMyCoworkingBookings(idToken) {
   const to = new Date(now.getTime() + 366 * DAY_MS);
   const bookings = [];
   try {
-    COWORKING.spaceIds.forEach(spaceId => {
-      const space = findSpace(spaceId);
-      if (!space) return;
+    getCoworkingSpaceList().forEach(space => {
       listOwnEvents(space, user.uid, now, to).forEach(ev => {
         if (ev.title.indexOf(COWORKING.titlePrefix) !== 0 || ev.start <= now) return;
         const slot = eventSlot(ev.start, ev.end);
@@ -448,8 +446,8 @@ function eventSlot(start, end) {
  */
 function findOwnCoworkingEvent(user, raw) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
-  if (COWORKING.spaceIds.indexOf(raw.spaceId) === -1) return { error: 'Salle introuvable.' };
   const space = findSpace(raw.spaceId);
+  if (!space || !space.coworking) return { error: 'Salle introuvable.' };
   const eventId = typeof raw.eventId === 'string' ? raw.eventId : '';
   if (!space || !/^[\w.@-]{1,256}$/.test(eventId)) return { error: 'Réservation introuvable.' };
 

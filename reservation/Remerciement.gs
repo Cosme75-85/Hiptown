@@ -51,9 +51,8 @@ function processThankYouEmails(dryRun) {
   const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() - THANKS.delayDays + 1);
   let count = 0;
 
-  SPACES.forEach(space => {
-    const texts = THANKS.bySpace[space.id];
-    if (!texts) return;
+  getAllSpaces().forEach(space => {
+    const texts = thanksTexts(space);
     try {
       const cal = CalendarApp.getCalendarById(space.calendarId);
       if (!cal) return;
@@ -80,6 +79,18 @@ function processThankYouEmails(dryRun) {
     }
   });
   Logger.log((dryRun ? 'Aperçu : ' : 'Envoyés : ') + count + ' email(s) de remerciement.');
+}
+
+/** Textes de l'espace : les siens (THANKS.bySpace), sinon le texte par défaut avec son nom. */
+function thanksTexts(space) {
+  if (THANKS.bySpace[space.id]) return THANKS.bySpace[space.id];
+  const fill = (text, name) => text.split('{name}').join(name);
+  const d = THANKS.default;
+  return {
+    subject: fill(d.subject, space.name),
+    intro: fill(d.intro, escapeHtml(space.name)),
+    topics: d.topics.map(t => fill(t, escapeHtml(space.name)))
+  };
 }
 
 /** « Bonjour Madame Dupont, », sinon « Bonjour Marie, » (anciennes demandes sans civilité). */
@@ -132,10 +143,11 @@ function sendThankYouEmail(to, greeting, texts, when) {
 function testThankYouEmails() {
   const start = setTime(startOfToday(), 9);
   const end = setTime(startOfToday(), 12);
-  Object.keys(THANKS.bySpace).forEach(id => {
-    const texts = THANKS.bySpace[id];
+  const spaces = getSpaces();
+  spaces.forEach(space => {
+    const texts = thanksTexts(space);
     sendThankYouEmail(OWNER_EMAIL, 'Bonjour Madame Dupont,',
       Object.assign({}, texts, { subject: '[TEST] ' + texts.subject }), frenchDateRange(start, end));
   });
-  Logger.log('✅ ' + Object.keys(THANKS.bySpace).length + ' exemples envoyés à ' + OWNER_EMAIL);
+  Logger.log('✅ ' + spaces.length + ' exemples envoyés à ' + OWNER_EMAIL);
 }

@@ -3,17 +3,27 @@
  * (Apps Script partage les constantes entre tous les fichiers .gs du projet.)
  */
 
+// LISTE INITIALE DES ESPACES. Depuis la version « gestion des salles », les salles se gèrent
+// dans le portail (Gestion > Salles de réunion) : ajout, modification, retrait, périodes
+// d'indisponibilité. Cette liste ne sert qu'au premier démarrage : dès le premier
+// enregistrement fait depuis le portail, c'est la liste du portail qui compte
+// (gardée dans les propriétés du script, voir Salles.gs) et modifier ce tableau n'a plus d'effet.
+//
 // color : bandeau en haut de la carte (couleurs de la charte Hiptown)
 // capacity: 1 pour une salle classique (un seul créneau à la fois)
 //           5 pour un espace type coworking (jusqu'à 5 réservations simultanées)
-// availableFrom (facultatif) : 'AAAA-MM-JJ', premier jour où l'espace peut être réservé.
-//           Avant cette date, il est affiché « fermé » et toute réservation est refusée
-//           (site public ET espace coworking). Supprimez-le pour rouvrir l'espace tout de suite.
-const SPACES = [
-  { id: 'salleCanele', name: 'Salle Canelé', calendarId: 'c_fec46c2863f6a212b080da22b9370f4a167e38ce02fe9dcb0c6a45fd45f77e09@group.calendar.google.com', color: '#67DFCB', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_table_ovale_ecran.png', capacity: 1, maxPeople: 15, category: 'Salles de réunion', hourlyPrice: 60, halfDayPrice: 220, fullDayPrice: 420, allowMultiDay: true, availableFrom: '2027-01-01' },
-  { id: 'salleBouchon', name: 'Salle Bouchon', calendarId: 'c_eea6ff19556cc6e7f09bcf491b707839dfc04f39077ae9003fbda9e9bcf154c8@group.calendar.google.com', color: '#68DEA4', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_salle_equipee_ecran-1.png', capacity: 1, maxPeople: 12, category: 'Salles de réunion', hourlyPrice: 55, halfDayPrice: 200, fullDayPrice: 380, allowMultiDay: true, availableFrom: '2027-01-01' },
-  { id: 'salleDuneblanche', name: 'Salle Dune Blanche', calendarId: 'c_8f827f6fb5f22d9b567c96f9c2af8cee3b03d2cab5a0a0b5299de5f5eb5665e0@group.calendar.google.com', color: '#A781D7', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_salle_ronde_ecran.png', capacity: 1, maxPeople: 4, category: 'Salles de réunion', hourlyPrice: 30, halfDayPrice: 105, fullDayPrice: 200, allowMultiDay: true, availableFrom: '2027-01-01' },
-  { id: 'sallePuitsdamour', name: 'Salle Puits d amour', calendarId: 'c_61a5eca91edea3e3d9bf8c4d8b27f253baf756f7e5358031ecf175a0dbb0a628@group.calendar.google.com', color: '#FFE700', photoUrl: 'https://drive.google.com/thumbnail?id=1XPUNS0f8N8HmVy4vitLiooGa_XFV-qa6&sz=w1000', capacity: 1, maxPeople: 12, category: 'Salles de réunion', hourlyPrice: 55, halfDayPrice: 200, fullDayPrice: 380, allowMultiDay: true },
+// availableFrom (facultatif) : 'AAAA-MM-JJ', premier jour où l'espace peut être réservé
+//           (repris comme une période d'indisponibilité jusqu'à la veille de cette date).
+// coworking : salle proposée aux coworkers dans le portail, avec son barème `credits`
+//           (même découpage que les tarifs : à l'heure, demi-journée = 5h, journée = plus de 5h ;
+//           sans demi-journée ou journée indiquée, tarif horaire × nombre d'heures).
+//           Les crédits d'une entreprise (fiche « Gestion des entreprises » du portail)
+//           sont redonnés chaque mois et ne se cumulent pas d'un mois sur l'autre.
+const DEFAULT_SPACES = [
+  { id: 'salleCanele', name: 'Salle Canelé', calendarId: 'c_fec46c2863f6a212b080da22b9370f4a167e38ce02fe9dcb0c6a45fd45f77e09@group.calendar.google.com', color: '#67DFCB', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_table_ovale_ecran.png', capacity: 1, maxPeople: 15, category: 'Salles de réunion', hourlyPrice: 60, halfDayPrice: 220, fullDayPrice: 420, allowMultiDay: true, availableFrom: '2027-01-01', coworking: true, credits: { hourly: 60, halfDay: 220, fullDay: 420 } },
+  { id: 'salleBouchon', name: 'Salle Bouchon', calendarId: 'c_eea6ff19556cc6e7f09bcf491b707839dfc04f39077ae9003fbda9e9bcf154c8@group.calendar.google.com', color: '#68DEA4', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_salle_equipee_ecran-1.png', capacity: 1, maxPeople: 12, category: 'Salles de réunion', hourlyPrice: 55, halfDayPrice: 200, fullDayPrice: 380, allowMultiDay: true, availableFrom: '2027-01-01', coworking: true, credits: { hourly: 55, halfDay: 200, fullDay: 380 } },
+  { id: 'salleDuneblanche', name: 'Salle Dune Blanche', calendarId: 'c_8f827f6fb5f22d9b567c96f9c2af8cee3b03d2cab5a0a0b5299de5f5eb5665e0@group.calendar.google.com', color: '#A781D7', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_salles_reunion_bordeaux_emergence_salle_ronde_ecran.png', capacity: 1, maxPeople: 4, category: 'Salles de réunion', hourlyPrice: 30, halfDayPrice: 105, fullDayPrice: 200, allowMultiDay: true, availableFrom: '2027-01-01', coworking: true, credits: { hourly: 1 } },
+  { id: 'sallePuitsdamour', name: 'Salle Puits d amour', calendarId: 'c_61a5eca91edea3e3d9bf8c4d8b27f253baf756f7e5358031ecf175a0dbb0a628@group.calendar.google.com', color: '#FFE700', photoUrl: 'https://drive.google.com/thumbnail?id=1XPUNS0f8N8HmVy4vitLiooGa_XFV-qa6&sz=w1000', capacity: 1, maxPeople: 12, category: 'Salles de réunion', hourlyPrice: 55, halfDayPrice: 200, fullDayPrice: 380, allowMultiDay: true, coworking: true, credits: { hourly: 55, halfDay: 200, fullDay: 380 } },
   { id: 'cafecowork', name: 'Café Cowork', calendarId: 'c_860e1aed1cb31caa76635278dc4d7418a6559e241b0181e9ff7f7850faa3e620@group.calendar.google.com', color: '#F47A5B', photoUrl: 'https://hiptown.com/wp-content/uploads/sites/6/2024/07/hiptown_espaces_communs_bordeaux_emergence_cuisine_partagee-800x455.png', capacity: 5, maxPeople: null, category: 'Café Cowork', hourlyPrice: 6.5, halfDayPrice: 18, fullDayPrice: 30 },
   { id: 'bureau2postes', name: 'Bureau 2 postes', calendarId: 'c_80c2d145121bbcbbc09c1692430fd5e77ea89c0412cda596e6501a5019a0bee1@group.calendar.google.com', color: '#1E1847', photoUrl: 'https://drive.google.com/thumbnail?id=1lVwerjtjuFl8Rlx2BDwdi1qxOwlaMBSH&sz=w1000', capacity: 2, maxPeople: null, quantitySelectable: true, onlyHalfOrFullDay: true, badgeLabel: '2 postes de travail', category: 'Location de bureau courte durée', availableFrom: '2027-01-01' }
 ];
@@ -25,7 +35,7 @@ const PENDING_PREFIX = '[EN ATTENTE] ';
 const CONFIRMED_PREFIX = '[CONFIRMÉ] ';
 
 // Tarifs des services (€HT). Seul endroit où les modifier : la page les reçoit du serveur.
-// Les tarifs des salles sont dans SPACES (hourlyPrice, halfDayPrice, fullDayPrice).
+// Les tarifs des salles sont dans leur fiche (portail : Gestion > Salles de réunion).
 const PRICES = {
   breakfast: 5.5,         // par personne
   lunch: 30,              // par personne
@@ -99,26 +109,14 @@ const TAG_THANKS_SENT = 'thanksSent'; // date d'envoi de l'email de remerciement
 // Les coworkers réservent depuis le portail client, sans payer : réservation confirmée
 // tout de suite, dans les mêmes agendas que les réservations externes.
 const COWORKING = {
-  spaceIds: ['salleCanele', 'salleBouchon', 'salleDuneblanche', 'sallePuitsdamour'],  // salles proposées
+  // Salles proposées et barème en crédits : réglés salle par salle (Gestion > Salles de réunion)
   allowedRoles: ['coworking', 'admin'],   // rôles du portail autorisés à réserver
   firebaseProjectId: 'erp-hiptown',       // projet Firebase du portail (firebase-config.js)
   titlePrefix: '[COWORKING] ',            // début du titre de l'événement dans l'agenda
   // Lieu indiqué quand un coworker ajoute sa réservation à son propre agenda (Google, Apple, Outlook).
   // Mettez l'adresse complète pour que le GPS la trouve.
   address: 'Hiptown Emergence, 52 quai de Paludate, 33800 Bordeaux',
-  mealsNoticeHours: 24,                   // repas à commander au moins 24h avant le début de la réunion
-
-  // Barème en crédits, par salle (même découpage que les tarifs : à l'heure,
-  // demi-journée = 5h, journée = plus de 5h). Sans demi-journée ou journée
-  // indiquée, on compte le tarif horaire × le nombre d'heures.
-  // Les crédits d'une entreprise (fiche « Gestion des entreprises » du portail)
-  // sont redonnés chaque mois et ne se cumulent pas d'un mois sur l'autre.
-  credits: {
-    salleDuneblanche: { hourly: 1 },                                  // 1 à 6 personnes
-    salleBouchon:     { hourly: 55, halfDay: 200, fullDay: 380 },     // 12 personnes
-    sallePuitsdamour: { hourly: 55, halfDay: 200, fullDay: 380 },     // 12 personnes
-    salleCanele:      { hourly: 60, halfDay: 220, fullDay: 420 }      // 15 personnes
-  }
+  mealsNoticeHours: 24                    // repas à commander au moins 24h avant le début de la réunion
 };
 const TAG_PORTAL_UID = 'portalUid';       // compte du portail qui a réservé
 const TAG_COMPANY = 'portalCompanyId';    // entreprise coworking dont les crédits sont utilisés
@@ -154,7 +152,8 @@ const CIVILITIES = ['Madame', 'Monsieur'];
 // Dans les textes : {date} est remplacé par « le lundi 6 octobre 2026 »
 // (ou « du lundi 6 au mercredi 8 octobre 2026 » pour plusieurs jours).
 // Les textes acceptent le HTML simple (<b>gras</b>). Un espace absent de `bySpace`
-// ne reçoit pas d'email de remerciement.
+// (par exemple une salle ajoutée depuis le portail) reçoit le texte `default`,
+// où {name} est remplacé par le nom de l'espace.
 const THANKS = {
   delayDays: 3,     // jours après la réservation
   sendHour: 10,     // heure d'envoi (entre 10h et 11h)
@@ -169,7 +168,15 @@ const THANKS = {
   ],
   signOff: 'À très bientôt',
 
-  // Un texte par espace (clé = id de l'espace dans SPACES)
+  // Texte des espaces qui n'ont pas le leur dans bySpace
+  default: {
+    subject: 'Merci d\'avoir choisi {name} — Hiptown',
+    intro: 'Nous tenons à vous remercier chaleureusement d\'avoir choisi notre espace <b>{name}</b> {date}. '
+      + 'Nous espérons que tout s\'est déroulé comme vous le souhaitiez et que notre espace a répondu à vos attentes.',
+    topics: ['{name}', 'L\'espace détente', 'L\'emplacement']
+  },
+
+  // Un texte par espace (clé = id de l'espace, affiché dans Gestion > Salles de réunion)
   bySpace: {
     salleCanele: {
       subject: 'Merci d\'avoir choisi la salle Canelé — Hiptown',

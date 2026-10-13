@@ -13,7 +13,7 @@ import { auth } from "./firebase-config.js";
 const BASE_URL = PORTAIL.reservationUrl;
 const MIDDAY_HOUR = 13; // séparation matin / après-midi
 const MONTH_NAMES = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-const STATUS_LABELS = { available: "disponible", full: "complet", past: "passé", error: "indisponible", closed: "pas encore ouvert" };
+const STATUS_LABELS = { available: "disponible", full: "complet", past: "passé", error: "indisponible", closed: "fermé" };
 
 const $ = id => document.getElementById(id);
 
@@ -210,7 +210,8 @@ function renderSpaces() {
     + (space.photoUrl ? '<img class="rc-space-photo" src="' + escapeHtml(space.photoUrl) + '" alt="' + escapeHtml(space.name) + '" loading="lazy">' : "")
     + '<div class="rc-space-header"><h3 class="rc-space-name">' + escapeHtml(space.name) + "</h3>"
     + (space.maxPeople ? '<span class="rc-badge">Jusqu\'à ' + space.maxPeople + " personnes</span>" : "") + "</div>"
-    + (space.availableFromLabel ? '<p class="rc-opening-note">Disponible à partir du ' + escapeHtml(space.availableFromLabel) + "</p>" : "")
+    + (space.closureNote || space.availableFromLabel
+      ? '<p class="rc-opening-note">' + escapeHtml(space.closureNote || "Disponible à partir du " + space.availableFromLabel) + "</p>" : "")
     + '<div class="rc-month-grid" id="rc-grid-' + space.id + '" data-space-id="' + space.id + '">'
     + '<div class="rc-loading">Chargement...</div></div>'
     + "</article>"

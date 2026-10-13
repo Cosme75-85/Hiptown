@@ -2,7 +2,8 @@
  * SYSTÈME DE RÉSERVATION D'ESPACES — Code.gs
  * -------------------------------------------
  * Projet Apps Script en plusieurs fichiers :
- *   Config.gs   → tout ce qui se règle (espaces, horaires, tarifs, emails)
+ *   Config.gs   → tout ce qui se règle (horaires, tarifs, emails, liste initiale des espaces)
+ *   Salles.gs   → la liste des espaces, gérée depuis le portail (Gestion > Salles de réunion)
  *   Code.gs     → la logique (ce fichier)
  *   Coworking.gs → réservations des coworkers depuis le portail client
  *   Tests.gs    → fonctions de diagnostic à lancer à la main
@@ -115,6 +116,16 @@ function doPost(e) {
     if (body.action === 'deleteDiscount') {
       return jsonResponse(deleteDiscount(body.idToken, body.payload));
     }
+    // Salles : ajout, modification, retrait, indisponibilités (voir Salles.gs)
+    if (body.action === 'getRoomsAdmin') {
+      return jsonResponse(getRoomsAdmin(body.idToken));
+    }
+    if (body.action === 'saveRoom') {
+      return jsonResponse(saveRoom(body.idToken, body.payload));
+    }
+    if (body.action === 'setRoomArchived') {
+      return jsonResponse(setRoomArchived(body.idToken, body.payload));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });
@@ -130,24 +141,30 @@ function jsonResponse(obj) {
 
 /** Infos publiques des espaces (sans l'ID d'agenda, qui reste côté serveur). */
 function getSpacesMeta() {
-  return SPACES.map(s => ({
-    id: s.id,
-    name: s.name,
-    color: s.color,
-    photoUrl: s.photoUrl,
-    capacity: s.capacity,
-    maxPeople: s.maxPeople,
-    quantitySelectable: !!s.quantitySelectable,
-    onlyHalfOrFullDay: !!s.onlyHalfOrFullDay,
-    badgeLabel: s.badgeLabel || null,
-    category: s.category || 'Autres espaces',
-    hourlyPrice: s.hourlyPrice || null,
-    halfDayPrice: s.halfDayPrice || null,
-    fullDayPrice: s.fullDayPrice || null,
-    allowMultiDay: !!s.allowMultiDay,
-    availableFrom: s.availableFrom || null,
-    availableFromLabel: s.availableFrom ? frenchDay(parseDate(s.availableFrom)) : null
-  }));
+  return getSpaces().map(s => {
+    const reopening = reopeningDate(s);
+    return {
+      id: s.id,
+      name: s.name,
+      color: s.color,
+      photoUrl: s.photoUrl,
+      capacity: s.capacity,
+      maxPeople: s.maxPeople,
+      quantitySelectable: !!s.quantitySelectable,
+      onlyHalfOrFullDay: !!s.onlyHalfOrFullDay,
+      badgeLabel: s.badgeLabel || null,
+      category: s.category || 'Autres espaces',
+      hourlyPrice: s.hourlyPrice || null,
+      halfDayPrice: s.halfDayPrice || null,
+      fullDayPrice: s.fullDayPrice || null,
+      allowMultiDay: !!s.allowMultiDay,
+      // Salle fermée aujourd'hui : premier jour réservable (écrans du portail d'avant les indisponibilités)
+      availableFrom: reopening ? toDateString(reopening) : null,
+      availableFromLabel: reopening ? frenchDay(reopening) : null,
+      // Indisponibilité en cours ou prochaine, affichée sur la carte de la salle
+      closureNote: closureNote(s)
+    };
+  });
 }
 
 // ==================== DISPONIBILITÉ SUR UN MOIS (pour le calendrier coloré) ====================
@@ -160,7 +177,7 @@ function getSpacesMeta() {
 function getAllMonthsAvailability(year, month) {
   const result = {};
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return result;
-  SPACES.forEach(space => {
+  getSpaces().forEach(space => {
     result[space.id] = markClosedDays(space, withCache(
       'month:' + space.id + ':' + year + '-' + month,
       () => getMonthAvailability(space, year, month),
@@ -239,15 +256,14 @@ function getMonthAvailability(space, year, month) {
 }
 
 /**
- * Jours avant l'ouverture de l'espace (availableFrom dans Config.gs) : « closed ».
- * Appliqué APRÈS le cache, pour qu'un changement de date d'ouverture se voie
+ * Jours d'indisponibilité de l'espace (saisis dans Gestion > Salles de réunion) : « closed ».
+ * Appliqué APRÈS le cache, pour qu'une indisponibilité ajoutée se voie
  * tout de suite, sans attendre l'expiration des disponibilités mémorisées.
  */
 function markClosedDays(space, data) {
-  const opening = openingDate(space);
-  if (!opening || !data || !data.days) return data;
+  if (!(space.closures || []).length || !data || !data.days) return data;
   data.days.forEach(d => {
-    if (d.status !== 'past' && new Date(data.year, data.month - 1, d.day) < opening) {
+    if (d.status !== 'past' && closureOn(space, toDateString(new Date(data.year, data.month - 1, d.day)))) {
       d.status = 'closed';
       d.remaining = 0;
     }
@@ -259,9 +275,8 @@ function markClosedDays(space, data) {
 
 function getDayAvailability(spaceId, dateString) {
   const space = findSpace(spaceId);
-  if (!space || !isValidDateString(dateString)) return { hours: [], capacity: 0 };
-  const opening = openingDate(space);
-  if (opening && parseDate(dateString) < opening) return computeDayAvailability(space, parseDate(dateString));
+  if (!space || space.archived || !isValidDateString(dateString)) return { hours: [], capacity: 0 };
+  if (closureOn(space, dateString)) return computeDayAvailability(space, parseDate(dateString));
 
   return withCache(
     'day:' + spaceId + ':' + dateString,
@@ -273,8 +288,7 @@ function getDayAvailability(spaceId, dateString) {
 function computeDayAvailability(space, date) {
   const hours = [];
   let error = false;
-  const opening = openingDate(space);
-  if (opening && date < opening) {
+  if (closureOn(space, toDateString(date))) {
     for (let h = START_HOUR; h < END_HOUR; h++) hours.push({ hour: h, remaining: 0 });
     return { spaceId: space.id, name: space.name, capacity: space.capacity, hours: hours, error: false, closed: true };
   }
@@ -346,7 +360,7 @@ function validateBooking(raw) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
 
   const space = findSpace(raw.spaceId);
-  if (!space) return { error: 'Espace introuvable.' };
+  if (!space || space.archived) return { error: 'Espace introuvable.' };
 
   const b = {
     space: space,
@@ -406,8 +420,7 @@ function validateSlot(b) {
   if (!isValidDateString(b.dateString)) return 'Date invalide.';
   b.startDate = parseDate(b.dateString);
   if (b.startDate < startOfToday()) return 'Impossible de réserver une date passée.';
-  const opening = openingDate(space);
-  if (opening && b.startDate < opening) return openingMessage(space);
+  if (space.archived) return space.name + ' n\'est plus proposée à la réservation.';
 
   // Réservation multi-jours : chaque jour de la plage est réservé en journée complète (8h-18h)
   b.isMultiDay = !!b.endDateString && b.endDateString !== b.dateString;
@@ -425,6 +438,8 @@ function validateSlot(b) {
   if (b.numberOfDays > MAX_MULTI_DAYS) {
     return 'Une réservation ne peut pas dépasser ' + MAX_MULTI_DAYS + ' jours.';
   }
+  const closure = closureInRange(space, b.dateString, b.isMultiDay ? b.endDateString : b.dateString);
+  if (closure) return closureMessage(space, closure);
 
   // --- Horaires ---
   if (!(b.startHour >= START_HOUR && b.endHour <= END_HOUR && b.startHour < b.endHour)) {
@@ -567,14 +582,14 @@ function summarizeBooking(b, quote, title) {
 /** Indique si l'espace est libre sur toute la plage (8h le 1er jour → 18h le dernier). */
 function checkRangeAvailability(spaceId, dateString, endDateString, quantity) {
   const space = findSpace(spaceId);
-  if (!space || !isValidDateString(dateString) || !isValidDateString(endDateString)) {
+  if (!space || space.archived || !isValidDateString(dateString) || !isValidDateString(endDateString)) {
     return { available: false };
   }
   const start = setTime(parseDate(dateString), START_HOUR);
   const end = setTime(parseDate(endDateString), END_HOUR);
   if (end <= start) return { available: false };
-  const opening = openingDate(space);
-  if (opening && start < opening) return { available: false, message: openingMessage(space) };
+  const closure = closureInRange(space, dateString, endDateString);
+  if (closure) return { available: false, message: closureMessage(space, closure) };
   try {
     return { available: maxOverlapInRange(getBookedSlots(space, start, end), start, end) + (quantity || 1) <= space.capacity };
   } catch (err) {
@@ -607,7 +622,7 @@ function purgeExpiredRequests() {
   const searchStart = new Date(now.getTime() - 31 * DAY_MS);
   const searchEnd = new Date(now.getTime() + 400 * DAY_MS);
 
-  SPACES.forEach(space => {
+  getAllSpaces().forEach(space => {
     try {
       const cal = CalendarApp.getCalendarById(space.calendarId);
       if (!cal) return;
@@ -678,7 +693,7 @@ function handleApprovalAction(params) {
   let message = '';
   try {
     // Seuls les agendas des espaces configurés sont acceptés, avec une signature valide
-    const isKnownCalendar = SPACES.some(s => s.calendarId === calId);
+    const isKnownCalendar = getAllSpaces().some(s => s.calendarId === calId);
     if (!isKnownCalendar || !eventId || params.sig !== signApproval(action, calId, eventId)) {
       message = 'Lien invalide.';
     } else {
@@ -1025,19 +1040,6 @@ function maxOverlapInRange(slots, start, end) {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-function findSpace(spaceId) {
-  return SPACES.find(s => s.id === spaceId);
-}
-
-/** Premier jour réservable de l'espace (availableFrom dans Config.gs), ou null s'il est ouvert. */
-function openingDate(space) {
-  return space.availableFrom && isValidDateString(space.availableFrom) ? parseDate(space.availableFrom) : null;
-}
-
-function openingMessage(space) {
-  return space.name + ' sera disponible à partir du ' + frenchDay(openingDate(space)) + '.';
-}
 
 /** « 1er janvier 2027 » */
 function frenchDay(date) {

@@ -5,7 +5,7 @@
  */
 
 function testCalendarAccess() {
-  SPACES.forEach(space => {
+  getAllSpaces().forEach(space => {
     try {
       const cal = CalendarApp.getCalendarById(space.calendarId);
       if (cal === null) {
@@ -79,7 +79,7 @@ function testPerformance() {
     ? '✅ Service avancé « Google Calendar API » activé (lecture rapide)'
     : '⚠️ Service avancé « Google Calendar API » NON activé (lecture lente, voir README)');
   let total = 0;
-  SPACES.forEach(space => {
+  getSpaces().forEach(space => {
     const t0 = Date.now();
     getMonthAvailability(space, now.getFullYear(), now.getMonth() + 1);
     const ms = Date.now() - t0;
