@@ -130,12 +130,16 @@
     hipespaces:{ title: "Sites",                     desc: "NABO02 à NABO08",                        icon: "🏢", bg: "#f0f0ff", color: "#4338ca", url: null, action: "hipespaces" },
     gestion:   { title: "Gestion",                   desc: "Comptes et entreprises",                 icon: "🔑", bg: "#fee2e2", color: "#dc2626", url: null, action: "gestion" },
     suivitaches: { title: "Suivi des tâches",        desc: "Point hebdo",                            icon: "✅", bg: "#eef2ff", color: "#4338ca", url: "https://app.notion.com/p/Point-hebdo-C-me-218924b0918980778b0ce7b69863b061" },
-    tarifssalle:     { title: "Tarifs salles de réunion", desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#e0f2fe", color: "#0369a1", image: "https://drive.google.com/thumbnail?id=13iZvHQuzoO4M7Za6OEEtyJUBF-1Tv6ho&sz=w2000" },
-    tarifscoworking: { title: "Tarifs Coworking",         desc: "Consulter la grille tarifaire",     icon: "💶", bg: "#fef3c7", color: "#92400e", image: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },
   };
 
+  // Grilles tarifaires (tuile « Tarifs » de la page « Salle de réunion »)
+  const TARIFS_IMAGES = [
+    { title: "Tarifs salles de réunion", src: "https://drive.google.com/thumbnail?id=13iZvHQuzoO4M7Za6OEEtyJUBF-1Tv6ho&sz=w2000" },
+    { title: "Tarifs Coworking",         src: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },
+  ];
+
   const SPACE_TILES = {
-    salle:     ["accueil", "salles", "salleinfo", "adresses", "services", "tarifssalle", "tarifscoworking", "avis"],
+    salle:     ["accueil", "salles", "adresses", "services", "avis"],
     coworking: ["salles", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
     hiptown:   ["hiptools", "hipespaces", "gestion", "salles", "accueil", "incident"],
   };
@@ -308,25 +312,35 @@
     localStorage.setItem("tiles_" + clientId, JSON.stringify(order));
   }
 
-  // ── Affichage d'image en plein écran (lightbox) ────────
-  function openImageModal(src, title) {
+  // ── Affichage d'images en plein écran (lightbox) ───────
+  // Les grilles s'affichent les unes sous les autres, on fait défiler.
+  function openImageModal(images) {
     let modal = document.getElementById("image-modal-overlay");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "image-modal-overlay";
-      modal.style.cssText = "position:fixed;inset:0;background:rgba(21,15,51,0.9);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;";
+      modal.style.cssText = "position:fixed;inset:0;background:rgba(21,15,51,0.9);overflow-y:auto;z-index:1000;padding:56px 16px 24px;";
       modal.innerHTML =
-        '<div style="position:relative;max-width:100%;max-height:100%;">' +
-        '<button id="image-modal-close" style="position:absolute;top:-40px;right:0;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;">✕</button>' +
-        '<img id="image-modal-img" style="max-width:100%;max-height:85vh;border-radius:8px;display:block;"/>' +
-        '</div>';
+        '<button id="image-modal-close" aria-label="Fermer" style="position:fixed;top:12px;right:16px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;">✕</button>' +
+        '<div id="image-modal-list" style="max-width:900px;margin:0 auto;"></div>';
       document.body.appendChild(modal);
       modal.addEventListener("click", function (e) { if (e.target === modal) modal.style.display = "none"; });
       document.getElementById("image-modal-close").addEventListener("click", function () { modal.style.display = "none"; });
     }
-    document.getElementById("image-modal-img").src = src;
-    document.getElementById("image-modal-img").alt = title || "";
-    modal.style.display = "flex";
+    document.getElementById("image-modal-list").innerHTML = images.map(function (img) {
+      return '<h3 style="color:#fff;margin:0 0 10px;font-size:18px;">' + img.title + '</h3>' +
+        '<img src="' + img.src + '" alt="' + img.title + '" style="width:100%;height:auto;border-radius:8px;display:block;margin-bottom:24px;"/>';
+    }).join("");
+    modal.scrollTop = 0;
+    modal.style.display = "block";
+  }
+
+  /** Page « Salle de réunion » : « Utilisation » et « Tarifs » réservées aux clients salle de réunion. */
+  function openSalles() {
+    const isSalle = currentSpace === "salle";
+    document.getElementById("salles-usage").hidden  = !isSalle;
+    document.getElementById("salles-tarifs").hidden = !isSalle;
+    stepSalles.hidden = false;
   }
 
   /** Ouvre la page d'une tuile (ou d'un bouton de la page « Salle de réunion »). */
@@ -343,7 +357,7 @@
     if (action === "resacowork") stepResaCowork.hidden     = false;
     if (action === "mesresa")    stepMesResa.hidden        = false;
     if (action === "resasalle")  stepResaSalle.hidden      = false;
-    if (action === "salles")     stepSalles.hidden         = false;
+    if (action === "salles")     openSalles();
     document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: action }));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -385,13 +399,6 @@
         '<div class="tile-icon" style="background:' + tile.bg + ';color:' + tile.color + ';">' + tile.icon + '</div>' +
         '<div class="tile-title">' + tile.title + '</div>' +
         '<div class="tile-desc">' + tile.desc + '</div>';
-
-      if (tile.image) {
-        el.addEventListener("click", function (e) {
-          e.preventDefault();
-          openImageModal(tile.image, tile.title);
-        });
-      }
 
       if (tile.action) {
         el.addEventListener("click", function (e) {
@@ -491,13 +498,13 @@
   document.getElementById("back-from-contrat").addEventListener("click", function () { showStep(stepMesInfos); });
 
   // ── Retours ───────────────────────────────────────────
-  [backFromSalleInfo, backFromHipOutils, backFromHipEspaces,
+  [backFromHipOutils, backFromHipEspaces,
    document.getElementById("back-from-mes-infos"), document.getElementById("back-from-info-cowork"),
    document.getElementById("back-from-salles")].forEach(function (btn) {
     btn.addEventListener("click", function () { showStep(stepDashboard); });
   });
-  // Réserver et « Mes prochaines réservations » : retour à la page « Salle de réunion »
-  [backFromResaCowork, document.getElementById("back-from-mes-resa"), document.getElementById("back-from-resa-salle")].forEach(function (btn) {
+  // Réserver, « Mes prochaines réservations » et « Utilisation des salles » : retour à la page « Salle de réunion »
+  [backFromResaCowork, backFromSalleInfo, document.getElementById("back-from-mes-resa"), document.getElementById("back-from-resa-salle")].forEach(function (btn) {
     btn.addEventListener("click", function () { openTileAction("salles"); });
   });
   // Page « Salle de réunion » : clients salle -> outil de réservation ; coworkers et équipe -> réservation sans paiement
@@ -508,6 +515,14 @@
   document.getElementById("salles-mine").addEventListener("click", function (e) {
     e.preventDefault();
     openTileAction("mesresa");
+  });
+  document.getElementById("salles-usage").addEventListener("click", function (e) {
+    e.preventDefault();
+    openTileAction("salleinfo");
+  });
+  document.getElementById("salles-tarifs").addEventListener("click", function (e) {
+    e.preventDefault();
+    openImageModal(TARIFS_IMAGES);
   });
   // En coworking, « Informations » et « Mes services » sont rangées dans « Informations du coworking »
   [backFromInfo, backFromServ].forEach(function (btn) {
