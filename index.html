@@ -161,7 +161,92 @@
         <div class="outil-logo">🏷️</div>
         <div class="outil-name">Réductions clients</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-salles">
+        <div class="outil-logo">🚪</div>
+        <div class="outil-name">Salles de réunion</div>
+      </a>
     </div>
+  </section>
+
+  <!-- ÉTAPE : SALLES DE RÉUNION (admin) — ajout, modification, retrait, indisponibilités (salles.js) -->
+  <section id="step-salles" hidden>
+    <button class="back-btn" id="back-from-salles">← Retour</button>
+    <h2 class="step-title" style="margin-bottom:4px;">🚪 Salles de réunion</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Les salles proposées à la réservation (site public et espace coworking). Une période
+      d'indisponibilité bloque toute nouvelle réservation sur ces dates ; les réservations déjà
+      faites ne sont pas annulées. Une salle retirée n'est plus proposée, mais ses réservations
+      existantes sont conservées.
+    </p>
+    <p class="profile-help" id="room-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
+    <button class="direct-btn" id="room-add" type="button" style="background:var(--navy);color:#fff;margin:0 0 16px;">+ Ajouter une salle</button>
+
+    <div class="pin-box" id="room-form" hidden style="max-width:100%;text-align:left;margin-bottom:24px;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;" id="room-form-title">Nouvelle salle</h3>
+      <label class="profile-label" for="room-name">Nom *</label>
+      <input type="text" id="room-name" class="profile-input" maxlength="60" placeholder="ex. Salle Canelé"/>
+      <label class="profile-label" for="room-category">Catégorie</label>
+      <input type="text" id="room-category" class="profile-input" list="room-categories" maxlength="60" placeholder="Salles de réunion"/>
+      <datalist id="room-categories"></datalist>
+      <label class="profile-label" for="room-calendar">Agenda Google</label>
+      <input type="text" id="room-calendar" class="profile-input" maxlength="200" placeholder="laisser vide pour en créer un automatiquement"/>
+      <p class="profile-help" id="room-calendar-help">Identifiant de l'agenda (Paramètres de l'agenda &gt; Intégrer l'agenda). Vide : un agenda est créé pour cette salle. Il ne se change plus ensuite.</p>
+      <label class="profile-label" for="room-photo">Photo (adresse https://…)</label>
+      <input type="url" id="room-photo" class="profile-input" maxlength="500" placeholder="https://…"/>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label class="profile-label" for="room-max-people">Personnes max</label>
+          <input type="number" id="room-max-people" class="profile-input" min="1" step="1" placeholder="ex. 12"/>
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label class="profile-label" for="room-capacity">Réservations simultanées</label>
+          <input type="number" id="room-capacity" class="profile-input" min="1" max="50" step="1" value="1"/>
+        </div>
+        <div style="width:90px;">
+          <label class="profile-label" for="room-color">Couleur</label>
+          <input type="color" id="room-color" class="profile-input" style="height:48px;padding:4px;" value="#67DFCB"/>
+        </div>
+      </div>
+      <p class="profile-help">Réservations simultanées : 1 pour une salle classique, plus pour un espace partagé.</p>
+      <label class="profile-label">Tarifs € HT : à l'heure · demi-journée · journée (vide = non proposé)</label>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <input type="number" id="room-price-hour" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="à l'heure"/>
+        <input type="number" id="room-price-half" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="demi-journée"/>
+        <input type="number" id="room-price-full" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="journée"/>
+      </div>
+      <label class="profile-label" for="room-badge">Texte du badge (facultatif)</label>
+      <input type="text" id="room-badge" class="profile-input" maxlength="40" placeholder="par défaut : « Jusqu'à 12 personnes »"/>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:14px;font-size:14px;">
+        <input type="checkbox" id="room-multiday"/> Réservable sur plusieurs jours
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px;">
+        <input type="checkbox" id="room-coworking"/> Proposée aux coworkers (réservation sur crédits)
+      </label>
+      <div id="room-credits" hidden>
+        <label class="profile-label">Crédits coworking : par heure (obligatoire) · demi-journée · journée</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <input type="number" id="room-credits-hour" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="par heure"/>
+          <input type="number" id="room-credits-half" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="demi-journée"/>
+          <input type="number" id="room-credits-full" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="journée"/>
+        </div>
+      </div>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 6px;">Indisponibilités</h3>
+      <p class="profile-help" style="margin-top:0;">Du premier au dernier jour inclus. Le motif reste interne.</p>
+      <div id="room-closures"></div>
+      <button class="direct-btn" id="room-closure-add" type="button" style="width:auto;padding:6px 12px;font-size:12px;">+ Ajouter une période</button>
+
+      <p class="profile-help" id="room-form-message" role="status" hidden></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <button class="direct-btn" id="room-save" type="button" style="background:var(--navy);color:#fff;flex:1;margin-top:0;">Enregistrer</button>
+        <button class="direct-btn" id="room-cancel" type="button" style="flex:1;margin-top:0;">Annuler</button>
+      </div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:8px 0 10px;">En ligne</h3>
+    <div class="info-grid" id="rooms-list"></div>
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;">Retirées</h3>
+    <div class="info-grid" id="rooms-archived-list"></div>
   </section>
 
   <!-- ÉTAPE : RÉDUCTIONS CLIENTS (admin) — remise appliquée au prochain devis du client -->
@@ -707,7 +792,7 @@
         <span><i class="rc-dot rc-free"></i> Disponible</span>
         <span><i class="rc-dot rc-busy"></i> Complet</span>
         <span><i class="rc-dot rc-past"></i> Passé</span>
-        <span><i class="rc-dot rc-closed"></i> Pas encore ouvert</span>
+        <span><i class="rc-dot rc-closed"></i> Fermé</span>
       </div>
     </div>
 

@@ -22,7 +22,7 @@ function getMyUpcomingBookings(idToken) {
   const to = new Date(now.getTime() + 366 * DAY_MS);
   const bookings = [];
   try {
-    SPACES.forEach(space => {
+    getAllSpaces().forEach(space => {
       listMyEvents(space, account, now, to).forEach(ev => {
         if (ev.end <= now) return;
         const isCoworking = ev.title.indexOf(COWORKING.titlePrefix) === 0;
@@ -80,7 +80,7 @@ function getMyUpcomingBookings(idToken) {
 function listMyEvents(space, account, from, to) {
   const byId = {};
   listEventsByEmail(space, account.email, from, to).forEach(ev => { byId[ev.id] = ev; });
-  if (COWORKING.spaceIds.indexOf(space.id) !== -1) {
+  if (space.coworking) {
     listOwnEvents(space, account.uid, from, to).forEach(ev => {
       if (!byId[ev.id]) byId[ev.id] = Object.assign({}, ev, { portalUid: account.uid });
     });

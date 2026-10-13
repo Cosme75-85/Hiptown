@@ -113,7 +113,7 @@
     accueil:   { title: "Accueil visiteurs",        desc: "Prévenez-nous de votre arrivée",         icon: "🔔", bg: "#e8faf7", color: "#085041", url: "https://cosme75-85.github.io/Hiptown-Accueil-1/" },
     marcel:    { title: "Marcel BY Hiptown",         desc: "Accédez à vos services",                 icon: "<img src='H.png' style='width:40px;height:40px;object-fit:contain;'/>", bg: "#fef3c7", color: "#92400e", url: "https://marcel.hiptown.co/auth/login" },
     resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: null, action: "resasalle" },
-    resacowork:{ title: "Réserver une salle de réunion", desc: "Les 4 salles, sans paiement",   icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "resacowork" },
+    resacowork:{ title: "Réserver une salle de réunion", desc: "Salles de réunion, sans paiement", icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "resacowork" },
     salles:    { title: "Salle de réunion",          desc: "Réserver et mes réservations",           icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "salles" },
     mesresa:   { title: "Mes prochaines réservations", desc: "Salles réservées à venir",       icon: "📅", bg: "#e0f2fe", color: "#0369a1", url: null, action: "mesresa" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
