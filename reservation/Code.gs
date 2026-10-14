@@ -18,6 +18,10 @@ function doGet(e) {
   if (action === 'approve' || action === 'reject') {
     return handleApprovalAction(e.parameter);
   }
+  // Services commandés par un coworker, validés par l'équipe de la ville (voir Coworking.gs)
+  if (action === 'approveMeals' || action === 'rejectMeals') {
+    return handleMealsApproval(e.parameter);
+  }
 
   if (action === 'getAllMonthsAvailability') {
     const year = parseInt(e.parameter.year, 10);
@@ -143,6 +147,13 @@ function doPost(e) {
     }
     if (body.action === 'setServiceArchived') {
       return jsonResponse(setServiceArchived(body.idToken, body.payload));
+    }
+    // Devis faits à la main par l'équipe Hiptown, pour un coworker ou un client salle (voir Devis.gs)
+    if (body.action === 'getManualQuoteOptions') {
+      return jsonResponse(getManualQuoteOptions(body.idToken));
+    }
+    if (body.action === 'createManualQuote') {
+      return jsonResponse(createManualQuote(body.idToken, body.payload));
     }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
@@ -695,8 +706,9 @@ function sendApprovalEmail(space, eventId, summary) {
   const items = summary.map(([label, value]) =>
     '<li><b>' + label + ' :</b> ' + escapeHtml(value).replace(/\n/g, '<br>') + '</li>').join('');
 
+  // Validée par l'équipe Hiptown de la ville de la salle (ex. bordeaux@hiptown.com)
   MailApp.sendEmail({
-    to: OWNER_EMAIL,
+    to: cityTeamEmail(space),
     subject: 'Nouvelle demande de réservation — ' + space.name,
     htmlBody:
       '<p>Une nouvelle demande de réservation est en attente :</p>' +
@@ -728,6 +740,11 @@ function handleApprovalAction(params) {
     message = 'Erreur : ' + err.message;
   }
 
+  return approvalResultPage(message);
+}
+
+/** Page affichée après un clic sur un bouton Approuver / Refuser d'un email. */
+function approvalResultPage(message) {
   return HtmlService.createHtmlOutput(
     '<div style="font-family:Montserrat,Arial,sans-serif;color:#1E1847;padding:40px 16px;text-align:center;">' +
     '<h2>' + escapeHtml(message) + '</h2>' +
@@ -810,8 +827,8 @@ function applyApprovalAction(action, event) {
  * Les paragraphes sont du HTML écrit par nous : tout texte saisi par le client
  * doit y être passé par escapeHtml avant.
  */
-function sendClientEmail(to, firstName, subject, paragraphs, signOff, attachments) {
-  MailApp.sendEmail({
+function sendClientEmail(to, firstName, subject, paragraphs, signOff, attachments, options) {
+  MailApp.sendEmail(Object.assign({
     to: to,
     subject: subject,
     htmlBody:
@@ -819,7 +836,7 @@ function sendClientEmail(to, firstName, subject, paragraphs, signOff, attachment
       paragraphs.map(p => '<p>' + p + '</p>').join('') +
       '<p>' + signOff + ',<br>L\'équipe Hiptown</p>',
     attachments: attachments || []
-  });
+  }, options || {})); // options : cc, replyTo
 }
 
 // ==================== SÉCURITÉ ====================

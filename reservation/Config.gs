@@ -82,7 +82,11 @@ const DEVIS = {
 const PENDING_EXPIRY_DAYS = 14;
 const NOTIFY_ON_EXPIRY = true;  // prévenir le client par email quand sa demande expire
 
-// Email qui reçoit les demandes à valider
+// Validation par l'équipe Hiptown de la ville : les demandes de salle, les services commandés
+// par les coworkers et les copies des devis faits à la main partent à <ville>@hiptown.com
+// (ex. bordeaux@hiptown.com pour une salle de Bordeaux ; voir cityTeamEmail dans Services.gs).
+const CITY_TEAM_EMAIL_DOMAIN = 'hiptown.com';
+// Contact général : affiché dans « Mes prochaines réservations », reçoit les emails de test (Tests.gs)
 const OWNER_EMAIL = 'cc@hiptown.com';
 
 // Fichier Drive joint à l'email de confirmation (plan d'accès au bâtiment)
@@ -122,6 +126,7 @@ const TAG_PORTAL_UID = 'portalUid';       // compte du portail qui a réservé
 const TAG_COMPANY = 'portalCompanyId';    // entreprise coworking dont les crédits sont utilisés
 const TAG_CREDITS = 'credits';            // crédits utilisés par la réservation
 const TAG_MEALS = 'meals';                // repas commandés par un coworker (JSON), facturés sur devis
+const TAG_MEALS_QUOTE = 'mealsQuote';     // devis des services en cours (JSON : numéro, statut, fichier Drive)
 
 // ==================== RÉDUCTIONS CLIENTS (voir Reductions.gs) ====================
 // Remise accordée depuis le portail (Gestion > Réductions clients), par exemple

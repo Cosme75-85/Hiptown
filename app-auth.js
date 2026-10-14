@@ -14,6 +14,7 @@ import {
 import { renderDiscountsPanel } from "./reductions.js";
 import { renderRoomsPanel } from "./salles.js";
 import { renderServicesPanel } from "./services.js";
+import { renderManualQuotePanel } from "./devis.js";
 
 const stepAuth    = document.getElementById("step-auth");
 const stepPending = document.getElementById("step-pending");
@@ -24,6 +25,7 @@ const stepCompanies = document.getElementById("step-companies");
 const stepReductions = document.getElementById("step-reductions");
 const stepGestionSalles = document.getElementById("step-gestion-salles");
 const stepGestionServices = document.getElementById("step-gestion-services");
+const stepGestionDevis = document.getElementById("step-gestion-devis");
 const authError   = document.getElementById("auth-error");
 
 let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
@@ -33,7 +35,7 @@ let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'é
 // masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -263,7 +265,7 @@ document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(
 //  PANNEAU ADMIN + NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
-// Menu « Gestion » : comptes, entreprises, réductions et salles de réunion.
+// Menu « Gestion » : comptes, entreprises, réductions, salles de réunion, services et devis.
 // Réservé au personnel Hiptown (rôle admin) : pour tout autre compte, rien ne s'ouvre,
 // même si la tuile apparaissait par erreur (ancienne page en cache, tuile ajoutée à la main).
 // Les données restent de toute façon protégées côté serveur (règles Firestore, Apps Script).
@@ -297,9 +299,11 @@ onGestionButton("open-gestion-reductions", stepReductions, async () =>
   renderDiscountsPanel(await listAllUsers(adminScope()).catch(() => [])));
 onGestionButton("open-gestion-salles", stepGestionSalles, renderRoomsPanel);
 onGestionButton("open-gestion-services", stepGestionServices, renderServicesPanel);
+onGestionButton("open-gestion-devis", stepGestionDevis, renderManualQuotePanel);
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-services")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-gestion-devis")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 

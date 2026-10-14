@@ -89,6 +89,22 @@ du client et copié dans le dossier Drive « Devis réservations Hiptown » (cr�
 - Aperçu : lancer `testDevis` (fichier `Tests.gs`) — un devis d'exemple arrive par email.
 - Les demandes créées avant cette version n'ont pas de devis automatique.
 
+**Qui reçoit quoi :**
+- client salle de réunion : devis de la salle **et** des services, envoyé quand l'équipe de la
+  ville a approuvé la demande ;
+- coworker : devis des **services seuls** (la salle est sur ses crédits), envoyé quand l'équipe
+  de la ville l'a validé (voir « Restauration » plus bas).
+
+**Validation par l'équipe de la ville** : les demandes de salle et les services des coworkers
+partent à `<ville>@hiptown.com` (ex. `bordeaux@hiptown.com`), d'après la ville de la salle.
+Le domaine se règle dans `CITY_TEAM_EMAIL_DOMAIN` (`Config.gs`). Pensez à créer la boîte (ou
+l'alias) de chaque ville avant d'y ouvrir des salles.
+
+**Devis faits à la main** (portail : **Gestion > Devis**, équipe Hiptown) : pour un coworker
+(services seuls) ou un client salle de réunion (salle et services), envoyé au choix au client
+(copie à son auteur et à l'équipe de la ville, le client répond à l'auteur) ou à son auteur seul.
+L'admin d'une ville ne fait des devis que pour ses salles. Rien n'est réservé dans l'agenda.
+
 
 ## Réductions clients (prochain devis)
 
@@ -116,10 +132,12 @@ et le lien d'avis s'y règlent aussi. Formule d'appel : « Bonjour Madame Dupont
 (civilité demandée dans le formulaire), ou « Bonjour Marie, » pour les demandes plus anciennes.
 
 **Restauration** (à commander au moins `COWORKING.mealsNoticeHours` = 24h avant) : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
-déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un repas est choisi, un devis « repas seuls »
-(la salle reste sur crédits) est joint à son email et copié dans le dossier Drive des devis,
-et l'équipe (`OWNER_EMAIL`) reçoit un email pour préparer la commande, puis à chaque
-modification ou annulation.
+déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un service est choisi, un devis « services seuls »
+(la salle reste sur crédits) est préparé, copié dans le dossier Drive des devis et envoyé à
+l'équipe de la ville (`<ville>@hiptown.com`) avec deux boutons : **Valider et envoyer le devis**
+(le coworker le reçoit alors par email) ou **Refuser les services** (le coworker est prévenu,
+sa salle reste réservée). Une modification refait un devis à valider : les boutons de l'ancien
+ne marchent plus. L'équipe est aussi prévenue des annulations.
 
 Mise en route, **une seule fois**, dans le menu déroulant des fonctions (▶ Exécuter) :
 1. `testThankYouEmails` : un exemple de chaque texte arrive sur votre adresse (aucun client contacté).
@@ -157,10 +175,12 @@ confirme chaque annulation ou modification. La salle reste la même : pour chang
 on annule puis on réserve à nouveau.
 
 **Restauration** (à commander au moins `COWORKING.mealsNoticeHours` = 24h avant) : en réservant ou en modifiant, un coworker peut ajouter petit déjeuner et/ou
-déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un repas est choisi, un devis « repas seuls »
-(la salle reste sur crédits) est joint à son email et copié dans le dossier Drive des devis,
-et l'équipe (`OWNER_EMAIL`) reçoit un email pour préparer la commande, puis à chaque
-modification ou annulation.
+déjeuner (tarifs `PRICES` de `Config.gs`). Dès qu'un service est choisi, un devis « services seuls »
+(la salle reste sur crédits) est préparé, copié dans le dossier Drive des devis et envoyé à
+l'équipe de la ville (`<ville>@hiptown.com`) avec deux boutons : **Valider et envoyer le devis**
+(le coworker le reçoit alors par email) ou **Refuser les services** (le coworker est prévenu,
+sa salle reste réservée). Une modification refait un devis à valider : les boutons de l'ancien
+ne marchent plus. L'équipe est aussi prévenue des annulations.
 
 Mise en route, **une seule fois** après avoir copié les fichiers :
 1. Dans le menu déroulant des fonctions, choisir `testCoworkingSetup`, cliquer sur ▶ Exécuter

@@ -152,7 +152,7 @@ function updateMealsTotal(prefix, slot) {
   box.hidden = !ht;
   if (box.hidden) return;
   box.textContent = "Total des services : " + euros(ht) + " HT (" + euros(ht * (1 + MEALS.vatRate))
-    + " TTC). Le devis vous est envoyé par email avec la confirmation.";
+    + " TTC). Le devis vous est envoyé par email dès sa validation par l'équipe Hiptown.";
 }
 
 /**
@@ -658,7 +658,7 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(when) + "</div>"
     + '<ul class="rc-bk-facts"><li>' + hours + "</li><li>👥 " + b.numberOfPeople + " personne(s)</li>"
     + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "")
-    + (b.servicesLabel ? "<li>🧾 " + escapeHtml(b.servicesLabel) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + ")" : "") + "</li>" : "")
+    + (b.servicesLabel ? "<li>🧾 " + escapeHtml(b.servicesLabel) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + (b.quotePending ? ", en attente de validation" : "") + ")" : "") + "</li>" : "")
     + "</ul>"
     + (b.notes ? '<p class="rc-bk-note">📝 ' + escapeHtml(b.notes) + "</p>" : "")
     + '<div class="rc-bk-actions">'

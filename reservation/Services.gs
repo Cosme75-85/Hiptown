@@ -71,6 +71,11 @@ function cityOf(item) {
   return (item && item.city) || DEFAULT_CITY;
 }
 
+/** Adresse de l'équipe Hiptown de la ville d'une salle (ex. bordeaux@hiptown.com), qui valide demandes et devis. */
+function cityTeamEmail(item) {
+  return cityOf(item) + '@' + CITY_TEAM_EMAIL_DOMAIN;
+}
+
 function findService(id) {
   return serviceCatalog().find(s => s.id === id) || null;
 }

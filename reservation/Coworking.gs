@@ -86,7 +86,7 @@ function bookCoworkingRoom(idToken, rawBooking) {
     success: true,
     message: 'Réservation confirmée ! ' + booking.space.name + ' est à vous.'
       + (done.credits ? ' ' + done.credits.cost + ' crédit(s) utilisé(s), il en reste ' + done.credits.remaining + '.' : '')
-      + (quote ? ' Votre devis des services est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
+      + (quote ? ' Votre devis des services vous sera envoyé dès sa validation par l\'équipe Hiptown.' : ' Un email récapitulatif vous a été envoyé.')
   };
 }
 
@@ -239,7 +239,7 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits, qu
     'Un empêchement ou un changement d\'horaire ? Vous pouvez annuler ou modifier cette réservation vous-même '
       + 'jusqu\'à son début, depuis la tuile « Réserver une salle de réunion » de votre espace client '
       + '(rubrique « Mes réservations à venir »).'
-  ].filter(Boolean), 'À très bientôt', quote ? [quote.pdf] : []);
+  ].filter(Boolean), 'À très bientôt');
 }
 
 // ==================== CRÉDITS ====================
@@ -342,7 +342,7 @@ function getMyCoworkingBookings(idToken) {
         const slot = eventSlot(ev.start, ev.end);
         const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
         // La note va jusqu'à la ligne « Dernière modification » ou « Statut » (elle peut faire plusieurs lignes)
-        const note = (ev.description.match(/\nNote : ([\s\S]*?)(?=\n(?:Dernière modification|Devis repas|Statut) : |$)/) || [])[1];
+        const note = (ev.description.match(/\nNote : ([\s\S]*?)(?=\n(?:Dernière modification|Devis repas|Services refusés|Statut) : |$)/) || [])[1];
         let meals = {};
         try { meals = JSON.parse(ev.meals || '{}'); } catch (err) { /* tag abîmé : pas de repas */ }
         bookings.push({
@@ -364,6 +364,7 @@ function getMyCoworkingBookings(idToken) {
           services: requestedServices(meals),
           servicesLabel: servicesLabel(meals),
           quoteNumber: (ev.description.match(/Devis repas : (\S+)/) || [])[1] || '',
+          quotePending: /Devis repas : .* — en attente de validation/.test(ev.description),
           credits: user.chargesCredits ? (Number(ev.credits) || 0) : null
         });
       });
@@ -589,7 +590,7 @@ function modifyCoworkingBooking(idToken, raw) {
       done.credits && ('Crédits utilisés : <b>' + done.credits.cost + '</b> (au lieu de ' + done.credits.oldCost + '). Il reste <b>'
         + done.credits.remaining + '</b> crédit(s) à votre entreprise pour ' + done.credits.monthLabel + '.'),
       'Vous pouvez encore annuler ou modifier cette réservation jusqu\'à son début, depuis votre espace client.'
-    ].filter(Boolean), 'À très bientôt', quote ? [quote.pdf] : []);
+    ].filter(Boolean), 'À très bientôt');
   } catch (err) {
     Logger.log('⚠️ Email de modification coworking non envoyé à ' + user.email + ' : ' + err.message);
   }
@@ -598,7 +599,7 @@ function modifyCoworkingBooking(idToken, raw) {
     success: true,
     message: 'Réservation modifiée !'
       + (done.credits ? ' ' + done.credits.cost + ' crédit(s) utilisé(s), il en reste ' + done.credits.remaining + '.' : '')
-      + (quote ? ' Votre nouveau devis des services est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
+      + (quote ? ' Votre nouveau devis des services vous sera envoyé dès sa validation par l\'équipe Hiptown.' : ' Un email récapitulatif vous a été envoyé.')
   };
 }
 
@@ -652,6 +653,7 @@ function applyCoworkingChange(user, booking, raw, start, end) {
   }
   if (hasServices(booking)) event.setTag(TAG_MEALS, mealsTag(booking));
   else if (hasServices(oldMeals)) event.deleteTag(TAG_MEALS);
+  if (!hasServices(booking)) event.deleteTag(TAG_MEALS_QUOTE); // l'ancien lien de validation ne marche plus
   invalidateAvailabilityCache();
 
   return {
@@ -712,8 +714,9 @@ function withDescriptionFields(description, fields) {
 
 // ==================== SERVICES EN OPTION (REPAS, PARKING…) ====================
 // Les coworkers ne paient pas la salle (crédits) mais peuvent commander des services
-// (Gestion > Services) : dès qu'un service est choisi, un devis (services seuls) leur
-// est envoyé et l'équipe est prévenue pour préparer la commande.
+// (Gestion > Services) : dès qu'un service est choisi, un devis (services seuls, sans la
+// salle) est préparé et envoyé à l'équipe Hiptown de la ville (ex. bordeaux@hiptown.com).
+// Elle le valide (le devis part alors au coworker) ou refuse les services (la salle reste réservée).
 // (Les noms « meals » / « repas » datent de quand seuls les repas existaient.)
 
 /**
@@ -757,8 +760,10 @@ function eventMeals(event) {
 }
 
 /**
- * Devis repas + note dans l'événement + email à l'équipe. Renvoie le devis
- * { number, pdf, totalTTC } ou null (pas de repas, ou devis impossible : l'équipe est prévenue).
+ * Devis des services + note dans l'événement + email de validation à l'équipe de la ville.
+ * Renvoie le devis { number, pdf, totalTTC, fileId } ou null (pas de service, ou devis
+ * impossible : l'équipe est prévenue et l'envoie à la main). Le coworker ne le reçoit
+ * qu'une fois validé (applyMealsApproval). Un nouveau devis rend caducs les liens du précédent.
  */
 function handleMealsOrder(user, booking, event, title, start, end, kind) {
   if (!hasServices(booking)) return null;
@@ -766,15 +771,22 @@ function handleMealsOrder(user, booking, event, title, start, end, kind) {
   let quoteError = '';
   try {
     quote = createMealsQuote(user, booking, event);
+    event.setTag(TAG_MEALS_QUOTE, JSON.stringify({ number: quote.number, fileId: quote.fileId, discounted: !!quote.discount, status: 'pending' }));
     event.setDescription(withDescriptionFields(event.getDescription() || '', {
-      'Devis repas': 'Devis repas : ' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC)'
+      'Devis repas': mealsQuoteLine(quote.number, quote.totalTTC, 'en attente de validation')
     }));
   } catch (err) {
     quoteError = err.message;
+    event.deleteTag(TAG_MEALS_QUOTE);
     Logger.log('⚠️ Devis repas coworking non généré : ' + err.message);
   }
-  notifyTeamMeals(kind, user, booking.space, title, booking, start, end, quote, null, quoteError);
+  notifyTeamMeals(kind, user, booking.space, title, booking, start, end, quote, null, quoteError, event);
   return quote;
+}
+
+/** Ligne « Devis repas » de la description (relue par getMyCoworkingBookings). */
+function mealsQuoteLine(number, totalTTC, status) {
+  return 'Devis repas : ' + number + ' (' + totalTTC.toFixed(2) + ' € TTC) — ' + status;
 }
 
 /**
@@ -812,12 +824,14 @@ function createMealsQuote(user, b, event) {
   })) {
     setEventDiscount(event, pending);
   }
+  // Copie Drive : c'est elle qui est envoyée au coworker une fois le devis validé
+  let fileId = '';
   try {
-    getQuoteFolder().createFile(pdf);
+    fileId = getQuoteFolder().createFile(pdf).getId();
   } catch (err) {
     Logger.log('⚠️ Copie Drive du devis ' + number + ' impossible : ' + err.message);
   }
-  return { number: number, pdf: pdf, totalTTC: computeQuote(b.space, data, currentPrices()).totalTTC, discount: discount };
+  return { number: number, pdf: pdf, fileId: fileId, totalTTC: computeQuote(b.space, data, currentPrices()).totalTTC, discount: discount };
 }
 
 /** Paragraphe « services » des emails au coworker (null sans service). */
@@ -825,17 +839,18 @@ function mealsParagraph(b, quote, isChange) {
   if (!hasServices(b)) return null;
   return 'Services ' + (isChange ? 'prévus' : 'commandés') + ' : <b>' + escapeHtml(servicesLabel(b)) + '</b> pour '
     + b.numberOfPeople + ' personne(s). ' + (quote
-      ? 'Votre devis n°<b>' + quote.number + '</b> (' + quote.totalTTC.toFixed(2) + ' € TTC) est en pièce jointe'
-        + (isChange ? ' et remplace le précédent' : '') + ' ; la facture vous sera envoyée à la suite de la réunion.'
-        + (quote.discount ? ' ' + discountSentence(quote.discount) : '')
+      ? 'L\'équipe Hiptown valide votre commande : votre devis n°<b>' + quote.number + '</b> ('
+        + quote.totalTTC.toFixed(2) + ' € TTC)' + (isChange ? ', qui remplace le précédent,' : '')
+        + ' vous sera envoyé par email dès sa validation. La facture suivra la réunion.'
       : 'Votre devis vous sera envoyé par l\'équipe Hiptown.');
 }
 
 /**
- * Prévient l'équipe (OWNER_EMAIL) d'une commande, d'une modification ou d'une annulation
- * de services, pour qu'elle les prépare (ou les décommande).
+ * Prévient l'équipe Hiptown de la ville de la salle (ex. bordeaux@hiptown.com) d'une commande,
+ * d'une modification ou d'une annulation de services. Avec un devis (et l'événement), l'email
+ * porte les boutons Valider / Refuser : le devis ne part au coworker qu'une fois validé.
  */
-function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, oldMeals, quoteError) {
+function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, oldMeals, quoteError, event) {
   const meals = booking || oldMeals;
   const when = booking ? frenchWhen(booking, start, end) : frenchWhen(eventSlot(start, end), start, end);
   const rows = [
@@ -845,22 +860,126 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
     ['Salle', space.name],
     ['Créneau', when],
     ['Services', servicesLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')],
-    quote && ['Devis', 'n°' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC), joint à cet email'],
+    quote && ['Devis', 'n°' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC, services seuls), joint à cet email'],
     quote && quote.discount && ['Remise', describeDiscount(quote.discount) + (quote.discount.reason ? ' (motif : ' + quote.discount.reason + ')' : '')],
+    quote && !quote.fileId && ['⚠️ Drive', 'copie du devis impossible : après validation, envoyez au coworker le devis joint ici'],
     quoteError && ['⚠️ Devis', 'non généré (' + quoteError + ') : à envoyer à la main']
   ].filter(Boolean);
+  const button = (url, color, label) =>
+    '<a href="' + url + '" style="background:' + color + ';color:#ffffff;padding:10px 18px;border-radius:6px;'
+    + 'text-decoration:none;margin-right:10px;display:inline-block;">' + label + '</a>';
+  const approval = quote && event
+    ? '<p>Le devis n\'est envoyé au coworker qu\'après votre validation :</p><p>'
+      + button(buildMealsApprovalUrl('approveMeals', space.calendarId, event.getId(), quote.number), '#137333', '✅ Valider et envoyer le devis')
+      + button(buildMealsApprovalUrl('rejectMeals', space.calendarId, event.getId(), quote.number), '#c5221f', '❌ Refuser les services')
+      + '</p><p style="color:#64748b;font-size:12px;">En cas de refus, la salle reste réservée et le coworker est prévenu.</p>'
+    : '';
   try {
     MailApp.sendEmail({
-      to: OWNER_EMAIL,
-      subject: '🧾 Services coworking — ' + kind + ' — ' + space.name + ' — ' + when,
+      to: cityTeamEmail(space),
+      subject: (approval ? '🧾 À valider — ' : '🧾 ') + 'Services coworking — ' + kind + ' — ' + space.name + ' — ' + when,
       htmlBody: '<p><b>' + escapeHtml(kind) + ' de services</b> depuis l\'espace coworking du portail.</p>'
         + '<table cellpadding="4">' + rows.map(([label, value]) =>
-          '<tr><td><b>' + escapeHtml(label) + '</b></td><td>' + escapeHtml(value) + '</td></tr>').join('') + '</table>',
+          '<tr><td><b>' + escapeHtml(label) + '</b></td><td>' + escapeHtml(value) + '</td></tr>').join('') + '</table>'
+        + approval,
       attachments: quote ? [quote.pdf] : []
     });
   } catch (err) {
     Logger.log('⚠️ Email repas à l\'équipe non envoyé : ' + err.message);
   }
+}
+
+// ==================== VALIDATION DES SERVICES PAR L'ÉQUIPE DE LA VILLE ====================
+
+/** Lien Valider / Refuser signé, propre à ce devis : un devis remplacé n'est plus validable. */
+function buildMealsApprovalUrl(action, calendarId, eventId, number) {
+  return ScriptApp.getService().getUrl()
+    + '?action=' + action
+    + '&calId=' + encodeURIComponent(calendarId)
+    + '&eventId=' + encodeURIComponent(eventId)
+    + '&q=' + encodeURIComponent(number)
+    + '&sig=' + encodeURIComponent(signApproval(action, calendarId, eventId + '|' + number));
+}
+
+function handleMealsApproval(params) {
+  let message;
+  try {
+    const space = getAllSpaces().find(s => s.calendarId === params.calId);
+    if (!space || !params.eventId || !params.q
+        || params.sig !== signApproval(params.action, params.calId, params.eventId + '|' + params.q)) {
+      message = 'Lien invalide.';
+    } else {
+      const lock = LockService.getScriptLock();
+      lock.waitLock(10000); // un double clic n'envoie pas deux fois le devis
+      try {
+        const event = CalendarApp.getCalendarById(params.calId).getEventById(params.eventId);
+        message = applyMealsApproval(params.action, space, event, params.q);
+      } finally {
+        lock.releaseLock();
+      }
+    }
+  } catch (err) {
+    message = 'Erreur : ' + err.message;
+  }
+  return approvalResultPage(message);
+}
+
+/** Valide (devis envoyé au coworker) ou refuse (services retirés, salle gardée) ; renvoie le message affiché. */
+function applyMealsApproval(action, space, event, number) {
+  if (!event) return 'Cette réservation n\'existe plus (annulée par le coworker).';
+  let current = {};
+  try { current = JSON.parse(event.getTag(TAG_MEALS_QUOTE) || '{}') || {}; } catch (err) { current = {}; }
+  if (current.number !== number) return 'Le devis n°' + number + ' a été remplacé ou annulé : utilisez l\'email le plus récent.';
+  if (current.status === 'approved') return 'Le devis n°' + number + ' est déjà validé et envoyé.';
+
+  const email = getRequesterEmail(event);
+  const firstName = getRequesterFirstName(event);
+  const title = event.getTitle().slice(COWORKING.titlePrefix.length);
+  const start = event.getStartTime();
+  const end = event.getEndTime();
+  const when = frenchWhen(eventSlot(start, end), start, end);
+  const meals = eventMeals(event);
+  const description = event.getDescription() || '';
+  const total = (description.match(/Devis repas : \S+ \(([^)]+)\)/) || [])[1] || '';
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy');
+
+  if (action === 'approveMeals') {
+    let pdf = null;
+    try {
+      pdf = DriveApp.getFileById(current.fileId).getBlob();
+    } catch (err) {
+      return '⚠️ Devis n°' + number + ' introuvable dans le dossier Drive : envoyez au coworker celui joint à l\'email de commande.';
+    }
+    event.setTag(TAG_MEALS_QUOTE, JSON.stringify(Object.assign({}, current, { status: 'approved' })));
+    event.setDescription(withDescriptionFields(description, {
+      'Devis repas': 'Devis repas : ' + number + (total ? ' (' + total + ')' : '') + ' — validé le ' + today
+    }));
+    const discount = current.discounted && eventDiscount(event);
+    sendClientEmail(email, firstName, 'Votre devis des services — ' + space.name + ' — Hiptown', [
+      'L\'équipe Hiptown a validé les services commandés pour votre réunion <b>"' + escapeHtml(title) + '"</b> ('
+        + escapeHtml(space.name) + ', ' + when + ') : <b>' + escapeHtml(servicesLabel(meals)) + '</b>.',
+      'Vous trouverez en pièce jointe votre devis n°<b>' + escapeHtml(number) + '</b>' + (total ? ' (' + escapeHtml(total) + ')' : '')
+        + '. La facture vous sera envoyée à la suite de la réunion.',
+      discount && discountSentence(discount)
+    ].filter(Boolean), 'À très bientôt', [pdf]);
+    return 'Services validés : devis n°' + number + ' envoyé à ' + email + '.';
+  }
+
+  // action === 'rejectMeals' (garanti par la signature) : la salle reste réservée
+  event.deleteTag(TAG_MEALS);
+  event.deleteTag(TAG_MEALS_QUOTE);
+  event.setDescription(withDescriptionFields(description, {
+    'Services': null,
+    'Devis repas': null,
+    'Services refusés': 'Services refusés : ' + servicesLabel(meals) + ' (devis ' + number + ', le ' + today + ')'
+  }));
+  sendClientEmail(email, firstName, 'Services non disponibles — ' + space.name + ' — Hiptown', [
+    'Nous ne pourrons malheureusement pas assurer les services commandés (<b>' + escapeHtml(servicesLabel(meals))
+      + '</b>) pour votre réunion <b>"' + escapeHtml(title) + '"</b> (' + escapeHtml(space.name) + ', ' + when
+      + ') : le devis n°' + escapeHtml(number) + ' est annulé.',
+    'Votre salle reste bien réservée. Pour en parler, écrivez à l\'équipe Hiptown : ' + escapeHtml(cityTeamEmail(space)) + '.'
+  ], 'Cordialement');
+  return 'Services refusés : le coworker est prévenu, sa salle reste réservée.';
 }
 
 // ==================== COMPTE DU PORTAIL ====================
