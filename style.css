@@ -1006,3 +1006,35 @@ footer {
 .resa-salle-fallback a { color: var(--navy); }
 /* Assez large pour la liste des types de salles à gauche (ordinateur) */
 .container:has(#step-resa-salle:not([hidden])) { max-width: 1180px; }
+
+/* ── Agenda des réunions à venir (tableau de bord, agenda.js) ── */
+.agenda { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
+.agenda[hidden] { display: none; }
+.agenda-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-bottom: 8px; }
+.agenda-title { font-size: 15px; font-weight: 700; color: var(--navy); }
+.agenda-nav { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); }
+.agenda-nav[hidden] { display: none; }
+.agenda-nav button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--navy); color: var(--white); font-size: 11px; cursor: pointer; }
+.agenda-nav button:disabled { opacity: 0.3; cursor: default; }
+.agenda-day { display: flex; gap: 10px; padding: 6px 0; border-top: 1px solid #f1efed; }
+.agenda-day:first-child { border-top: 0; }
+.agenda-day.agenda-past { opacity: 0.45; }
+.agenda-date { flex: 0 0 38px; display: flex; flex-direction: column; align-items: center; line-height: 1.1; padding-top: 2px; }
+.agenda-dow { font-size: 10px; text-transform: uppercase; font-weight: 600; color: var(--text-soft); }
+.agenda-num { font-size: 17px; font-weight: 800; color: var(--navy); }
+.agenda-today .agenda-num { background: var(--yellow); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.agenda-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.agenda-none { color: var(--text-pale, #c4bfb8); font-size: 13px; padding: 6px 0; }
+.agenda-item {
+  display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; font: inherit; font-size: 13px; color: var(--text-dark);
+  background: #f8f7f6; border: 0; border-left: 4px solid var(--space-color, var(--teal)); border-radius: 6px; padding: 6px 8px;
+}
+button.agenda-item { cursor: pointer; }
+button.agenda-item:hover { background: #fff4a2; }
+.agenda-hours { flex: 0 0 auto; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.agenda-what { min-width: 0; overflow-wrap: anywhere; }
+.agenda-pending { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: #9a3412; background: #ffedd5; border-radius: 999px; padding: 0 6px; }
+.agenda-who { display: block; font-size: 12px; color: var(--text-soft); }
+.agenda-empty { font-size: 13px; color: var(--text-soft); margin: 4px 0; }
+.agenda-jump { margin-top: 8px; border: 2px solid var(--navy); border-radius: 8px; background: var(--white); color: var(--navy); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; cursor: pointer; }
+.agenda-jump:hover { background: #fff4a2; }

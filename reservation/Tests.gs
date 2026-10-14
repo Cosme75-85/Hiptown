@@ -87,6 +87,10 @@ function testPerformance() {
     Logger.log(space.name + ' : ' + ms + ' ms');
   });
   Logger.log('TOTAL pour le mois : ' + total + ' ms');
+  const t0 = Date.now();
+  prefetchMonthSlots(getSpaces(), now.getFullYear(), now.getMonth() + 1);
+  Logger.log('Tous les agendas lus en même temps : ' + (Date.now() - t0) + ' ms ('
+    + Object.keys(prefetchedSlots).length + ' sur ' + getSpaces().length + ')');
 }
 
 
