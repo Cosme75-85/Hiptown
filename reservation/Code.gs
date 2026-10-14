@@ -196,9 +196,12 @@ function getSpacesMeta() {
 function getAllMonthsAvailability(year, month) {
   const result = {};
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return result;
+  const monthKey = space => 'month:' + space.id + ':' + year + '-' + month;
+  // Les agendas absents du cache sont lus tous en même temps, pas l'un après l'autre
+  prefetchMonthSlots(getSpaces().filter(space => !isCached(monthKey(space))), year, month);
   getSpaces().forEach(space => {
     result[space.id] = markClosedDays(space, withCache(
-      'month:' + space.id + ':' + year + '-' + month,
+      monthKey(space),
       () => getMonthAvailability(space, year, month),
       data => !data.days.some(d => d.status === 'error')
     ));
@@ -214,7 +217,7 @@ function getMonthAvailability(space, year, month) {
   let slots = [];
   let fetchError = false;
   try {
-    slots = getBookedSlots(space, new Date(year, month - 1, 1), new Date(year, month, 1));
+    slots = prefetchedSlots[space.id] || getBookedSlots(space, new Date(year, month - 1, 1), new Date(year, month, 1));
   } catch (err) {
     fetchError = true; // agenda introuvable (null) ou inaccessible
   }
@@ -345,11 +348,8 @@ let cacheVersion = null; // mémorisé le temps d'une requête
  * et la met en cache si isCacheable(valeur) (on ne garde jamais une erreur).
  */
 function withCache(key, compute, isCacheable) {
-  if (cacheVersion === null) {
-    cacheVersion = PropertiesService.getScriptProperties().getProperty('CACHE_VERSION') || '0';
-  }
   const cache = CacheService.getScriptCache();
-  const fullKey = cacheVersion + ':' + key;
+  const fullKey = cacheKey(key);
 
   const hit = cache.get(fullKey);
   if (hit) return JSON.parse(hit);
@@ -357,6 +357,17 @@ function withCache(key, compute, isCacheable) {
   const value = compute();
   if (isCacheable(value)) cache.put(fullKey, JSON.stringify(value), CACHE_TTL_SECONDS);
   return value;
+}
+
+function cacheKey(key) {
+  if (cacheVersion === null) {
+    cacheVersion = PropertiesService.getScriptProperties().getProperty('CACHE_VERSION') || '0';
+  }
+  return cacheVersion + ':' + key;
+}
+
+function isCached(key) {
+  return CacheService.getScriptCache().get(cacheKey(key)) !== null;
 }
 
 /**
@@ -918,16 +929,11 @@ function getBookedSlots(space, from, to, excludeEventId) {
         singleEvents: true,  // événements récurrents dépliés, comme CalendarApp
         maxResults: 2500,
         pageToken: pageToken,
-        fields: 'nextPageToken,items(iCalUID,start,end,description,extendedProperties/private)'
+        fields: EVENT_FIELDS
       });
       (page.items || []).forEach(ev => {
         if (excludeEventId && ev.iCalUID === excludeEventId) return;
-        const tags = (ev.extendedProperties && ev.extendedProperties.private) || {};
-        slots.push({
-          start: apiEventTime(ev.start),
-          end: apiEventTime(ev.end),
-          qty: readQty ? quantityFrom(tags[TAG_QUANTITY], ev.description) : 1
-        });
+        slots.push(apiEventSlot(ev, readQty));
       });
       pageToken = page.nextPageToken;
     } while (pageToken);
@@ -943,6 +949,53 @@ function getBookedSlots(space, from, to, excludeEventId) {
       end: ev.getEndTime().getTime(),
       qty: readQty ? getEventQuantity(ev) : 1
     }));
+}
+
+const EVENT_FIELDS = 'nextPageToken,items(iCalUID,start,end,description,extendedProperties/private)';
+
+/** Événement renvoyé par l'API -> { start, end, qty }. */
+function apiEventSlot(ev, readQty) {
+  const tags = (ev.extendedProperties && ev.extendedProperties.private) || {};
+  return {
+    start: apiEventTime(ev.start),
+    end: apiEventTime(ev.end),
+    qty: readQty ? quantityFrom(tags[TAG_QUANTITY], ev.description) : 1
+  };
+}
+
+let prefetchedSlots = {}; // réservations du mois lues d'avance, par espace (le temps d'une requête)
+
+/**
+ * Lit d'un coup les réservations du mois de plusieurs agendas (UrlFetchApp.fetchAll envoie
+ * les demandes en parallèle) : environ le temps d'un seul agenda au lieu de la somme.
+ * Résultat rangé dans prefetchedSlots, lu par getMonthAvailability. Au moindre souci
+ * (service avancé absent, erreur, plus d'une page), l'agenda est relu normalement.
+ */
+function prefetchMonthSlots(spaces, year, month) {
+  prefetchedSlots = {};
+  if (spaces.length < 2 || typeof Calendar === 'undefined') return;
+  const query = 'timeMin=' + encodeURIComponent(new Date(year, month - 1, 1).toISOString())
+    + '&timeMax=' + encodeURIComponent(new Date(year, month, 1).toISOString())
+    + '&singleEvents=true&maxResults=2500&fields=' + encodeURIComponent(EVENT_FIELDS);
+  const headers = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  let responses;
+  try {
+    responses = UrlFetchApp.fetchAll(spaces.map(space => ({
+      url: 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(space.calendarId) + '/events?' + query,
+      headers: headers,
+      muteHttpExceptions: true
+    })));
+  } catch (err) {
+    return;
+  }
+  responses.forEach((res, i) => {
+    if (res.getResponseCode() !== 200) return;
+    try {
+      const page = JSON.parse(res.getContentText());
+      if (page.nextPageToken) return;
+      prefetchedSlots[spaces[i].id] = (page.items || []).map(ev => apiEventSlot(ev, spaces[i].capacity > 1));
+    } catch (err) { /* relu normalement */ }
+  });
 }
 
 /** Heure d'un événement renvoyé par l'API : dateTime, ou date seule (journée entière, minuit local). */
