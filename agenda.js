@@ -4,7 +4,8 @@
 //   - clients salle de réunion et coworkers : leurs propres réservations
 //     (serveur : getMyUpcomingBookings, reservation/MesReservations.gs) ;
 //   - équipe Hiptown : toutes les réunions de toutes les salles
-//     (serveur : getAllUpcomingBookings, réservé aux comptes Hiptown).
+//     (serveur : getAllUpcomingBookings, réservé aux comptes Hiptown),
+//     affichées dans la page « Salle de réunion » et non sur l'accueil.
 //  Un clic sur une réunion d'un client ouvre « Mes prochaines réservations »
 //  (détail, ajout à l'agenda, modification ou annulation).
 // ═══════════════════════════════════════════════════════
@@ -55,9 +56,17 @@ function bookingsByDay() {
 
 // ==================== CHARGEMENT ====================
 
+/** Accueil pour les clients, page « Salle de réunion » pour l'équipe Hiptown. */
+function placeBox() {
+  const box = $("agenda");
+  if (space === "hiptown") $("step-salles").appendChild(box);        // sous les tuiles Réserver / Mes réservations
+  else $("step-dashboard").insertBefore(box, $("tiles-grid"));       // en haut de l'accueil
+}
+
 async function load() {
   const token = ++requestToken;
   const box = $("agenda");
+  placeBox();
   if (!auth.currentUser || !["salle", "coworking", "hiptown"].includes(space)) { box.hidden = true; return; }
   box.hidden = false;
   $("agenda-title").textContent = space === "hiptown" ? "📅 Réunions à venir (toutes les salles)" : "📅 Mes réunions à venir";
@@ -166,10 +175,12 @@ document.addEventListener("hiptown-dashboard", e => {
   load();
 });
 
-// Retour au tableau de bord (ex. après une réservation ou une annulation) : agenda rafraîchi
-new MutationObserver(() => {
-  if (!$("step-dashboard").hidden && space && auth.currentUser) load();
-}).observe($("step-dashboard"), { attributes: true, attributeFilter: ["hidden"] });
+// Retour sur la page qui affiche l'agenda : agenda rafraîchi
+["step-dashboard", "step-salles"].forEach(id => {
+  new MutationObserver(() => {
+    if (!$(id).hidden && space && auth.currentUser && $("agenda").parentNode === $(id)) load();
+  }).observe($(id), { attributes: true, attributeFilter: ["hidden"] });
+});
 
 $("agenda-prev").addEventListener("click", () => { weekStart = addDays(weekStart, -7); render(); });
 $("agenda-next").addEventListener("click", () => { weekStart = addDays(weekStart, 7); render(); });

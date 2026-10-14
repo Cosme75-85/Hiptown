@@ -1009,6 +1009,7 @@ footer {
 
 /* ── Agenda des réunions à venir (tableau de bord, agenda.js) ── */
 .agenda { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
+#step-salles .agenda { margin-top: 18px; }
 .agenda[hidden] { display: none; }
 .agenda-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-bottom: 8px; }
 .agenda-title { font-size: 15px; font-weight: 700; color: var(--navy); }
