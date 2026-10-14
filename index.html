@@ -179,6 +179,91 @@
         <div class="outil-logo">🥐</div>
         <div class="outil-name">Services</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-devis">
+        <div class="outil-logo">🧾</div>
+        <div class="outil-name">Devis</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ÉTAPE : DEVIS FAITS À LA MAIN (admin) — coworker ou client salle, destination au choix (devis.js) -->
+  <section id="step-gestion-devis" hidden>
+    <button class="back-btn" id="back-from-gestion-devis">← Retour</button>
+    <h2 class="step-title" style="margin-bottom:4px;">🧾 Faire un devis</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Pour un <b>coworker</b>, le devis ne porte que sur les services : sa salle est sur les crédits de son entreprise.
+      Pour un <b>client salle de réunion</b>, il porte sur la salle et les services.
+      Le devis n'est pas une réservation : la salle n'est pas bloquée. Une copie est gardée dans le dossier Drive des devis.
+    </p>
+    <p id="mq-loading" style="color:#94a3b8;padding:12px;">Chargement…</p>
+    <div class="pin-box" id="mq-form" hidden style="max-width:100%;text-align:left;">
+      <p class="profile-label" style="margin-top:0;">Client *</p>
+      <label style="display:flex;gap:8px;align-items:center;min-height:40px;font-size:14px;">
+        <input type="radio" name="mq-audience" value="coworking"/> Coworker (client interne) : services seuls</label>
+      <label style="display:flex;gap:8px;align-items:center;min-height:40px;font-size:14px;">
+        <input type="radio" name="mq-audience" value="salle"/> Client salle de réunion (client externe) : salle et services</label>
+
+      <label class="profile-label" for="mq-room">Salle *</label>
+      <select id="mq-room" class="profile-input"></select>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label class="profile-label" for="mq-date">Date *</label>
+          <input type="date" id="mq-date" class="profile-input"/>
+        </div>
+        <div style="flex:1;min-width:140px;" id="mq-end-date-wrap" hidden>
+          <label class="profile-label" for="mq-end-date">Jusqu'au (plusieurs jours)</label>
+          <input type="date" id="mq-end-date" class="profile-input"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:110px;">
+          <label class="profile-label" for="mq-start">De</label>
+          <select id="mq-start" class="profile-input"></select>
+        </div>
+        <div style="flex:1;min-width:110px;">
+          <label class="profile-label" for="mq-end">À</label>
+          <select id="mq-end" class="profile-input"></select>
+        </div>
+        <div style="flex:1;min-width:110px;">
+          <label class="profile-label" for="mq-people">Personnes *</label>
+          <input type="number" id="mq-people" class="profile-input" min="1" value="1"/>
+        </div>
+        <div style="flex:1;min-width:110px;" id="mq-qty-wrap" hidden>
+          <label class="profile-label" for="mq-qty">Postes</label>
+          <input type="number" id="mq-qty" class="profile-input" min="1" value="1"/>
+        </div>
+      </div>
+
+      <p class="profile-label">Services</p>
+      <div id="mq-services"></div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:110px;">
+          <label class="profile-label" for="mq-civility">Civilité</label>
+          <select id="mq-civility" class="profile-input"></select>
+        </div>
+        <div style="flex:2;min-width:140px;">
+          <label class="profile-label" for="mq-first-name">Prénom *</label>
+          <input type="text" id="mq-first-name" class="profile-input" maxlength="100"/>
+        </div>
+        <div style="flex:2;min-width:140px;">
+          <label class="profile-label" for="mq-last-name">Nom *</label>
+          <input type="text" id="mq-last-name" class="profile-input" maxlength="100"/>
+        </div>
+      </div>
+      <label class="profile-label" for="mq-company">Entreprise *</label>
+      <input type="text" id="mq-company" class="profile-input" maxlength="100"/>
+      <label class="profile-label" for="mq-email" id="mq-email-label">Email du client *</label>
+      <input type="email" id="mq-email" class="profile-input" maxlength="100"/>
+
+      <p class="profile-label">Envoyer le devis</p>
+      <label style="display:flex;gap:8px;align-items:center;min-height:40px;font-size:14px;">
+        <input type="radio" name="mq-destination" value="client" checked/> Au client, avec une copie à moi et à l'équipe de la ville</label>
+      <label style="display:flex;gap:8px;align-items:center;min-height:40px;font-size:14px;">
+        <input type="radio" name="mq-destination" value="me"/> À moi seulement (je le transmets moi-même)</label>
+
+      <p class="profile-help" id="mq-message" role="status" hidden></p>
+      <button class="direct-btn" id="mq-send" type="button" style="background:var(--navy);color:#fff;margin-top:16px;">Envoyer le devis</button>
     </div>
   </section>
 

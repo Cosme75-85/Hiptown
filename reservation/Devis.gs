@@ -180,3 +180,163 @@ function buildQuoteHtml(space, booking, number) {
 
     '</body></html>';
 }
+
+// ==================== DEVIS FAITS À LA MAIN (portail : Gestion > Devis) ====================
+// Un membre de l'équipe Hiptown prépare un devis sans réservation en ligne :
+//  - pour un coworker (client interne) : services seuls, la salle est sur les crédits coworking ;
+//  - pour un client salle de réunion (client externe) : la salle et les services.
+// Il choisit la destination : envoyé au client (copie à lui-même et à l'équipe de la ville),
+// ou à lui seul (pour le relire ou le transmettre lui-même). L'admin d'une ville ne fait des
+// devis que pour les salles de sa ville ; l'admin général pour toutes. Rien n'est réservé.
+
+/** Salles en ligne et services de la ville de l'admin (toutes les villes pour l'admin général). */
+function getManualQuoteOptions(idToken) {
+  let profile;
+  try {
+    profile = getAdminProfile(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  const city = adminCity(profile);
+  return {
+    success: true,
+    city: city,
+    myEmail: normalizeEmail(profile.email),
+    startHour: START_HOUR,
+    endHour: END_HOUR,
+    civilities: CIVILITIES,
+    rooms: getSpaces().filter(s => !city || cityOf(s) === city).map(s => ({
+      id: s.id, name: s.name, city: cityOf(s), maxPeople: s.maxPeople || null, capacity: s.capacity,
+      allowMultiDay: !!s.allowMultiDay, quantitySelectable: !!s.quantitySelectable, onlyHalfOrFullDay: !!s.onlyHalfOrFullDay
+    })),
+    services: offeredServiceList('admin', city || '')
+  };
+}
+
+/** Prépare le devis, l'envoie à la destination choisie et en garde une copie dans le dossier Drive. */
+function createManualQuote(idToken, raw) {
+  let profile;
+  try {
+    profile = getAdminProfile(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  raw = raw || {};
+  const audience = ['coworking', 'salle'].indexOf(raw.audience) !== -1 ? raw.audience : '';
+  if (!audience) return { success: false, message: 'Choisissez le client : coworker ou client salle de réunion.' };
+  const toClient = raw.destination !== 'me';
+  const myEmail = normalizeEmail(profile.email);
+  if (!myEmail) return { success: false, message: 'Adresse email manquante sur votre compte.' };
+
+  const space = findSpace(raw.spaceId);
+  if (!space || space.archived) return { success: false, message: 'Salle introuvable.' };
+  const city = adminCity(profile);
+  if (city && cityOf(space) !== city) return { success: false, message: 'Cette salle n\'est pas dans votre ville.' };
+
+  const b = {
+    space: space,
+    civility: CIVILITIES.indexOf(raw.civility) !== -1 ? raw.civility : '',
+    firstName: cleanText(raw.firstName, MAX_TEXT_LENGTH),
+    lastName: cleanText(raw.lastName, MAX_TEXT_LENGTH),
+    company: cleanText(raw.company, MAX_TEXT_LENGTH),
+    clientEmail: cleanText(raw.clientEmail, MAX_TEXT_LENGTH).toLowerCase(),
+    numberOfPeople: toInt(raw.numberOfPeople),
+    spaceQuantity: space.quantitySelectable ? toInt(raw.spaceQuantity) : 1,
+    dateString: String(raw.dateString || ''),
+    endDateString: raw.endDateString ? String(raw.endDateString) : '',
+    startHour: toInt(raw.startHour),
+    endHour: toInt(raw.endHour)
+  };
+  if (!b.firstName || !b.lastName || !b.company) {
+    return { success: false, message: 'Merci de renseigner le prénom, le nom et l\'entreprise du client.' };
+  }
+  if (toClient && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.clientEmail)) {
+    return { success: false, message: 'Adresse email du client invalide.' };
+  }
+  if (!(b.numberOfPeople >= 1)) return { success: false, message: 'Merci de renseigner le nombre de personnes.' };
+  if (space.maxPeople && b.numberOfPeople > space.maxPeople) {
+    return { success: false, message: space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.' };
+  }
+  if (!(b.spaceQuantity >= 1 && b.spaceQuantity <= space.capacity)) return { success: false, message: 'Nombre de postes invalide.' };
+  // Tous les services de la ville de la salle, comme pour une réservation faite par l'équipe
+  const services = cleanRequestedServices(raw, 'admin', cityOf(space));
+  if (services.refused.length) {
+    return { success: false, message: services.refused.join(', ') + ' : plus proposé. Merci de recharger la page.' };
+  }
+  b.services = services.services;
+  if (audience === 'coworking' && !hasServices(b)) {
+    return { success: false, message: 'Le devis d\'un coworker ne porte que sur les services : cochez-en au moins un.' };
+  }
+  const slotError = validateSlot(b);
+  if (slotError) return { success: false, message: slotError };
+
+  const data = {
+    spaceId: space.id,
+    dateString: b.dateString,
+    endDateString: b.isMultiDay ? b.endDateString : '',
+    startHour: b.startHour,
+    endHour: b.endHour,
+    numberOfDays: b.numberOfDays,
+    spaceQuantity: b.spaceQuantity,
+    numberOfPeople: b.numberOfPeople,
+    services: b.services,
+    civility: b.civility,
+    firstName: b.firstName,
+    lastName: b.lastName,
+    company: b.company,
+    mealsOnly: audience === 'coworking' // coworker : services seuls, sans la salle
+  };
+
+  const number = nextQuoteNumber();
+  // Remise en attente du client (Reductions.gs) : utilisée seulement si le devis lui est envoyé
+  let discount = toClient ? getPendingDiscount(b.clientEmail) : null;
+  if (discount && !applyDiscount(space, data, discount)) discount = null;
+  const pdf = buildQuotePdf(space, data, number);
+  if (discount) {
+    takePendingDiscount(b.clientEmail, { quoteNumber: number, bookingLabel: 'Devis manuel – ' + space.name + ' – ' + b.dateString + ' – ' + b.company });
+  }
+  const quote = computeQuote(space, data, currentPrices());
+  let driveNote = '';
+  try {
+    getQuoteFolder().createFile(pdf);
+  } catch (err) {
+    driveNote = ' ⚠️ Copie Drive impossible : ' + err.message;
+  }
+
+  const tz = Session.getScriptTimeZone();
+  const frDate = d => Utilities.formatDate(parseDate(d), tz, 'dd/MM/yyyy');
+  const period = b.isMultiDay
+    ? 'du ' + frDate(b.dateString) + ' au ' + frDate(b.endDateString)
+    : 'le ' + frDate(b.dateString) + ' de ' + b.startHour + 'h à ' + b.endHour + 'h';
+  const total = quote.totalTTC.toFixed(2) + ' € TTC';
+  const author = (cleanText(profile.firstName, MAX_TEXT_LENGTH) + ' ' + cleanText(profile.lastName, MAX_TEXT_LENGTH)).trim() || myEmail;
+  const subject = 'Votre devis Hiptown n°' + number + ' — ' + space.name;
+  const object = audience === 'coworking'
+    ? 'le devis n°<b>' + number + '</b> (' + total + ') des services pour votre réunion en <b>' + escapeHtml(space.name)
+      + '</b> ' + period + '. La salle est réservée sur les crédits coworking de votre entreprise : ce devis ne concerne que les services.'
+    : 'notre devis n°<b>' + number + '</b> (' + total + ') pour <b>' + escapeHtml(space.name) + '</b> ' + period
+      + (hasServices(b) ? ', avec les services demandés' : '') + '.';
+
+  if (toClient) {
+    // Copie à l'auteur et à l'équipe de la ville ; le client répond directement à l'auteur
+    const cc = [myEmail, cityTeamEmail(space)].filter((e, i, all) => e && e !== b.clientEmail && all.indexOf(e) === i);
+    sendClientEmail(b.clientEmail, b.firstName, subject, [
+      'Vous trouverez en pièce jointe ' + object,
+      discount && discountSentence(discount),
+      'Pour toute question, répondez simplement à cet email.'
+    ].filter(Boolean), 'À bientôt', [pdf], Object.assign({ replyTo: myEmail }, cc.length ? { cc: cc.join(',') } : {}));
+  } else {
+    sendClientEmail(myEmail, cleanText(profile.firstName, MAX_TEXT_LENGTH), 'Devis n°' + number + ' — ' + b.company + ' — ' + space.name, [
+      'Voici le devis préparé depuis le portail (Gestion > Devis), à transmettre vous-même à <b>'
+        + escapeHtml(b.firstName + ' ' + b.lastName) + '</b> (' + escapeHtml(b.company) + ') : ' + object
+    ], 'Bonne journée', [pdf]);
+  }
+  Logger.log('🧾 Devis manuel ' + number + ' (' + audience + ') par ' + author + ' → ' + (toClient ? b.clientEmail : myEmail));
+
+  return {
+    success: true,
+    number: number,
+    message: 'Devis n°' + number + ' (' + total + ') envoyé à ' + (toClient ? b.clientEmail + ', copie à vous et à ' + cityTeamEmail(space) : 'vous seul (' + myEmail + ')') + '.'
+      + (discount ? ' Réduction appliquée : ' + describeDiscount(discount) + '.' : '') + driveNote
+  };
+}

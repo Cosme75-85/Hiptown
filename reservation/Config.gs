@@ -82,7 +82,11 @@ const DEVIS = {
 const PENDING_EXPIRY_DAYS = 14;
 const NOTIFY_ON_EXPIRY = true;  // prévenir le client par email quand sa demande expire
 
-// Email qui reçoit les demandes à valider
+// Équipe Hiptown de la ville : les demandes de salle à valider, l'email « un coworker a réservé »
+// et les copies des devis faits à la main partent à <ville>@hiptown.com
+// (ex. bordeaux@hiptown.com pour une salle de Bordeaux ; voir cityTeamEmail dans Services.gs).
+const CITY_TEAM_EMAIL_DOMAIN = 'hiptown.com';
+// Contact général : affiché dans « Mes prochaines réservations », reçoit les emails de test (Tests.gs)
 const OWNER_EMAIL = 'cc@hiptown.com';
 
 // Fichier Drive joint à l'email de confirmation (plan d'accès au bâtiment)

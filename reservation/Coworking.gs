@@ -75,7 +75,10 @@ function bookCoworkingRoom(idToken, rawBooking) {
 
   // Hors du verrou (le numéro de devis prend lui-même le verrou) : devis repas et emails.
   // Un souci ici ne doit pas annuler une réservation déjà inscrite dans l'agenda.
-  const quote = handleMealsOrder(user, booking, done.event, done.title, done.start, done.end, 'Nouvelle commande');
+  // Un seul email à l'équipe de la ville : « un coworker a réservé » (avec le devis s'il a commandé des services)
+  const quote = hasServices(booking)
+    ? handleMealsOrder(user, booking, done.event, done.title, done.start, done.end, 'Nouvelle réservation')
+    : notifyTeamMeals('Nouvelle réservation', user, booking.space, done.title, booking, done.start, done.end, null, null);
   try {
     sendCoworkingConfirmation(user, booking, done.title, done.start, done.end, done.credits, quote);
   } catch (err) {
@@ -832,8 +835,10 @@ function mealsParagraph(b, quote, isChange) {
 }
 
 /**
- * Prévient l'équipe (OWNER_EMAIL) d'une commande, d'une modification ou d'une annulation
- * de services, pour qu'elle les prépare (ou les décommande).
+ * Prévient l'équipe Hiptown de la ville de la salle (ex. bordeaux@hiptown.com) : un email par
+ * nouvelle réservation (avec ou sans services, devis joint s'il y en a un), puis à chaque
+ * modification ou annulation de services, pour qu'elle les prépare (ou les décommande).
+ * Renvoie null (sert aussi de « pas de devis » dans bookCoworkingRoom).
  */
 function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, oldMeals, quoteError) {
   const meals = booking || oldMeals;
@@ -844,16 +849,19 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
     ['Réunion', title],
     ['Salle', space.name],
     ['Créneau', when],
-    ['Services', servicesLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')],
+    hasServices(meals)
+      ? ['Services', servicesLabel(meals) + (booking ? ' pour ' + booking.numberOfPeople + ' personne(s)' : '')]
+      : ['Personnes', booking.numberOfPeople + ' (aucun service commandé)'],
     quote && ['Devis', 'n°' + quote.number + ' (' + quote.totalTTC.toFixed(2) + ' € TTC), joint à cet email'],
     quote && quote.discount && ['Remise', describeDiscount(quote.discount) + (quote.discount.reason ? ' (motif : ' + quote.discount.reason + ')' : '')],
     quoteError && ['⚠️ Devis', 'non généré (' + quoteError + ') : à envoyer à la main']
   ].filter(Boolean);
   try {
     MailApp.sendEmail({
-      to: OWNER_EMAIL,
-      subject: '🧾 Services coworking — ' + kind + ' — ' + space.name + ' — ' + when,
-      htmlBody: '<p><b>' + escapeHtml(kind) + ' de services</b> depuis l\'espace coworking du portail.</p>'
+      to: cityTeamEmail(space),
+      subject: (hasServices(meals) ? '🧾 ' : '📅 ') + 'Coworking — ' + kind + ' — ' + space.name + ' — ' + when,
+      htmlBody: '<p><b>' + escapeHtml(kind) + '</b> depuis l\'espace coworking du portail'
+        + (hasServices(meals) ? ', avec des services' : '') + '.</p>'
         + '<table cellpadding="4">' + rows.map(([label, value]) =>
           '<tr><td><b>' + escapeHtml(label) + '</b></td><td>' + escapeHtml(value) + '</td></tr>').join('') + '</table>',
       attachments: quote ? [quote.pdf] : []
@@ -861,6 +869,7 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
   } catch (err) {
     Logger.log('⚠️ Email repas à l\'équipe non envoyé : ' + err.message);
   }
+  return null;
 }
 
 // ==================== COMPTE DU PORTAIL ====================
