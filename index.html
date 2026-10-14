@@ -507,6 +507,18 @@
         <div id="notif-dropdown" style="display:none;position:absolute;right:0;top:38px;width:300px;max-height:420px;overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-md);box-shadow:0 8px 28px rgba(30,24,71,0.15);z-index:20;padding:8px;"></div>
       </div>
     </div>
+    <!-- Agenda des réunions à venir (agenda.js) -->
+    <div class="agenda" id="agenda" hidden>
+      <div class="agenda-head">
+        <div class="agenda-title" id="agenda-title">📅 Mes réunions à venir</div>
+        <div class="agenda-nav" id="agenda-nav" hidden>
+          <button type="button" id="agenda-prev" aria-label="Semaine précédente">◀</button>
+          <span id="agenda-week" aria-live="polite"></span>
+          <button type="button" id="agenda-next" aria-label="Semaine suivante">▶</button>
+        </div>
+      </div>
+      <div id="agenda-days"></div>
+    </div>
     <div class="tiles-grid" id="tiles-grid"></div>
     <button class="logout-btn" id="logout-btn">← Changer d'espace</button>
   </section>
@@ -1001,5 +1013,6 @@
 <script type="module" src="resa-coworking.js"></script>
 <script type="module" src="mes-reservations.js"></script>
 <script type="module" src="resa-salle.js"></script>
+<script type="module" src="agenda.js"></script>
 </body>
 </html>

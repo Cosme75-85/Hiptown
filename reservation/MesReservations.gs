@@ -24,45 +24,11 @@ function getMyUpcomingBookings(idToken) {
   try {
     getAllSpaces().forEach(space => {
       listMyEvents(space, account, now, to).forEach(ev => {
-        if (ev.end <= now) return;
-        const isCoworking = ev.title.indexOf(COWORKING.titlePrefix) === 0;
-        let status;
-        let title;
-        if (isCoworking) {
-          status = 'confirmed';
-          title = ev.title.slice(COWORKING.titlePrefix.length);
-        } else if (ev.title.indexOf(CONFIRMED_PREFIX) === 0) {
-          status = 'confirmed';
-          title = ev.title.slice(CONFIRMED_PREFIX.length);
-        } else if (ev.title.indexOf(PENDING_PREFIX) === 0) {
-          status = 'pending';
-          title = ev.title.slice(PENDING_PREFIX.length);
-        } else {
-          return; // événement retouché à la main dans l'agenda : on ne devine pas son statut
-        }
-        const slot = eventSlot(ev.start, ev.end);
-        const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
-        const total = (ev.description.match(/Total estimé : ([\d.,]+ €HT)/) || [])[1];
-        bookings.push({
-          kind: isCoworking ? 'coworking' : 'room',
-          status: status,
-          // Modifiable depuis la tuile « Réserver une salle de réunion » (coworking, même compte)
-          editable: isCoworking && ev.portalUid === account.uid && ev.start > now,
-          spaceId: space.id,
-          spaceName: space.name,
-          color: space.color,
-          address: COWORKING.address || '',
-          eventId: ev.id,
-          title: title,
-          start: ev.start.getTime(),
-          end: ev.end.getTime(),
-          dateString: slot.dateString,
-          endDateString: slot.isMultiDay ? slot.endDateString : null,
-          startHour: slot.startHour,
-          endHour: slot.endHour,
-          numberOfPeople: people ? Number(people) : null,
-          total: total || ''
-        });
+        const b = bookingFromEvent(space, ev, now);
+        if (!b || b.status === 'other') return; // événement retouché à la main : on ne devine pas son statut
+        // Modifiable depuis la tuile « Réserver une salle de réunion » (coworking, même compte)
+        b.editable = b.kind === 'coworking' && ev.portalUid === account.uid && ev.start > now;
+        bookings.push(b);
       });
     });
   } catch (err) {
@@ -70,6 +36,118 @@ function getMyUpcomingBookings(idToken) {
   }
   bookings.sort((a, b) => a.start - b.start);
   return { success: true, bookings: bookings, contactEmail: OWNER_EMAIL };
+}
+
+/**
+ * Agenda de l'équipe Hiptown : toutes les réunions à venir de toutes les salles
+ * (demandes en attente, confirmées, coworking et événements ajoutés à la main),
+ * sur les 3 prochains mois. Réservé aux comptes Hiptown (admin).
+ */
+function getAllUpcomingBookings(idToken) {
+  try {
+    getAdminProfile(idToken); // lève « Réservé à l'équipe Hiptown » sinon
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  const now = new Date();
+  const to = new Date(now.getTime() + 92 * DAY_MS);
+  const bookings = [];
+  try {
+    getAllSpaces().forEach(space => {
+      listAllEvents(space, now, to).forEach(ev => {
+        const b = bookingFromEvent(space, ev, now);
+        if (!b) return;
+        b.requestedBy = (ev.description.match(/Demandé par : (.+)/) || [])[1] || '';
+        bookings.push(b);
+      });
+    });
+  } catch (err) {
+    return { success: false, message: 'Impossible de lire les agendas : ' + err.message };
+  }
+  bookings.sort((a, b) => a.start - b.start);
+  return { success: true, bookings: bookings };
+}
+
+/**
+ * Réservation telle qu'affichée par le portail, à partir d'un événement d'agenda.
+ * null si elle est déjà terminée. status : confirmed, pending, ou other (titre sans
+ * préfixe connu, ex. événement saisi directement dans Google Agenda).
+ */
+function bookingFromEvent(space, ev, now) {
+  if (ev.end <= now) return null;
+  const isCoworking = ev.title.indexOf(COWORKING.titlePrefix) === 0;
+  let status = 'other';
+  let title = ev.title;
+  if (isCoworking) {
+    status = 'confirmed';
+    title = ev.title.slice(COWORKING.titlePrefix.length);
+  } else if (ev.title.indexOf(CONFIRMED_PREFIX) === 0) {
+    status = 'confirmed';
+    title = ev.title.slice(CONFIRMED_PREFIX.length);
+  } else if (ev.title.indexOf(PENDING_PREFIX) === 0) {
+    status = 'pending';
+    title = ev.title.slice(PENDING_PREFIX.length);
+  }
+  const slot = eventSlot(ev.start, ev.end);
+  const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
+  const total = (ev.description.match(/Total estimé : ([\d.,]+ €HT)/) || [])[1];
+  return {
+    kind: isCoworking ? 'coworking' : 'room',
+    status: status,
+    editable: false,
+    spaceId: space.id,
+    spaceName: space.name,
+    color: space.color,
+    address: COWORKING.address || '',
+    eventId: ev.id,
+    title: title || 'Réservation',
+    start: ev.start.getTime(),
+    end: ev.end.getTime(),
+    dateString: slot.dateString,
+    endDateString: slot.isMultiDay ? slot.endDateString : null,
+    startHour: slot.startHour,
+    endHour: slot.endHour,
+    numberOfPeople: people ? Number(people) : null,
+    total: total || ''
+  };
+}
+
+/** Tous les événements d'un espace entre deux dates : { id, title, start, end, description }. */
+function listAllEvents(space, from, to) {
+  if (typeof Calendar !== 'undefined') {
+    const out = [];
+    let pageToken;
+    do {
+      const page = Calendar.Events.list(space.calendarId, {
+        timeMin: from.toISOString(),
+        timeMax: to.toISOString(),
+        singleEvents: true,
+        maxResults: 250,
+        pageToken: pageToken,
+        fields: 'nextPageToken,items(iCalUID,summary,start,end,description)'
+      });
+      (page.items || []).forEach(ev => {
+        out.push({
+          id: ev.iCalUID,
+          title: ev.summary || '',
+          start: new Date(apiEventTime(ev.start)),
+          end: new Date(apiEventTime(ev.end)),
+          description: ev.description || ''
+        });
+      });
+      pageToken = page.nextPageToken;
+    } while (pageToken);
+    return out;
+  }
+  const cal = CalendarApp.getCalendarById(space.calendarId);
+  if (!cal) return [];
+  return cal.getEvents(from, to).map(ev => ({
+    id: ev.getId(),
+    title: ev.getTitle(),
+    start: ev.getStartTime(),
+    end: ev.getEndTime(),
+    description: ev.getDescription() || ''
+  }));
 }
 
 /**

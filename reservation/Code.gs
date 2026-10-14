@@ -110,6 +110,10 @@ function doPost(e) {
     if (body.action === 'getMyUpcomingBookings') {
       return jsonResponse(getMyUpcomingBookings(body.idToken));
     }
+    // Agenda de l'équipe : toutes les réunions à venir (voir MesReservations.gs)
+    if (body.action === 'getAllUpcomingBookings') {
+      return jsonResponse(getAllUpcomingBookings(body.idToken));
+    }
     // Réductions clients, gérées par l'équipe depuis le portail (voir Reductions.gs)
     if (body.action === 'getDiscounts') {
       return jsonResponse(getDiscounts(body.idToken));
