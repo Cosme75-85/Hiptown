@@ -393,7 +393,7 @@ function invalidateAvailabilityCache() {
  * Retourne { error: '...' } si la demande est refusée, sinon un objet propre
  * dont chaque champ a le bon type et respecte les règles de l'espace.
  */
-function validateBooking(raw) {
+function validateBooking(raw, servicesAudience) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
 
   const space = findSpace(raw.spaceId);
@@ -430,7 +430,7 @@ function validateBooking(raw) {
     return { error: space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.' };
   }
   // Services (Gestion > Services) : un service retiré pendant que le client remplissait le formulaire est refusé
-  const services = cleanRequestedServices(raw, 'salle', cityOf(space));
+  const services = cleanRequestedServices(raw, servicesAudience || 'salle', cityOf(space));
   if (services.refused.length) {
     return { error: services.refused.join(', ') + ' : plus proposé à la réservation. Merci de recharger la page.' };
   }
@@ -493,9 +493,14 @@ function validateSlot(b) {
   return '';
 }
 
-function bookRoom(rawBooking) {
+/**
+ * Demande de réservation d'un client salle de réunion. Faite par l'équipe Hiptown (staff, depuis
+ * la page de réservation du portail, voir bookForClient dans Coworking.gs), elle vaut validation :
+ * la réservation est confirmée tout de suite, avec devis (salle et services) envoyé au client.
+ */
+function bookRoom(rawBooking, staff) {
   // Validation AVANT de prendre le verrou : une demande invalide ne bloque personne
-  const booking = validateBooking(rawBooking);
+  const booking = validateBooking(rawBooking, staff ? 'admin' : 'salle');
   if (booking.error) return { success: false, message: booking.error };
 
   const lock = LockService.getScriptLock();
@@ -505,6 +510,7 @@ function bookRoom(rawBooking) {
     return { success: false, message: 'Le système est occupé, merci de réessayer dans quelques secondes.' };
   }
 
+  let created = null; // réservation faite par l'équipe : confirmée une fois le verrou rendu
   try {
     const space = booking.space;
     const start = setTime(booking.startDate, booking.startHour);
@@ -526,6 +532,7 @@ function bookRoom(rawBooking) {
       summary.push(['Réduction en attente', describeDiscount(discount) + ', appliquée au devis à la validation'
         + (discount.reason ? ' (motif : ' + discount.reason + ')' : '')]);
     }
+    if (staff) summary.push(['Réservé par', 'l\'équipe Hiptown (' + staff.email + ')']);
 
     const event = cal.createEvent(PENDING_PREFIX + title, start, end, {
       description: summary.map(([label, value]) => label + ' : ' + value)
@@ -539,18 +546,28 @@ function bookRoom(rawBooking) {
     event.setTag(TAG_BOOKING, JSON.stringify(bookingForQuote(booking)));
 
     invalidateAvailabilityCache(); // la disponibilité vient de changer
-    sendApprovalEmail(space, event.getId(), summary);
-
-    return {
-      success: true,
-      message: 'Demande envoyée ! ' + space.name + ' est provisoirement bloqué en attente de validation.'
-    };
-
+    if (staff) {
+      created = event;
+    } else {
+      sendApprovalEmail(space, event.getId(), summary);
+      return {
+        success: true,
+        message: 'Demande envoyée ! ' + space.name + ' est provisoirement bloqué en attente de validation.'
+      };
+    }
   } catch (err) {
     return { success: false, message: 'Erreur lors de la demande : ' + err.message };
   } finally {
     lock.releaseLock();
   }
+  if (!created) return { success: false, message: 'Erreur lors de la demande.' };
+
+  // Hors du verrou (le numéro de devis prend lui-même le verrou) : confirmation, devis et email au client
+  return {
+    success: true,
+    message: 'Réservation faite pour ' + booking.firstName + ' ' + booking.lastName + ' (' + booking.requesterEmail + '). '
+      + applyApprovalAction('approve', created)
+  };
 }
 
 /**

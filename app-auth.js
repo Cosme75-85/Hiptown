@@ -343,6 +343,13 @@ function myAdminLevel() {
 }
 
 // Périmètre de l'admin connecté (null = tout), utilisé pour filtrer les requêtes
+// Page de réservation (resa-coworking.js) : l'équipe y retrouve le compte d'un client par son email
+window.listManagedAccounts = async () => {
+  const [users, companies] = await Promise.all([listAllUsers(adminScope()), listCompanies().catch(() => [])]);
+  const names = Object.fromEntries(companies.map(c => [c.id, c.name]));
+  return users.map(u => Object.assign({}, u, { companyName: (u.companyId && names[u.companyId]) || u.companyNameHint || "" }));
+};
+
 function adminScope() {
   const p = session?.profile;
   if (!p || !p.site) return null;

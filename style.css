@@ -869,7 +869,7 @@ footer {
 .rc-modal h2 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
 .rc-modal-date { font-size: 13px; color: var(--text-soft); margin-bottom: 14px; text-transform: capitalize; }
 .rc-modal label { display: block; margin-top: 12px; font-size: 13px; font-weight: 600; }
-.rc-modal input[type=text], .rc-modal input[type=number], .rc-modal input[type=date], .rc-modal textarea, .rc-modal select {
+.rc-modal input[type=text], .rc-modal input[type=email], .rc-modal input[type=number], .rc-modal input[type=date], .rc-modal textarea, .rc-modal select {
   width: 100%; min-height: 44px; margin-top: 6px; padding: 10px;
   border: 1.5px solid var(--border); border-radius: 8px;
   font: inherit; font-size: 16px; /* 16px minimum : évite le zoom automatique sur iPhone */
