@@ -18,10 +18,6 @@ function doGet(e) {
   if (action === 'approve' || action === 'reject') {
     return handleApprovalAction(e.parameter);
   }
-  // Services commandés par un coworker, validés par l'équipe de la ville (voir Coworking.gs)
-  if (action === 'approveMeals' || action === 'rejectMeals') {
-    return handleMealsApproval(e.parameter);
-  }
 
   if (action === 'getAllMonthsAvailability') {
     const year = parseInt(e.parameter.year, 10);
