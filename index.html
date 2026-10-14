@@ -1017,6 +1017,27 @@
           <div class="rc-slot-banner" id="rc-slot-banner"></div>
           <p class="rc-booker" id="rc-booker"></p>
           <p class="rc-cost" id="rc-cost" hidden></p>
+          <!-- Équipe Hiptown : réserver pour un coworker ou un client salle de réunion (resa-coworking.js) -->
+          <fieldset class="rc-meals" id="rc-for" hidden>
+            <legend>Pour qui ?</legend>
+            <label for="rc-for-email">Email du client (vide : pour vous)</label>
+            <input type="email" id="rc-for-email" maxlength="100" list="rc-for-emails" autocomplete="off" placeholder="client@entreprise.fr"/>
+            <datalist id="rc-for-emails"></datalist>
+            <p class="rc-meals-total" id="rc-for-found" aria-live="polite" hidden></p>
+            <div class="rc-check-row"><input type="radio" name="rc-for" id="rc-for-me" value="me" checked/><label for="rc-for-me">Pour moi (équipe Hiptown)</label></div>
+            <div class="rc-check-row"><input type="radio" name="rc-for" id="rc-for-coworking" value="coworking"/><label for="rc-for-coworking">Un coworker : sur ses crédits, devis des services seuls</label></div>
+            <div class="rc-check-row"><input type="radio" name="rc-for" id="rc-for-salle" value="salle"/><label for="rc-for-salle">Un client salle de réunion : devis de la salle et des services</label></div>
+            <div id="rc-for-client" hidden>
+              <label for="rc-for-civility">Civilité *</label>
+              <select id="rc-for-civility"><option value="">—</option><option>Madame</option><option>Monsieur</option></select>
+              <label for="rc-for-first">Prénom *</label>
+              <input type="text" id="rc-for-first" maxlength="100"/>
+              <label for="rc-for-last">Nom *</label>
+              <input type="text" id="rc-for-last" maxlength="100"/>
+              <label for="rc-for-company">Entreprise *</label>
+              <input type="text" id="rc-for-company" maxlength="100"/>
+            </div>
+          </fieldset>
           <label for="rc-people">Nombre de personnes *</label>
           <input type="number" id="rc-people" min="1" value="1" inputmode="numeric"/>
           <label for="rc-title">Titre de la réunion</label>

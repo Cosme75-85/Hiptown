@@ -102,6 +102,12 @@ s'il a commandé des services).
 Le domaine se règle dans `CITY_TEAM_EMAIL_DOMAIN` (`Config.gs`). Pensez à créer la boîte (ou
 l'alias) de chaque ville avant d'y ouvrir des salles.
 
+**Réserver pour un client** (portail : Salle de réunion > Réserver une salle, équipe Hiptown) :
+« Pour qui ? » propose soi-même, un coworker ou un client salle de réunion. L'email saisi est cherché
+dans les comptes gérés par l'admin : le type est coché tout seul. Coworker : réservation sur les crédits
+de son entreprise, devis des services seuls, il la retrouve dans son espace. Client salle (avec ou sans
+compte) : réservation confirmée tout de suite (l'équipe vaut validation), devis de la salle et des services.
+
 **Devis faits à la main** (portail : **Gestion > Devis**, équipe Hiptown) : pour un coworker
 (services seuls) ou un client salle de réunion (salle et services), envoyé au choix au client
 (copie à son auteur et à l'équipe de la ville, le client répond à l'auteur) ou à son auteur seul.

@@ -462,9 +462,91 @@ function showFormStep() {
       : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
   applyMealsDeadline("rc", b.dateString, b.startHour);
   updateMealsTotal("rc", b);
+  $("rc-for").hidden = !isTeam;
+  if (isTeam) { updateForFields(); loadAccounts(); }
   $("rc-form-step").hidden = false;
   $("rc-submit").hidden = false;
   $("rc-form-step").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ==================== ÉQUIPE HIPTOWN : RÉSERVER POUR UN CLIENT ====================
+// « Pour qui ? » : soi-même, un coworker ou un client salle de réunion. L'email saisi est
+// cherché dans les comptes que l'équipe gère (Gestion des comptes) : le type de client est
+// coché tout seul et les coordonnées remplies. Le serveur revérifie le compte.
+
+let accounts = null;      // comptes gérés par l'admin connecté (chargés à la 1re ouverture)
+let forAccount = null;    // compte trouvé pour l'email saisi
+
+async function loadAccounts() {
+  if (accounts || !window.listManagedAccounts) return;
+  try {
+    accounts = await window.listManagedAccounts();
+  } catch (err) {
+    console.error(err);
+    accounts = [];
+  }
+  $("rc-for-emails").innerHTML = accounts
+    .filter(a => a.email && (a.role === "coworking" || a.role === "salle") && a.status === "approved")
+    .map(a => '<option value="' + escapeHtml(a.email) + '">' + escapeHtml(((a.firstName || "") + " " + (a.lastName || "")).trim()
+      + (a.companyName ? " · " + a.companyName : "")) + "</option>").join("");
+  detectAccount();
+}
+
+const forChoice = () => (document.querySelector('input[name="rc-for"]:checked') || {}).value || "me";
+function setForChoice(value) { $("rc-for-" + value).checked = true; updateForFields(); }
+
+/** Cherche le compte de l'email saisi et coche le type de client correspondant. */
+function detectAccount() {
+  const email = $("rc-for-email").value.trim().toLowerCase();
+  const found = $("rc-for-found");
+  forAccount = email && accounts ? accounts.find(a => (a.email || "").toLowerCase() === email) || null : null;
+  if (!email) {
+    found.hidden = true;
+    setForChoice("me");
+    return;
+  }
+  found.hidden = false;
+  if (!accounts) { found.textContent = "Recherche du compte..."; return; }
+  const name = forAccount ? ((forAccount.firstName || "") + " " + (forAccount.lastName || "")).trim() : "";
+  if (forAccount && forAccount.status === "approved" && forAccount.role === "coworking") {
+    found.textContent = "✓ Compte coworking : " + (name || email) + (forAccount.companyName ? " (" + forAccount.companyName + ")" : "");
+    setForChoice("coworking");
+  } else if (forAccount && forAccount.status === "approved" && forAccount.role === "salle") {
+    found.textContent = "✓ Compte salle de réunion : " + (name || email);
+    $("rc-for-first").value = forAccount.firstName || "";
+    $("rc-for-last").value = forAccount.lastName || "";
+    $("rc-for-company").value = forAccount.companyName || "";
+    setForChoice("salle");
+  } else if (forAccount && forAccount.role === "admin") {
+    found.textContent = "Compte de l'équipe Hiptown : videz l'email pour réserver pour vous.";
+  } else {
+    found.textContent = "Aucun compte avec cet email : réservation pour un client salle de réunion externe.";
+    if (forChoice() !== "salle") setForChoice("salle");
+  }
+}
+
+/** Coordonnées à saisir pour un client salle de réunion ; crédits affichés seulement pour soi. */
+function updateForFields() {
+  const choice = forChoice();
+  $("rc-for-client").hidden = choice !== "salle";
+  const email = $("rc-for-email").value.trim();
+  $("rc-booker").textContent = choice === "me"
+    ? (auth.currentUser ? "Confirmation envoyée à " + auth.currentUser.email : "")
+    : email ? "Confirmation et devis envoyés à " + email : "Saisissez l'email du client.";
+}
+
+function forClientPayload() {
+  const choice = forChoice();
+  if (!isTeam || choice === "me") return null;
+  return {
+    audience: choice,
+    email: $("rc-for-email").value.trim().toLowerCase(),
+    uid: choice === "coworking" && forAccount ? forAccount.uid : "",
+    civility: $("rc-for-civility").value,
+    firstName: $("rc-for-first").value.trim(),
+    lastName: $("rc-for-last").value.trim(),
+    company: $("rc-for-company").value.trim()
+  };
 }
 
 function resetForm() {
@@ -472,6 +554,10 @@ function resetForm() {
   $("rc-title").value = "";
   $("rc-notes").value = "";
   setServices("rc", {});
+  ["rc-for-email", "rc-for-first", "rc-for-last", "rc-for-company", "rc-for-civility"].forEach(id => { $(id).value = ""; });
+  forAccount = null;
+  $("rc-for-found").hidden = true;
+  setForChoice("me");
 }
 
 async function confirmBooking() {
@@ -487,8 +573,17 @@ async function confirmBooking() {
     numberOfPeople: parseInt($("rc-people").value, 10) || 0,
     services: readServices("rc"),
     title: $("rc-title").value.trim(),
-    notes: $("rc-notes").value.trim()
+    notes: $("rc-notes").value.trim(),
+    forClient: forClientPayload()
   };
+  const forClient = payload.forClient;
+  if (forClient) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forClient.email)) return showToast("Merci de saisir l'email du client.");
+    if (forClient.audience === "coworking" && !forClient.uid) return showToast("Aucun compte coworking avec cet email.");
+    if (forClient.audience === "salle" && (!forClient.civility || !forClient.firstName || !forClient.lastName || !forClient.company)) {
+      return showToast("Merci de renseigner civilité, prénom, nom et entreprise du client.");
+    }
+  }
 
   // Vérifications rapides pour éviter un aller-retour inutile (le serveur revérifie tout)
   if (payload.numberOfPeople < 1) return showToast("Merci de renseigner le nombre de personnes.");
@@ -929,6 +1024,8 @@ document.addEventListener("click", e => {
   .forEach(id => $(id).addEventListener("change", updateEditForm));
 $("rc-edit-people").addEventListener("input", updateEditForm);
 $("rc-people").addEventListener("input", () => updateMealsTotal("rc", pendingBooking));
+$("rc-for-email").addEventListener("input", () => { detectAccount(); updateForFields(); });
+document.querySelectorAll('input[name="rc-for"]').forEach(r => r.addEventListener("change", updateForFields));
 // Services : une case cochée affiche sa quantité (service à l'unité), puis le total est recalculé
 ["rc", "rc-edit"].forEach(prefix => {
   $(prefix + "-services").addEventListener("change", e => {

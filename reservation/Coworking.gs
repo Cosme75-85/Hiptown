@@ -52,6 +52,21 @@ function bookCoworkingRoom(idToken, rawBooking) {
 
   const booking = validateCoworkingBooking(rawBooking, user);
   if (booking.error) return { success: false, message: booking.error };
+
+  // Équipe Hiptown qui réserve pour un client (« Pour qui ? » de la page de réservation)
+  const forClient = rawBooking && rawBooking.forClient;
+  if (forClient && forClient.audience && forClient.audience !== 'me') {
+    if (!user.isHiptown) return { success: false, message: 'Réservé à l\'équipe Hiptown.' };
+    if (forClient.audience === 'salle') return bookRoom(salleRequestFor(forClient, rawBooking), user);
+    if (forClient.audience !== 'coworking') return { success: false, message: 'Choisissez pour qui réserver.' };
+    try {
+      booking.bookedBy = user.email;
+      user = getCoworkerForTeam(idToken, forClient);
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  }
+
   if (hasServices(booking) && mealsTooLate(setTime(booking.startDate, booking.startHour))) {
     return { success: false, message: mealsTooLateMessage() };
   }
@@ -87,9 +102,12 @@ function bookCoworkingRoom(idToken, rawBooking) {
 
   return {
     success: true,
-    message: 'Réservation confirmée ! ' + booking.space.name + ' est à vous.'
+    message: (booking.bookedBy ? 'Réservation confirmée pour ' + user.email + ' (' + (user.company || 'coworking') + ') : '
+      + booking.space.name + '.' : 'Réservation confirmée ! ' + booking.space.name + ' est à vous.')
       + (done.credits ? ' ' + done.credits.cost + ' crédit(s) utilisé(s), il en reste ' + done.credits.remaining + '.' : '')
-      + (quote ? ' Votre devis des services est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.')
+      + (booking.bookedBy
+        ? (quote ? ' Email récapitulatif et devis des services envoyés au coworker.' : ' Email récapitulatif envoyé au coworker.')
+        : (quote ? ' Votre devis des services est joint à l\'email récapitulatif.' : ' Un email récapitulatif vous a été envoyé.'))
   };
 }
 
@@ -137,6 +155,7 @@ function createCoworkingEvent(user, booking) {
     ['Nombre de personnes', booking.numberOfPeople],
     hasServices(booking) && mealsLine(booking),
     user.chargesCredits && ['Crédits utilisés', cost],
+    booking.bookedBy && ['Réservé par', 'l\'équipe Hiptown (' + booking.bookedBy + ')'],
     booking.notes && ['Note', booking.notes]
   ].filter(Boolean)
     .map(([label, value]) => label + ' : ' + value)
@@ -234,6 +253,7 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits, qu
   sendClientEmail(user.email, user.firstName, 'Réservation confirmée — ' + booking.space.name + ' — Hiptown', [
     'Votre réservation <b>"' + escapeHtml(title) + '"</b> est confirmée : <b>' + escapeHtml(booking.space.name)
       + '</b>, ' + when + ', pour ' + booking.numberOfPeople + ' personne(s).',
+    booking.bookedBy && 'Cette réservation a été faite pour vous par l\'équipe Hiptown.',
     credits && ('Crédits utilisés : <b>' + credits.cost + '</b>. Il reste <b>' + credits.remaining
       + '</b> crédit(s) à votre entreprise pour ' + credits.monthLabel + '.'),
     mealsParagraph(booking, quote, false),
@@ -872,6 +892,54 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
   return null;
 }
 
+// ==================== RÉSERVATION FAITE PAR L'ÉQUIPE POUR UN CLIENT ====================
+// Depuis la page de réservation, l'équipe Hiptown choisit « Pour qui ? » : elle-même, un coworker
+// (réservation sur les crédits de son entreprise, devis des services seuls, il la retrouve et peut la
+// modifier dans son espace), ou un client salle de réunion (réservation confirmée tout de suite, devis
+// de la salle et des services). Le portail reconnaît le type de compte d'après l'email saisi.
+
+/**
+ * Coworker pour qui l'équipe réserve : sa fiche est lue avec le jeton de l'équipe (les règles
+ * Firestore ne la montrent qu'aux admins qui gèrent ce compte), puis comparée à l'email saisi.
+ */
+function getCoworkerForTeam(idToken, forClient) {
+  const uid = String(forClient.uid || '');
+  if (!/^[A-Za-z0-9]{1,128}$/.test(uid)) throw new Error('Aucun compte coworking trouvé pour cet email.');
+  let profile = null;
+  try {
+    profile = readFirestoreDoc('users/' + encodeURIComponent(uid), idToken);
+  } catch (err) {
+    throw new Error('Ce compte coworking n\'est pas dans votre périmètre.');
+  }
+  if (!profile || profile.role !== 'coworking' || profile.status !== 'approved') {
+    throw new Error('Ce compte n\'est pas un compte coworking validé.');
+  }
+  if (normalizeEmail(profile.email) !== normalizeEmail(forClient.email)) {
+    throw new Error('L\'email ne correspond pas au compte coworking choisi.');
+  }
+  return portalUserFromProfile(uid, profile, idToken);
+}
+
+/** Demande au format du site public (bookRoom), pour un client salle de réunion. */
+function salleRequestFor(forClient, raw) {
+  return {
+    spaceId: raw.spaceId,
+    civility: forClient.civility,
+    firstName: forClient.firstName,
+    lastName: forClient.lastName,
+    company: forClient.company,
+    requesterEmail: forClient.email,
+    numberOfPeople: raw.numberOfPeople,
+    dateString: raw.dateString,
+    endDateString: raw.endDateString,
+    startHour: raw.startHour,
+    endHour: raw.endHour,
+    title: raw.title,
+    notes: raw.notes,
+    services: raw.services
+  };
+}
+
 // ==================== COMPTE DU PORTAIL ====================
 
 /**
@@ -888,7 +956,14 @@ function getPortalUser(idToken) {
     throw new Error('Votre compte ne permet pas de réserver les salles de réunion. Contactez l\'équipe Hiptown.');
   }
   if (!profile.email) throw new Error('Adresse email manquante sur votre compte. Contactez l\'équipe Hiptown.');
+  return portalUserFromProfile(uid, profile, idToken);
+}
 
+/**
+ * Compte réservant à partir de sa fiche du portail (idToken : jeton qui sert à lire la fiche
+ * de son entreprise, celui du compte lui-même ou celui de l'équipe Hiptown qui réserve pour lui).
+ */
+function portalUserFromProfile(uid, profile, idToken) {
   let company = '';
   let companyDoc = null;
   if (profile.companyId) {
