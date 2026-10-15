@@ -1199,6 +1199,24 @@ button.agenda-item:hover { background: #fff4a2; }
 .welcome-btn-primary { background: var(--yellow); color: var(--navy); border: none; }
 .welcome-btn-secondary { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.7); }
 
+/* Téléphone : l'accueil Connexion / Inscription prend tout l'écran (bandeau du haut masqué, le logo est déjà dans l'accueil) */
+@media (max-width: 599px) {
+  body:has(#step-welcome:not([hidden])) > header,
+  body:has(#step-welcome:not([hidden])) > #events-banner { display: none; }
+  .container:has(> #step-welcome:not([hidden])) { padding: 0; max-width: none; }
+  #step-welcome:not([hidden]) {
+    min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+    background: linear-gradient(160deg, var(--navy) 0%, #2d2470 100%);
+    padding: 0 0 calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  #step-welcome .welcome-hero {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    background: none; border-radius: 0; box-shadow: none; padding: 48px 24px 32px;
+  }
+  #step-welcome .welcome-hero-actions { width: 100%; }
+  #step-welcome .install-link { color: #fff; margin-top: 0; }
+}
+
 /* Inscription : rappel du type de compte, liens Connexion ⇄ Inscription */
 .auth-role-chip { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--bg); border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
 .auth-switch { font-size: 13px; color: var(--text-soft); margin-top: 14px; }
