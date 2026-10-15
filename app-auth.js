@@ -4,7 +4,7 @@
 //  APRÈS config.js et app.js dans index.html
 // ═══════════════════════════════════════════════════════
 
-import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile } from "./auth.js";
+import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, changeMyPassword } from "./auth.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
@@ -245,6 +245,7 @@ const profilePage = initProfilePage({
     Object.assign(session.profile, fields);
     window.renderIdentity(buildClient());
   },
+  changePassword: changeMyPassword,
   onClose: () => {
     hideAllAuth();
     document.getElementById("step-dashboard").hidden = false;
