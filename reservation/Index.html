@@ -167,7 +167,7 @@
     .day .remaining { font-size: 9px; font-weight: 500; }
     .loading-mini { grid-column: 1 / -1; text-align: center; color: var(--text-soft); font-size: 13px; padding: 12px 0; }
 
-    /* Fenêtre de réservation : plein écran par le bas sur mobile */
+    /* Fenêtre de réservation : tout l'écran sur téléphone */
     .overlay {
       display: none;
       position: fixed;
@@ -181,9 +181,10 @@
     .modal {
       background: var(--white);
       width: 100%;
-      max-height: 92vh;
+      height: 100vh;
+      height: 100dvh;
       overflow-y: auto;
-      border-radius: var(--radius) var(--radius) 0 0;
+      border-radius: 0;
       padding: 20px var(--gutter);
     }
     .modal h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
@@ -268,7 +269,7 @@
       .spaces-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
       .field-row { grid-template-columns: 1fr 1fr; }
       .overlay { align-items: center; padding: var(--gutter); }
-      .modal { max-width: 440px; border-radius: var(--radius); }
+      .modal { max-width: 440px; height: auto; max-height: 92vh; border-radius: var(--radius); }
       .toast { left: 50%; right: auto; transform: translateX(-50%); max-width: 90vw; }
     }
 
