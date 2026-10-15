@@ -11,7 +11,11 @@
  * Rien n'est modifié dans les agendas.
  */
 
-/** Réservations à venir du compte connecté, dans tous les espaces, sur les 12 prochains mois. */
+/**
+ * Réservations du compte connecté, dans tous les espaces : celles du mois en cours,
+ * passées comprises (elles restent jusqu'à la remise à zéro des crédits le mois
+ * suivant, past: true), puis celles des 12 prochains mois.
+ */
 function getMyUpcomingBookings(idToken) {
   let account;
   try {
@@ -21,6 +25,7 @@ function getMyUpcomingBookings(idToken) {
   }
 
   const now = new Date();
+  const monthStart = startOfMonth(now);
   const to = new Date(now.getTime() + 366 * DAY_MS);
   const bookings = [];
 
@@ -29,12 +34,13 @@ function getMyUpcomingBookings(idToken) {
   if (records) {
     records.forEach(r => {
       const space = findSpace(r.spaceId);
-      if (!space || r.end <= now.getTime()) return;
+      if (!space || r.end <= monthStart.getTime()) return;
       const view = coworkingBookingView(space, r, false);
       bookings.push({
         kind: 'coworking',
         status: 'confirmed',
         editable: r.start > now.getTime(), // modifiable ou annulable jusqu'à son début
+        past: r.end <= now.getTime(),
         spaceId: view.spaceId,
         spaceName: view.spaceName,
         color: view.color,
@@ -57,11 +63,12 @@ function getMyUpcomingBookings(idToken) {
   // Sinon (clients salle de réunion) : demandes retrouvées dans les agendas par l'email du compte
   try {
     getAllSpaces().forEach(space => {
-      listMyEvents(space, account, now, to).forEach(ev => {
-        const b = bookingFromEvent(space, ev, now);
+      listMyEvents(space, account, monthStart, to).forEach(ev => {
+        const b = bookingFromEvent(space, ev, monthStart);
         if (!b || b.status === 'other') return; // événement retouché à la main : on ne devine pas son statut
         // Modifiable depuis la tuile « Réserver une salle de réunion » (coworking, même compte)
         b.editable = b.kind === 'coworking' && ev.portalUid === account.uid && ev.start > now;
+        b.past = ev.end <= now;
         bookings.push(b);
       });
     });
@@ -104,7 +111,7 @@ function getAllUpcomingBookings(idToken) {
 
 /**
  * Réservation telle qu'affichée par le portail, à partir d'un événement d'agenda.
- * null si elle est déjà terminée. status : confirmed, pending, ou other (titre sans
+ * null si elle s'est terminée avant « now » (début du mois pour la liste du client). status : confirmed, pending, ou other (titre sans
  * préfixe connu, ex. événement saisi directement dans Google Agenda).
  */
 function bookingFromEvent(space, ev, now) {
@@ -285,7 +292,7 @@ function tokenEmail(idToken) {
 // ==================== LISTE « MES RÉSERVATIONS » DES COWORKERS ====================
 // Une liste par compte du portail, enregistrée dans les propriétés du script :
 // la réservation y entre dès qu'elle est faite, y suit ses modifications et en sort
-// à son annulation (ou une fois terminée). Rangée par date.
+// à son annulation (ou le mois suivant une fois passée). Rangée par date.
 
 const MY_BOOKINGS_KEY_PREFIX = 'mesReservations_';
 const MY_BOOKINGS_MAX_SIZE = 8500; // une propriété du script contient au plus 9 ko
@@ -309,21 +316,25 @@ function readCoworkingRecords(uid) {
 function myCoworkingRecords(uid) {
   const stored = readCoworkingRecords(uid);
   if (stored) return stored;
-  const now = new Date();
-  const to = new Date(now.getTime() + 366 * DAY_MS);
+  const from = startOfMonth(new Date());
+  const to = new Date(Date.now() + 366 * DAY_MS);
   const list = [];
   getCoworkingSpaceList().forEach(space => {
-    listOwnEvents(space, uid, now, to).forEach(ev => {
+    listOwnEvents(space, uid, from, to).forEach(ev => {
       if (ev.title.indexOf(COWORKING.titlePrefix) === 0) list.push(coworkingRecord(space, ev));
     });
   });
   return writeCoworkingRecords(uid, list);
 }
 
-/** Enregistre la liste sans les réservations terminées, par date ; la plus lointaine part si c'est trop long. */
+/**
+ * Enregistre la liste par date, sans les réservations terminées avant ce mois-ci
+ * (celles du mois restent jusqu'à la remise à zéro des crédits) ; la plus lointaine
+ * part si c'est trop long.
+ */
 function writeCoworkingRecords(uid, list) {
-  const now = Date.now();
-  const kept = list.filter(r => r && r.end > now).sort((a, b) => a.start - b.start);
+  const monthStart = startOfMonth(new Date()).getTime();
+  const kept = list.filter(r => r && r.end > monthStart).sort((a, b) => a.start - b.start);
   let json = JSON.stringify(kept);
   while (json.length > MY_BOOKINGS_MAX_SIZE && kept.length) {
     Logger.log('⚠️ Liste « Mes réservations » trop longue pour ' + uid + ' : réservation du '
@@ -355,4 +366,9 @@ function forgetCoworkingEvent(uid, eventId) {
   } catch (err) {
     Logger.log('⚠️ « Mes réservations » non mise à jour pour ' + uid + ' : ' + err.message);
   }
+}
+
+/** Premier jour du mois de cette date, à minuit. */
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
 }

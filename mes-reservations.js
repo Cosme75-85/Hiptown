@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Mes prochaines réservations (page à part)
+//  PORTAIL HIPTOWN — Mes réservations (page à part)
+//  Clients : réservations du mois en cours, passées comprises (gardées jusqu'à la
+//  remise à zéro des crédits le mois suivant), puis toutes celles à venir.
 //  Ouverte par la tuile « Mes prochaines réservations » ou par le lien bleu
 //  de l'outil de réservation des salles (portail#mes-reservations).
 //  Toutes les réservations à venir de la personne connectée, quel que soit
@@ -78,10 +80,10 @@ function applyLabels() {
   const team = isTeam();
   const tile = $("salles-mine");
   if (tile) {
-    tile.querySelector(".tile-title").textContent = team ? "Réservations" : "Mes prochaines réservations";
-    tile.querySelector(".tile-desc").textContent = team ? "Toutes les réservations clients" : "Salles réservées à venir";
+    tile.querySelector(".tile-title").textContent = team ? "Réservations" : "Mes réservations";
+    tile.querySelector(".tile-desc").textContent = team ? "Toutes les réservations clients" : "Ce mois-ci et à venir";
   }
-  $("mes-resa-title").textContent = team ? "📅 Réservations" : "📅 Mes prochaines réservations";
+  $("mes-resa-title").textContent = team ? "📅 Réservations" : "📅 Mes réservations";
 }
 
 // ==================== CRÉDITS DU MOIS (COWORKERS) ====================
@@ -138,7 +140,7 @@ function showMessage(text) {
 }
 
 function render() {
-  if (!bookings.length) return showMessage(isTeam() ? "Aucune réservation client à venir." : "Aucune réservation à venir.");
+  if (!bookings.length) return showMessage(isTeam() ? "Aucune réservation client à venir." : "Aucune réservation ce mois-ci ni à venir.");
   const shown = showAll ? bookings : bookings.slice(0, shownAtFirst());
   $("my-bookings-list").innerHTML = shown.map(bookingCard).join("");
   const more = $("my-bookings-more");
@@ -156,13 +158,16 @@ function bookingCard(b, i) {
   const dayHtml = b.endDateString
     ? '<span class="rc-bk-day rc-bk-range">' + d + " → " + Number(b.endDateString.split("-")[2]) + "</span>"
     : '<span class="rc-bk-day">' + d + "</span>";
-  const status = b.status === "pending"
+  const status = b.past
+    ? '<span class="my-status my-status-past">Passée</span>'
+    : b.status === "pending"
     ? '<span class="my-status my-status-pending">En attente de validation</span>'
     : b.status === "confirmed" ? '<span class="my-status my-status-confirmed">Confirmée</span>' : "";
 
   let actions = "";
-  if (isTeam()) {
-    // Équipe : consultation seulement (la gestion se fait dans Gestion et dans Google Agenda)
+  if (isTeam() || b.past) {
+    // Équipe : consultation seulement (la gestion se fait dans Gestion et dans Google Agenda).
+    // Réunion passée : gardée jusqu'à la fin du mois pour comprendre les crédits, plus rien à faire.
   } else if (b.status === "confirmed") {
     actions += '<details class="rc-addcal"><summary class="rc-option">📅 Ajouter à mon agenda</summary><div class="rc-addcal-menu">'
       + '<a href="' + escapeHtml(googleCalendarUrl(b)) + '" target="_blank" rel="noopener">Google Agenda</a>'
@@ -175,7 +180,7 @@ function bookingCard(b, i) {
     actions += '<a class="rc-option" href="' + escapeHtml(changeRequestMailto(b)) + '">✉️ Modifier ou annuler</a>';
   }
 
-  return '<article class="rc-bk" style="--space-color:' + escapeHtml(b.color || "#67DFCB") + '">'
+  return '<article class="rc-bk' + (b.past ? " rc-bk-past" : "") + '" style="--space-color:' + escapeHtml(b.color || "#67DFCB") + '">'
     + '<div class="rc-bk-date" aria-hidden="true"><span class="rc-bk-dow">' + escapeHtml(dow) + "</span>" + dayHtml
     + '<span class="rc-bk-month">' + escapeHtml(monthShort) + "</span></div>"
     + '<div class="rc-bk-body">'
@@ -187,7 +192,7 @@ function bookingCard(b, i) {
     + (b.total ? "<li>💶 " + escapeHtml(b.total.replace(".", ",")) + " (estimé)</li>" : "")
     + "</ul>"
     + (actions ? '<div class="rc-bk-actions">' + actions + "</div>" : "")
-    + (!isTeam() && b.kind === "room" && b.status === "pending"
+    + (!isTeam() && !b.past && b.kind === "room" && b.status === "pending"
       ? '<p class="my-bookings-help">Le créneau est bloqué pour vous. Vous recevrez un email dès que l\'équipe aura validé la demande.</p>'
       : "")
     + "</div></article>";
