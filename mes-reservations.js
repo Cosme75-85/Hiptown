@@ -111,26 +111,31 @@ async function loadCredits() {
 }
 
 /**
- * Toutes les réunions de l'entreprise décomptées ce mois-ci, passées comprises
- * et quel que soit le membre qui a réservé : de quoi comprendre le solde.
+ * Réunions du compte décomptées ce mois-ci, passées comprises : de quoi comprendre
+ * le solde. Les autres comptes de l'entreprise n'apparaissent que par leur total.
  */
 function creditDetailsHtml(res) {
   if (!Array.isArray(res.details)) { // ancienne version de l'outil de réservation : pas de détail
     return '<p class="my-bookings-help">' + res.used + " crédit(s) utilisé(s) ce mois-ci.</p>";
   }
-  if (!res.details.length) return '<p class="my-bookings-help">Aucune réunion décomptée ce mois-ci.</p>';
-  const rows = res.details.map(d => {
+  // Ancien outil de réservation : il renvoyait aussi les réunions des autres comptes (mine: false)
+  const list = res.details.filter(d => d.mine !== false);
+  const others = res.othersCredits
+    ? '<p class="my-credits-sub">Autres comptes de votre entreprise : ' + res.othersCredits + " crédit(s) utilisé(s).</p>"
+    : "";
+  if (!list.length) return '<p class="my-bookings-help">Aucune de vos réunions décomptée ce mois-ci.</p>' + others;
+  const mine = list.reduce((sum, d) => sum + (Number(d.credits) || 0), 0);
+  const rows = list.map(d => {
     const when = d.endDateString
       ? "Du " + formatDate(d.dateString) + " au " + formatDate(d.endDateString)
       : formatDate(d.dateString) + ", " + d.startHour + "h – " + d.endHour + "h";
     return '<li class="rc-credits-row' + (d.past ? " rc-credits-past" : "") + '">'
       + '<span class="rc-credits-when">' + escapeHtml(when) + (d.past ? ' <span class="rc-credits-tag">passée</span>' : "") + "</span>"
-      + '<span class="rc-credits-what">' + escapeHtml(d.spaceName) + " · " + escapeHtml(d.title)
-      + (d.bookedBy && !d.mine ? " · par " + escapeHtml(d.bookedBy) : "") + "</span>"
+      + '<span class="rc-credits-what">' + escapeHtml(d.spaceName) + " · " + escapeHtml(d.title) + "</span>"
       + '<span class="rc-credits-cost">' + d.credits + " crédit(s)</span></li>";
   }).join("");
-  return '<p class="my-credits-sub">Réunions du mois (' + res.details.length + "), passées comprises : "
-    + res.used + " crédit(s) utilisé(s)</p><ul class=\"rc-credits-list\">" + rows + "</ul>";
+  return '<p class="my-credits-sub">Vos réunions du mois (' + list.length + "), passées comprises : "
+    + mine + " crédit(s) utilisé(s)</p><ul class=\"rc-credits-list\">" + rows + "</ul>" + others;
 }
 
 /** Message à la place de la liste (aucune réservation, erreur). */
