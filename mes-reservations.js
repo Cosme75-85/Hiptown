@@ -8,12 +8,17 @@
 //  Le serveur (reservation/MesReservations.gs) vérifie le compte.
 //  Coworking : « Modifier ou annuler » ouvre la tuile de réservation.
 //  Salle de réunion : modification ou annulation par email à l'équipe.
+//  Équipe Hiptown (Admin) : page « Réservations » avec toutes les réservations
+//  clients de toutes les salles (serveur : getAllUpcomingBookings).
+//  Coworkers : en dessous, crédits du mois et détail des réunions décomptées,
+//  passées comprises (serveur : getCoworkingCredits, reservation/Coworking.gs).
 // ═══════════════════════════════════════════════════════
 
 import { auth } from "./firebase-config.js";
 
 const BASE_URL = PORTAIL.reservationUrl;
 const SHOWN_AT_FIRST = 3; // au-delà, bouton « Voir les autres »
+const TEAM_SHOWN_AT_FIRST = 15; // équipe Hiptown : toutes les réservations clients
 const SPACES_WITH_LIST = ["salle", "coworking", "hiptown"]; // l'équipe aussi : ses propres réservations
 
 const $ = id => document.getElementById(id);
@@ -47,7 +52,7 @@ async function load() {
     const res = await fetch(BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
-      body: JSON.stringify({ action: "getMyUpcomingBookings", idToken: idToken })
+      body: JSON.stringify({ action: isTeam() ? "getAllUpcomingBookings" : "getMyUpcomingBookings", idToken: idToken })
     }).then(r => r.json());
     if (token !== requestToken) return;
     if (!res.success || !Array.isArray(res.bookings)) {
@@ -64,6 +69,68 @@ async function load() {
   }
 }
 
+function isTeam() { return currentSpace === "hiptown"; }
+
+function shownAtFirst() { return isTeam() ? TEAM_SHOWN_AT_FIRST : SHOWN_AT_FIRST; }
+
+/** Équipe Hiptown : la tuile et la page s'appellent « Réservations » (toutes les réservations clients). */
+function applyLabels() {
+  const team = isTeam();
+  const tile = $("salles-mine");
+  if (tile) {
+    tile.querySelector(".tile-title").textContent = team ? "Réservations" : "Mes prochaines réservations";
+    tile.querySelector(".tile-desc").textContent = team ? "Toutes les réservations clients" : "Salles réservées à venir";
+  }
+  $("mes-resa-title").textContent = team ? "📅 Réservations" : "📅 Mes prochaines réservations";
+}
+
+// ==================== CRÉDITS DU MOIS (COWORKERS) ====================
+
+async function loadCredits() {
+  const token = requestToken;
+  const box = $("my-credits");
+  box.hidden = true;
+  if (currentSpace !== "coworking" || !auth.currentUser) return;
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "getCoworkingCredits", idToken: idToken })
+    }).then(r => r.json());
+    if (token !== requestToken || !res.success || !res.chargesCredits) return;
+    box.innerHTML = '<h3 class="my-credits-title">Crédits ' + escapeHtml(res.company ? "de " + res.company + " " : "")
+      + "pour " + escapeHtml(res.monthLabel) + " : <b>" + res.remaining + "</b> restant(s) sur " + res.allowance + "</h3>"
+      + creditDetailsHtml(res);
+    box.hidden = false;
+  } catch (err) {
+    box.hidden = true;
+  }
+}
+
+/**
+ * Toutes les réunions de l'entreprise décomptées ce mois-ci, passées comprises
+ * et quel que soit le membre qui a réservé : de quoi comprendre le solde.
+ */
+function creditDetailsHtml(res) {
+  if (!Array.isArray(res.details)) { // ancienne version de l'outil de réservation : pas de détail
+    return '<p class="my-bookings-help">' + res.used + " crédit(s) utilisé(s) ce mois-ci.</p>";
+  }
+  if (!res.details.length) return '<p class="my-bookings-help">Aucune réunion décomptée ce mois-ci.</p>';
+  const rows = res.details.map(d => {
+    const when = d.endDateString
+      ? "Du " + formatDate(d.dateString) + " au " + formatDate(d.endDateString)
+      : formatDate(d.dateString) + ", " + d.startHour + "h – " + d.endHour + "h";
+    return '<li class="rc-credits-row' + (d.past ? " rc-credits-past" : "") + '">'
+      + '<span class="rc-credits-when">' + escapeHtml(when) + (d.past ? ' <span class="rc-credits-tag">passée</span>' : "") + "</span>"
+      + '<span class="rc-credits-what">' + escapeHtml(d.spaceName) + " · " + escapeHtml(d.title)
+      + (d.bookedBy && !d.mine ? " · par " + escapeHtml(d.bookedBy) : "") + "</span>"
+      + '<span class="rc-credits-cost">' + d.credits + " crédit(s)</span></li>";
+  }).join("");
+  return '<p class="my-credits-sub">Réunions du mois (' + res.details.length + "), passées comprises : "
+    + res.used + " crédit(s) utilisé(s)</p><ul class=\"rc-credits-list\">" + rows + "</ul>";
+}
+
 /** Message à la place de la liste (aucune réservation, erreur). */
 function showMessage(text) {
   $("my-bookings-list").innerHTML = '<p class="my-bookings-help">' + escapeHtml(text) + "</p>";
@@ -71,12 +138,12 @@ function showMessage(text) {
 }
 
 function render() {
-  if (!bookings.length) return showMessage("Aucune réservation à venir.");
-  const shown = showAll ? bookings : bookings.slice(0, SHOWN_AT_FIRST);
+  if (!bookings.length) return showMessage(isTeam() ? "Aucune réservation client à venir." : "Aucune réservation à venir.");
+  const shown = showAll ? bookings : bookings.slice(0, shownAtFirst());
   $("my-bookings-list").innerHTML = shown.map(bookingCard).join("");
   const more = $("my-bookings-more");
   const hiddenCount = bookings.length - shown.length;
-  more.hidden = bookings.length <= SHOWN_AT_FIRST;
+  more.hidden = bookings.length <= shownAtFirst();
   more.textContent = hiddenCount === 1 ? "Voir l'autre réservation"
     : hiddenCount > 1 ? "Voir les " + hiddenCount + " autres réservations" : "Afficher moins";
 }
@@ -91,10 +158,12 @@ function bookingCard(b, i) {
     : '<span class="rc-bk-day">' + d + "</span>";
   const status = b.status === "pending"
     ? '<span class="my-status my-status-pending">En attente de validation</span>'
-    : '<span class="my-status my-status-confirmed">Confirmée</span>';
+    : b.status === "confirmed" ? '<span class="my-status my-status-confirmed">Confirmée</span>' : "";
 
   let actions = "";
-  if (b.status === "confirmed") {
+  if (isTeam()) {
+    // Équipe : consultation seulement (la gestion se fait dans Gestion et dans Google Agenda)
+  } else if (b.status === "confirmed") {
     actions += '<details class="rc-addcal"><summary class="rc-option">📅 Ajouter à mon agenda</summary><div class="rc-addcal-menu">'
       + '<a href="' + escapeHtml(googleCalendarUrl(b)) + '" target="_blank" rel="noopener">Google Agenda</a>'
       + '<button type="button" data-ics="' + i + '">Apple, Outlook… (fichier .ics)</button>'
@@ -113,11 +182,12 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-room">' + escapeHtml(b.spaceName) + status + "</div>"
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(describeSlot(b)) + "</div>"
     + '<ul class="rc-bk-facts">'
+    + (isTeam() && b.requestedBy ? "<li>👤 " + escapeHtml(b.requestedBy) + "</li>" : "")
     + (b.numberOfPeople ? "<li>👥 " + b.numberOfPeople + " personne(s)</li>" : "")
     + (b.total ? "<li>💶 " + escapeHtml(b.total.replace(".", ",")) + " (estimé)</li>" : "")
     + "</ul>"
     + (actions ? '<div class="rc-bk-actions">' + actions + "</div>" : "")
-    + (b.kind === "room" && b.status === "pending"
+    + (!isTeam() && b.kind === "room" && b.status === "pending"
       ? '<p class="my-bookings-help">Le créneau est bloqué pour vous. Vous recevrez un email dès que l\'équipe aura validé la demande.</p>'
       : "")
     + "</div></article>";
@@ -195,11 +265,13 @@ function openPage() {
   $("my-bookings-list").innerHTML = '<p class="my-bookings-help">Chargement...</p>';
   $("my-bookings-more").hidden = true;
   load();
+  loadCredits();
 }
 
 // Connexion : on retient l'espace ; arrivée par le lien bleu -> on ouvre directement la page
 document.addEventListener("hiptown-dashboard", e => {
   currentSpace = e.detail && e.detail.space;
+  applyLabels();
   if (location.hash !== PAGE_HASH) return;
   history.replaceState(null, "", location.pathname + location.search); // un rechargement ramène au tableau de bord
   window.hideAll();
