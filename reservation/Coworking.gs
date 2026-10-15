@@ -293,14 +293,16 @@ function computeCoworkingCredits(spaceId, b) {
  * automatiquement du plafond chaque mois, et supprimer une réservation de
  * l'agenda rend ses crédits.
  * excludeEventId (optionnel) : réservation laissée de côté (celle qu'on est en train de déplacer).
- * withDetails (optionnel) : ajoute la liste des réservations décomptées (passées comprises,
- * tous les membres de l'entreprise), pour que le coworker comprenne son solde.
+ * withDetails (optionnel) : ajoute la liste des réservations du compte décomptées ce mois-ci
+ * (passées comprises), pour qu'il comprenne son solde. Celles des autres comptes de
+ * l'entreprise ne sont jamais détaillées : seul leur total de crédits est donné (othersCredits).
  */
 function getCreditBalance(user, year, month, excludeEventId, withDetails) {
   const from = new Date(year, month - 1, 1);
   const to = new Date(year, month, 1);
   const now = new Date();
   let used = 0;
+  let othersCredits = 0;
   const details = [];
   getCoworkingSpaceList().forEach(space => {
     const cal = CalendarApp.getCalendarById(space.calendarId);
@@ -312,6 +314,7 @@ function getCreditBalance(user, year, month, excludeEventId, withDetails) {
       const credits = Number(event.getTag(TAG_CREDITS)) || 0;
       used += credits;
       if (!withDetails) return;
+      if (event.getTag(TAG_PORTAL_UID) !== user.uid) { othersCredits += credits; return; } // réservation d'un autre compte
       const start = event.getStartTime();
       const end = event.getEndTime();
       const slot = eventSlot(start, end);
@@ -324,10 +327,8 @@ function getCreditBalance(user, year, month, excludeEventId, withDetails) {
         endHour: slot.endHour,
         spaceName: space.name,
         title: title.indexOf(COWORKING.titlePrefix) === 0 ? title.slice(COWORKING.titlePrefix.length) : title,
-        bookedBy: ((event.getDescription() || '').match(/Demandé par : (.+)/) || [])[1] || '',
         credits: credits,
-        past: end <= now,
-        mine: event.getTag(TAG_PORTAL_UID) === user.uid
+        past: end <= now
       });
     });
   });
@@ -337,7 +338,10 @@ function getCreditBalance(user, year, month, excludeEventId, withDetails) {
     remaining: Math.max(0, user.monthlyCredits - used),
     monthLabel: frenchMonthLabel(year, month)
   };
-  if (withDetails) balance.details = details.sort((a, b) => a.start - b.start);
+  if (withDetails) {
+    balance.details = details.sort((a, b) => a.start - b.start);
+    balance.othersCredits = othersCredits;
+  }
   return balance;
 }
 
