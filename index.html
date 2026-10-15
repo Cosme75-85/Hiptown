@@ -21,6 +21,7 @@
   <link rel="modulepreload" href="firebase-config.js"/>
   <link rel="modulepreload" href="auth.js"/>
   <link rel="modulepreload" href="profile.js"/>
+  <link rel="modulepreload" href="password-rules.js"/>
   <link rel="modulepreload" href="admin.js"/>
   <link rel="modulepreload" href="reductions.js"/>
   <link rel="modulepreload" href="salles.js"/>
@@ -151,8 +152,9 @@
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <input type="email" id="signup-email" placeholder="Email" required
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <input type="password" id="signup-password" placeholder="Mot de passe (6 caractères min.)" required minlength="6"
-               style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+        <input type="password" id="signup-password" placeholder="Mot de passe" required minlength="8" autocomplete="new-password"
+               style="width:100%;padding:12px;margin-bottom:6px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+        <ul id="signup-password-rules"></ul>
         <input type="text" id="signup-company" placeholder="Nom de votre entreprise" required maxlength="100"
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <select id="signup-city"
@@ -550,8 +552,9 @@
       </div>
       <input type="email" id="new-admin-email" placeholder="Email"
              style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-      <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire"
-             style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <input type="password" id="new-admin-password" placeholder="Mot de passe temporaire" autocomplete="new-password"
+             style="width:100%;padding:12px;margin-bottom:6px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
+      <ul id="new-admin-password-rules"></ul>
       <div id="new-admin-access" style="margin-bottom:10px;"></div>
       <button class="direct-btn" id="create-admin-btn" style="background:var(--navy);color:#fff;">Créer le compte</button>
     </div>
@@ -610,10 +613,10 @@
       <label class="profile-label" for="password-current">Mot de passe actuel</label>
       <input type="password" id="password-current" class="profile-input" autocomplete="current-password" required/>
       <label class="profile-label" for="password-new">Nouveau mot de passe</label>
-      <input type="password" id="password-new" class="profile-input" autocomplete="new-password" minlength="6" required/>
+      <input type="password" id="password-new" class="profile-input" autocomplete="new-password" minlength="8" required/>
+      <ul id="password-new-rules"></ul>
       <label class="profile-label" for="password-confirm">Confirmer le nouveau mot de passe</label>
-      <input type="password" id="password-confirm" class="profile-input" autocomplete="new-password" minlength="6" required/>
-      <p class="profile-help">6 caractères minimum.</p>
+      <input type="password" id="password-confirm" class="profile-input" autocomplete="new-password" minlength="8" required/>
       <p id="password-message" class="profile-help" role="status" hidden></p>
       <button class="direct-btn" id="password-save" type="submit" style="background:var(--navy);color:#fff;">Valider le nouveau mot de passe</button>
       <button class="direct-btn" id="password-cancel" type="button" style="border:none;font-size:13px;">Annuler</button>

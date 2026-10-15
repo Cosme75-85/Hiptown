@@ -2,6 +2,8 @@
 //  PORTAIL HIPTOWN — Profil personnalisable (photo, surnom, entreprise, poste, ville)
 // ═══════════════════════════════════════════════════════
 
+import { attachPasswordRules, passwordProblem } from "./password-rules.js";
+
 const PHOTO_SIZE = 200;          // px : photo carrée, suffisante pour un avatar net
 const PHOTO_QUALITY = 0.8;       // compression JPEG (0 à 1)
 const MAX_PHOTO_LENGTH = 150000; // caractères, même limite que firestore.rules
@@ -217,6 +219,7 @@ export function initProfilePage({ getContext, save, changePassword, onClose }) {
   });
 
   $("password-cancel").addEventListener("click", closePasswordForm);
+  attachPasswordRules($("password-new"), $("password-new-rules"));
 
   passwordForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -224,7 +227,8 @@ export function initProfilePage({ getContext, save, changePassword, onClose }) {
     const next = $("password-new").value;
     const confirm = $("password-confirm").value;
     if (!current) return showPasswordMessage("Saisissez votre mot de passe actuel.", true);
-    if (next.length < 6) return showPasswordMessage("Le nouveau mot de passe doit faire au moins 6 caractères.", true);
+    const problem = passwordProblem(next);
+    if (problem) return showPasswordMessage(problem, true);
     if (next !== confirm) return showPasswordMessage("Les deux nouveaux mots de passe ne sont pas identiques.", true);
     if (next === current) return showPasswordMessage("Le nouveau mot de passe doit être différent de l'actuel.", true);
 
@@ -251,7 +255,7 @@ function passwordErrorMessage(err) {
   if (code.includes("wrong-password") || code.includes("invalid-credential") || code.includes("invalid-login-credentials")) {
     return "Mot de passe actuel incorrect.";
   }
-  if (code.includes("weak-password")) return "Nouveau mot de passe trop faible (6 caractères min.).";
+  if (code.includes("weak-password")) return "Nouveau mot de passe trop faible.";
   if (code.includes("too-many-requests")) return "Trop d'essais. Patientez quelques minutes avant de réessayer.";
   if (code.includes("requires-recent-login") || code.includes("user-mismatch") || code.includes("user-token-expired")) {
     return "Pour votre sécurité, déconnectez-vous puis reconnectez-vous avant de réessayer.";
