@@ -555,6 +555,49 @@ footer {
   background: var(--white);
 }
 
+/* Liens vers les pages légales (pied de page de toutes les interfaces) */
+.footer-legal {
+  margin-bottom: 6px;
+  line-height: 1.8;
+}
+
+.footer-legal a {
+  color: var(--text-soft);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.footer-legal a:hover,
+.footer-legal a[aria-current="page"] { color: var(--navy); text-decoration: underline; }
+
+/* ── PAGES LÉGALES (dossier legal/) ── */
+.legal-page {
+  width: 100%;
+  max-width: 760px;
+  flex: 1;
+  padding: 24px 16px 40px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.legal-page .legal-back { text-decoration: none; }
+.legal-page h1 { font-size: 22px; margin-bottom: 4px; }
+.legal-page h2 { font-size: 16px; margin: 24px 0 8px; }
+.legal-page p,
+.legal-page ul { margin-bottom: 10px; }
+.legal-page ul { padding-left: 20px; }
+.legal-page a { color: var(--navy); }
+.legal-updated { font-size: 12px; color: var(--text-pale); }
+
+/* Information société encore à renseigner : bien visible tant qu'elle n'est pas remplie */
+.legal-todo {
+  background: var(--yellow);
+  color: var(--navy);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 400px) {
   .tiles-grid { grid-template-columns: repeat(2, 1fr); }
