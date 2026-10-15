@@ -293,11 +293,15 @@ function computeCoworkingCredits(spaceId, b) {
  * automatiquement du plafond chaque mois, et supprimer une réservation de
  * l'agenda rend ses crédits.
  * excludeEventId (optionnel) : réservation laissée de côté (celle qu'on est en train de déplacer).
+ * withDetails (optionnel) : ajoute la liste des réservations décomptées (passées comprises,
+ * tous les membres de l'entreprise), pour que le coworker comprenne son solde.
  */
-function getCreditBalance(user, year, month, excludeEventId) {
+function getCreditBalance(user, year, month, excludeEventId, withDetails) {
   const from = new Date(year, month - 1, 1);
   const to = new Date(year, month, 1);
+  const now = new Date();
   let used = 0;
+  const details = [];
   getCoworkingSpaceList().forEach(space => {
     const cal = CalendarApp.getCalendarById(space.calendarId);
     if (!cal) return;
@@ -305,15 +309,36 @@ function getCreditBalance(user, year, month, excludeEventId) {
       if (event.getStartTime() < from) return; // commencée le mois précédent : comptée sur ce mois-là
       if (excludeEventId && event.getId() === excludeEventId) return; // réservation en cours de déplacement
       if (event.getTag(TAG_COMPANY) !== user.companyId) return;
-      used += Number(event.getTag(TAG_CREDITS)) || 0;
+      const credits = Number(event.getTag(TAG_CREDITS)) || 0;
+      used += credits;
+      if (!withDetails) return;
+      const start = event.getStartTime();
+      const end = event.getEndTime();
+      const slot = eventSlot(start, end);
+      const title = event.getTitle();
+      details.push({
+        start: start.getTime(),
+        dateString: slot.dateString,
+        endDateString: slot.isMultiDay ? slot.endDateString : null,
+        startHour: slot.startHour,
+        endHour: slot.endHour,
+        spaceName: space.name,
+        title: title.indexOf(COWORKING.titlePrefix) === 0 ? title.slice(COWORKING.titlePrefix.length) : title,
+        bookedBy: ((event.getDescription() || '').match(/Demandé par : (.+)/) || [])[1] || '',
+        credits: credits,
+        past: end <= now,
+        mine: event.getTag(TAG_PORTAL_UID) === user.uid
+      });
     });
   });
-  return {
+  const balance = {
     allowance: user.monthlyCredits,
     used: used,
     remaining: Math.max(0, user.monthlyCredits - used),
     monthLabel: frenchMonthLabel(year, month)
   };
+  if (withDetails) balance.details = details.sort((a, b) => a.start - b.start);
+  return balance;
 }
 
 /** Solde affiché dans le portail pour le mois demandé (défaut : mois en cours). */
@@ -329,7 +354,7 @@ function getCoworkingCredits(idToken, year, month) {
   year = toInt(year) || now.getFullYear();
   month = toInt(month) || now.getMonth() + 1;
   if (month < 1 || month > 12) return { success: false, message: 'Mois invalide.' };
-  const balance = getCreditBalance(user, year, month);
+  const balance = getCreditBalance(user, year, month, null, true);
   balance.success = true;
   balance.chargesCredits = true;
   balance.company = user.company;
