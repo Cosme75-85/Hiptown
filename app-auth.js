@@ -28,7 +28,6 @@ const stepGestionServices = document.getElementById("step-gestion-services");
 const stepGestionDevis = document.getElementById("step-gestion-devis");
 const authError   = document.getElementById("auth-error");
 
-let pendingSignupRole = "salle"; // pré-rempli selon la carte cliquée sur l'écran d'accueil
 
 // ── Utilitaire : masquer toutes les sections, y compris les nouvelles ──
 // Remplace la fonction hideAll() existante dans app.js : appelle-la puis
@@ -39,38 +38,56 @@ function hideAllAuth() {
 }
 window.hideAllAuth = hideAllAuth;
 
-// ── Ouvrir l'écran de connexion/inscription depuis une carte de choix ──
-// À appeler à la place de l'ouverture du step-pin :
-//   openAuthScreen("salle")      -> carte "Client salle de réunion"
-//   openAuthScreen("coworking")  -> carte "Client Coworking"
-//   openAuthScreen("admin")      -> carte "Hiptown" (inscription désactivée)
-window.openAuthScreen = function (intendedRole) {
-  pendingSignupRole = intendedRole === "admin" ? "salle" : intendedRole;
-  const signupTabBtn = document.querySelector('.auth-tab[data-tab="signup"]');
-  if (signupTabBtn) signupTabBtn.style.display = intendedRole === "admin" ? "none" : "";
-  document.querySelectorAll('input[name="signup-role"]').forEach(r => {
-    r.checked = (r.value === pendingSignupRole);
-  });
+// ── Écran de connexion / inscription ──
+// La connexion ne demande que l'e-mail et le mot de passe : l'espace affiché
+// (équipe, coworking, salle) dépend uniquement du rôle du compte (voir watchAuthState).
+// Le type de compte ne se choisit qu'à l'inscription (cartes de l'étape « step-choice »).
+const SIGNUP_ROLE_LABELS = { salle: "Compte salle de réunion", coworking: "Compte coworking" };
+
+function showAuthStep(tab) {
   hideAllAuth();
   stepAuth.hidden = false;
-  switchAuthTab("login");
+  switchAuthTab(tab);
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showChoiceStep() {
+  hideAllAuth();
+  document.getElementById("step-choice").hidden = false;
+  document.getElementById("choice-team-note").hidden = true;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+window.openLoginScreen = function () { showAuthStep("login"); };
+window.openSignupChoice = showChoiceStep;
+
+// role : "salle" ou "coworking" (les comptes de l'équipe sont créés par un admin)
+window.openSignupScreen = function (role) {
+  const signupRole = role === "coworking" ? "coworking" : "salle";
+  document.querySelectorAll('input[name="signup-role"]').forEach(r => {
+    r.checked = (r.value === signupRole);
+  });
+  document.getElementById("signup-role-label").textContent = SIGNUP_ROLE_LABELS[signupRole];
+  showAuthStep("signup");
 };
 
-// ── Onglets connexion / inscription ──
 function switchAuthTab(tab) {
-  document.querySelectorAll(".auth-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  stepAuth.dataset.tab = tab;
+  document.getElementById("auth-title").textContent = tab === "signup" ? "Inscription" : "Connexion";
   document.getElementById("login-form").hidden  = tab !== "login";
   document.getElementById("signup-form").hidden = tab !== "signup";
   authError.hidden = true;
 }
-document.querySelectorAll(".auth-tab").forEach(btn => {
-  btn.addEventListener("click", () => switchAuthTab(btn.dataset.tab));
-});
 
+document.getElementById("auth-to-signup")?.addEventListener("click", showChoiceStep);
+document.getElementById("signup-change-role")?.addEventListener("click", showChoiceStep);
+document.getElementById("auth-to-login")?.addEventListener("click", () => switchAuthTab("login"));
+
+// Retour : depuis l'inscription on revient au choix du type de compte, sinon à l'accueil
 document.getElementById("back-from-auth")?.addEventListener("click", () => {
+  if (stepAuth.dataset.tab === "signup") { showChoiceStep(); return; }
   hideAllAuth();
-  document.getElementById("step-choice").hidden = false;
+  document.getElementById("step-welcome").hidden = false;
 });
 
 // ── Soumission connexion ──

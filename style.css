@@ -1113,3 +1113,39 @@ button.agenda-item:hover { background: #fff4a2; }
   background: var(--navy); color: #fff; border: none;
   border-radius: var(--radius-md); padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
 }
+
+/* ── ACCUEIL : CONNEXION / INSCRIPTION ── */
+.welcome-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--navy) 0%, #2d2470 100%);
+  color: #fff;
+  border-radius: 24px;
+  padding: 40px 24px 28px;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(30,24,71,0.25);
+}
+.welcome-hero > *:not(.welcome-hero-deco) { position: relative; }
+.welcome-hero-deco { position: absolute; inset: 0; pointer-events: none; }
+.deco-dot { position: absolute; border-radius: 50%; }
+.deco-dot-yellow { width: 140px; height: 140px; background: var(--yellow); opacity: 0.9; top: -60px; right: -40px; }
+.deco-dot-teal { width: 90px; height: 90px; background: var(--teal); opacity: 0.85; bottom: -30px; left: -25px; }
+.deco-ring { position: absolute; width: 200px; height: 200px; border: 2px solid rgba(255,255,255,0.12); border-radius: 50%; bottom: -110px; right: -50px; }
+.welcome-hero-logo { height: 60px; object-fit: contain; display: block; margin: 0 auto 20px; filter: brightness(10); }
+.welcome-hero-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+.welcome-hero-sub { font-size: 14px; line-height: 1.5; color: rgba(255,255,255,0.8); max-width: 340px; margin: 0 auto 20px; }
+.welcome-hero-features { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 28px; }
+.welcome-hero-features li { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; }
+.welcome-hero-actions { display: flex; flex-direction: column; gap: 10px; max-width: 300px; margin: 0 auto; }
+.welcome-btn { width: 100%; padding: 14px 20px; border-radius: var(--radius-md); font-size: 15px; font-weight: 700; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.welcome-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+.welcome-btn:active { transform: scale(0.98); }
+.welcome-btn-primary { background: var(--yellow); color: var(--navy); border: none; }
+.welcome-btn-secondary { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.7); }
+
+/* Inscription : rappel du type de compte, liens Connexion ⇄ Inscription */
+.auth-role-chip { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--bg); border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+.auth-switch { font-size: 13px; color: var(--text-soft); margin-top: 14px; }
+.auth-switch-link { background: none; border: none; color: var(--navy); font-weight: 700; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; }
+.choice-team-note { margin-top: 14px; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text-soft); }
+.choice-team-note[hidden] { display: none; }

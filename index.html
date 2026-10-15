@@ -43,27 +43,41 @@
 
 <main class="container">
 
-  <!-- ÉTAPE 0 : ACCUEIL / CONNEXION -->
+  <!-- ÉTAPE 0 : ACCUEIL — seulement « Connexion » et « Inscription » -->
   <section id="step-welcome">
-    <div class="pin-box" style="text-align:center;">
-      <img src="Logo%20Hiptown%20site.png" alt="Hiptown" style="height:64px;object-fit:contain;margin:0 auto 24px;display:block;"/>
-      <p style="font-size:14px;color:var(--text-soft);margin-bottom:24px;">Bienvenue sur votre espace client</p>
-      <button class="direct-btn" id="welcome-connexion-btn" style="background:var(--navy);color:#fff;margin-top:0;">Connexion</button>
-      <button type="button" class="install-link" id="install-app-link">📲 Installer l'application sur mon téléphone</button>
+    <div class="welcome-hero">
+      <div class="welcome-hero-deco" aria-hidden="true">
+        <span class="deco-dot deco-dot-yellow"></span>
+        <span class="deco-dot deco-dot-teal"></span>
+        <span class="deco-ring"></span>
+      </div>
+      <img src="Logo%20Hiptown%20site.png" alt="Hiptown" class="welcome-hero-logo"/>
+      <h1 class="welcome-hero-title">Bienvenue chez Hiptown</h1>
+      <p class="welcome-hero-sub">Réservez vos salles, gérez votre coworking et retrouvez tous vos services au même endroit.</p>
+      <ul class="welcome-hero-features">
+        <li><span aria-hidden="true">🗓️</span> Salles de réunion</li>
+        <li><span aria-hidden="true">💼</span> Coworking</li>
+        <li><span aria-hidden="true">🥐</span> Services</li>
+      </ul>
+      <div class="welcome-hero-actions">
+        <button class="welcome-btn welcome-btn-primary" id="welcome-connexion-btn">Connexion</button>
+        <button class="welcome-btn welcome-btn-secondary" id="welcome-inscription-btn">Inscription</button>
+      </div>
     </div>
+    <button type="button" class="install-link" id="install-app-link">📲 Installer l'application sur mon téléphone</button>
   </section>
 
-  <!-- ÉTAPE -1 : CHOIX DE L'ESPACE -->
+  <!-- ÉTAPE -1 : INSCRIPTION — CHOIX DU TYPE DE COMPTE -->
   <section id="step-choice" hidden>
     <button class="back-btn" id="back-from-choice">← Retour</button>
-    <p class="step-title">Quel espace souhaitez-vous rejoindre ?</p>
+    <p class="step-title">Quel compte souhaitez-vous créer ?</p>
     <div class="choice-grid">
 
       <div class="choice-card" id="choice-salle">
         <div class="choice-icon" style="background:#e0f2fe;color:#0369a1;">🗓️</div>
         <div class="choice-content">
           <div class="choice-title">Client salle de réunion</div>
-          <div class="choice-desc">Connexion ou création de compte</div>
+          <div class="choice-desc">Réserver des salles de réunion</div>
         </div>
         <div class="choice-arrow">→</div>
       </div>
@@ -72,7 +86,7 @@
         <div class="choice-icon" style="background:#fef3c7;color:#92400e;">💼</div>
         <div class="choice-content">
           <div class="choice-title">Client Coworking</div>
-          <div class="choice-desc">Connexion ou création de compte</div>
+          <div class="choice-desc">Membre d'un espace de coworking</div>
         </div>
         <div class="choice-arrow">→</div>
       </div>
@@ -80,12 +94,18 @@
       <div class="choice-card" id="choice-hiptown">
         <div class="choice-icon" style="background:#1e1847;color:#ffe700;">🏢</div>
         <div class="choice-content">
-          <div class="choice-title">Hiptown</div>
-          <div class="choice-desc">Connexion réservée à l'équipe</div>
+          <div class="choice-title">Équipe Hiptown</div>
+          <div class="choice-desc">Compte réservé à l'équipe</div>
         </div>
         <div class="choice-arrow">→</div>
       </div>
 
+    </div>
+    <!-- Les comptes de l'équipe ne s'inscrivent pas eux-mêmes : un responsable les crée -->
+    <div class="info-card choice-team-note" id="choice-team-note" hidden>
+      <p>Les comptes de l'équipe Hiptown sont créés par un responsable, depuis « Gestion des comptes ».
+        Une fois votre compte créé, utilisez simplement <strong>Connexion</strong> avec votre e-mail et votre mot de passe.</p>
+      <button type="button" class="direct-btn" id="choice-team-login">Aller à la connexion</button>
     </div>
   </section>
 
@@ -94,10 +114,7 @@
     <button class="back-btn" id="back-from-auth">← Retour</button>
     <div class="pin-box" style="max-width:360px;">
 
-      <div style="display:flex;gap:8px;margin-bottom:20px;">
-        <button class="direct-btn auth-tab active" data-tab="login" style="margin-top:0;">Se connecter</button>
-        <button class="direct-btn auth-tab" data-tab="signup" style="margin-top:0;">Créer un compte</button>
-      </div>
+      <p class="pin-title" id="auth-title">Connexion</p>
 
       <div id="auth-error" class="pin-error" hidden></div>
 
@@ -109,20 +126,19 @@
                style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Se connecter</button>
         <button type="button" id="forgot-password" class="direct-btn" style="border:none;font-size:12px;">Mot de passe oublié ?</button>
+        <p class="auth-switch">Pas encore de compte ? <button type="button" class="auth-switch-link" id="auth-to-signup">Inscription</button></p>
       </form>
 
       <!-- Inscription -->
       <form id="signup-form" class="auth-panel" hidden>
-        <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px;">
-          Quel type d'accès souhaitez-vous ?
+        <!-- Type de compte choisi à l'étape précédente (les boutons radio restent la valeur envoyée) -->
+        <p class="auth-role-chip">
+          <span id="signup-role-label">Salle de réunion</span>
+          <button type="button" class="auth-switch-link" id="signup-change-role">Changer</button>
         </p>
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <label style="flex:1;">
-            <input type="radio" name="signup-role" value="salle" checked/> Salle de réunion
-          </label>
-          <label style="flex:1;">
-            <input type="radio" name="signup-role" value="coworking"/> Coworking
-          </label>
+        <div hidden>
+          <input type="radio" name="signup-role" value="salle" checked/>
+          <input type="radio" name="signup-role" value="coworking"/>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
           <input type="text" id="signup-firstname" placeholder="Prénom" required
@@ -147,6 +163,7 @@
         <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
           Votre compte sera activé après validation par l'équipe Hiptown.
         </p>
+        <p class="auth-switch">Déjà un compte ? <button type="button" class="auth-switch-link" id="auth-to-login">Connexion</button></p>
       </form>
 
     </div>
