@@ -985,6 +985,27 @@
     <p class="resa-salle-fallback">La page ne s'affiche pas ? <a id="resa-salle-open" href="#" target="_blank" rel="noopener">Ouvrir la réservation dans un nouvel onglet</a></p>
   </section>
 
+  <!-- MESSAGERIE (messagerie.js) : client <-> équipe Hiptown de sa ville ; l'équipe a une boîte de réception -->
+  <section id="step-messagerie" hidden>
+    <button class="back-btn" id="back-from-messagerie">← Retour</button>
+    <h2 class="step-title" id="messagerie-title">💬 Messagerie</h2>
+    <div id="msg-inbox" hidden>
+      <div class="msg-inbox-list" id="msg-inbox-list"></div>
+    </div>
+    <div class="msg-thread" id="msg-thread" hidden>
+      <div class="msg-thread-head">
+        <div class="msg-thread-title" id="msg-thread-title"></div>
+        <div class="msg-thread-sub" id="msg-thread-sub"></div>
+      </div>
+      <div class="msg-list" id="msg-list" aria-live="polite"></div>
+      <form class="msg-form" id="msg-form" autocomplete="off">
+        <textarea id="msg-input" class="msg-input" rows="1" maxlength="2000" placeholder="Votre message…" aria-label="Votre message"></textarea>
+        <button type="submit" class="msg-send" id="msg-send" aria-label="Envoyer">Envoyer</button>
+      </form>
+      <div class="msg-foot"><span id="msg-error" class="msg-error" role="alert" hidden></span><span id="msg-count" class="msg-count"></span></div>
+    </div>
+  </section>
+
   <!-- MES PROCHAINES RÉSERVATIONS (mes-reservations.js) : tuile, ou lien bleu de l'outil de réservation (#mes-reservations) -->
   <section id="step-mes-resa" hidden>
     <button class="back-btn" id="back-from-mes-resa">← Retour</button>
@@ -1184,6 +1205,7 @@
 <script type="module" src="mes-reservations.js"></script>
 <script type="module" src="resa-salle.js"></script>
 <script type="module" src="agenda.js"></script>
+<script type="module" src="messagerie.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js"); });

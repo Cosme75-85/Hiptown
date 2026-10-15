@@ -16,6 +16,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 | `Coworking.gs` | Réservations des coworkers depuis le portail (sans paiement) | ✅ |
 | `Reductions.gs` | Réductions clients appliquées au prochain devis | ✅ |
 | `MesReservations.gs` | Liste « Mes prochaines réservations » du tableau de bord du portail (lecture seule) | ✅ |
+| `Messagerie.gs` | Emails de la messagerie du portail (nouveau message d'un client, réponse de l'équipe) | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
@@ -27,7 +28,7 @@ Le code qui tourne est celui de script.google.com : ce dossier en est la copie
 de référence (historique, retour arrière possible). Après chaque modification :
 
 1. Ouvrir le projet sur script.google.com.
-2. Pour chacun des 10 fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
+2. Pour chacun des fichiers marqués ✅ ci-dessus : ouvrir le fichier du même nom
    dans Apps Script (le créer avec **+ > Script** s'il n'existe pas, sans taper « .gs »),
    tout sélectionner (Ctrl+A), supprimer, coller le contenu du fichier GitHub.
 3. Vérifier qu'il n'y a **pas d'autre fichier .gs** que ceux-là : deux fichiers qui

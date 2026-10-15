@@ -26,6 +26,7 @@
   const stepMesResa        = document.getElementById("step-mes-resa");
   const stepResaSalle      = document.getElementById("step-resa-salle");
   const stepSalles         = document.getElementById("step-salles");
+  const stepMessagerie     = document.getElementById("step-messagerie");
 
   const welcomeTitle   = document.getElementById("welcome-title");
   const welcomeSub     = document.getElementById("welcome-sub");
@@ -117,6 +118,8 @@
     resasalle: { title: "Réserver une salle",        desc: "Disponibilités et réservation",          icon: "🗓️", bg: "#e8faf7", color: "#085041", url: null, action: "resasalle" },
     resacowork:{ title: "Réserver une salle de réunion", desc: "Salles de réunion, sans paiement", icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "resacowork" },
     salles:    { title: "Salle de réunion",          desc: "Réserver et mes réservations",           icon: "📅", bg: "#e8faf7", color: "#085041", url: null, action: "salles" },
+    messages:  { title: "Messagerie",                desc: "Écrire à l'équipe Hiptown",              icon: "💬", bg: "#eef2ff", color: "#4338ca", url: null, action: "messages" },
+    msgteam:   { title: "Messagerie clients",        desc: "Conversations avec les clients",         icon: "💬", bg: "#eef2ff", color: "#4338ca", url: null, action: "messages" },
     mesresa:   { title: "Mes réservations",            desc: "Ce mois-ci et à venir",          icon: "📅", bg: "#e0f2fe", color: "#0369a1", url: null, action: "mesresa" },
     factures:  { title: "Mes factures",              desc: "Consultez vos factures",                 icon: "📄", bg: "#e0f2fe", color: "#0369a1", url: "https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" },
     mesinfos:  { title: "Mes informations",          desc: "Mon contrat, mes factures",              icon: "👤", bg: "#e0f2fe", color: "#0369a1", url: null, action: "mesinfos" },
@@ -141,9 +144,9 @@
   ];
 
   const SPACE_TILES = {
-    salle:     ["accueil", "salles", "adresses", "services", "avis"],
-    coworking: ["salles", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
-    hiptown:   ["hiptools", "hipespaces", "gestion", "salles", "accueil", "incident"],
+    salle:     ["accueil", "salles", "messages", "adresses", "services", "avis"],
+    coworking: ["salles", "messages", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
+    hiptown:   ["hiptools", "hipespaces", "gestion", "msgteam", "salles", "accueil", "incident"],
   };
 
   // Tuiles réservées au personnel Hiptown (jamais affichées à un client, même ajoutées à la main)
@@ -246,7 +249,7 @@
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
     [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepMesInfos, stepContrat, stepInfoCowork,
-     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork, stepMesResa, stepResaSalle, stepSalles]
+     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork, stepMesResa, stepResaSalle, stepSalles, stepMessagerie]
     .forEach(function(s) { s.hidden = true; });
     eventsBanner.hidden = true;
   }
@@ -365,6 +368,7 @@
     if (action === "mesresa")    stepMesResa.hidden        = false;
     if (action === "resasalle")  stepResaSalle.hidden      = false;
     if (action === "salles")     openSalles();
+    if (action === "messages")   stepMessagerie.hidden     = false;
     document.dispatchEvent(new CustomEvent("hiptown-tile-action", { detail: action }));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }

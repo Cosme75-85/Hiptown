@@ -148,6 +148,89 @@ service cloud.firestore {
         || (isSignedIn() && resource.data.createdBy == request.auth.uid);
     }
 
+    // ── Messagerie (messagerie.js) ─────────────────────────
+    // Une conversation par client : conversations/{uid du client}, messages dans
+    // conversations/{uid}/messages. L'équipe la voit selon le même périmètre que
+    // le compte du client (canManageUser) : ville et site sont recopiés de la
+    // fiche du client à chacun de ses messages.
+    function isClientAccount() {
+      return isApprovedRole('salle') || isApprovedRole('coworking');
+    }
+
+    function isMessageText(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    // Conversation écrite par le client lui-même, avec un nouveau message
+    function isValidClientConversation(uid, data) {
+      return data.keys().hasOnly(['uid', 'site', 'siteId', 'clientName', 'clientCompany', 'clientEmail',
+                                  'clientRole', 'lastText', 'lastFrom', 'lastAt', 'unreadTeam', 'unreadClient'])
+        && data.uid == uid
+        && data.get('site', null) == mySite()
+        && data.get('siteId', null) == myProfile().get('siteId', null)
+        && data.clientRole == myProfile().role
+        && isShortText(data, 'clientName', 120)
+        && isShortText(data, 'clientCompany', 120)
+        && isShortText(data, 'clientEmail', 120)
+        && isMessageText(data.lastText, 200)
+        && data.lastFrom == 'client'
+        && data.lastAt == request.time
+        && data.unreadTeam == true
+        && data.unreadClient == false;
+    }
+
+    match /conversations/{uid} {
+      allow read: if isOwner(uid) || canManageUser(resource.data);
+
+      allow create: if isOwner(uid) && isClientAccount()
+        && isValidClientConversation(uid, request.resource.data);
+
+      allow update: if
+        // Client : nouveau message, ou messages de l'équipe marqués comme lus
+        (isOwner(uid) && isClientAccount()
+          && (isValidClientConversation(uid, request.resource.data)
+              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadClient'])
+                  && request.resource.data.unreadClient == false)))
+        // Équipe : réponse, ou messages du client marqués comme lus
+        || (canManageUser(resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['lastText', 'lastFrom', 'lastAt', 'unreadTeam', 'unreadClient'])
+          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadTeam'])
+               && request.resource.data.unreadTeam == false)
+              || (isMessageText(request.resource.data.lastText, 200)
+                  && request.resource.data.lastFrom == 'team'
+                  && request.resource.data.lastAt == request.time
+                  && request.resource.data.unreadTeam == false
+                  && request.resource.data.unreadClient == true)));
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function conversation() {
+          return get(/databases/$(database)/documents/conversations/$(uid)).data;
+        }
+
+        function isValidMessage(from) {
+          return request.resource.data.keys().hasOnly(['from', 'authorUid', 'authorName', 'text', 'createdAt'])
+            && request.resource.data.from == from
+            && request.resource.data.authorUid == request.auth.uid
+            && isShortText(request.resource.data, 'authorName', 120)
+            && isMessageText(request.resource.data.text, 2000)
+            && request.resource.data.createdAt == request.time;
+        }
+
+        allow read: if isOwner(uid) || canManageUser(conversation());
+
+        // Le client écrit dans SA conversation (elle est créée dans le même envoi) ;
+        // l'équipe répond dans les conversations de son périmètre.
+        allow create: if (isOwner(uid) && isClientAccount() && isValidMessage('client'))
+          || (canManageUser(conversation()) && isValidMessage('team'));
+
+        // Un message envoyé ne se modifie pas et ne se supprime pas
+        allow update, delete: if false;
+      }
+    }
+
     // Commandes petit-dejeuner
     match /breakfastOrders/{orderId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
