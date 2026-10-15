@@ -1053,3 +1053,63 @@ button.agenda-item:hover { background: #fff4a2; }
 .rc-credits-cost { font-weight: 700; white-space: nowrap; }
 .rc-credits-past { opacity: 0.75; }
 .rc-credits-tag { font-size: 11px; font-weight: 600; background: #fff; color: #64748b; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
+
+/* ── INSTALLER L'APPLICATION (téléphone) ── */
+.install-link {
+  display: block;
+  margin: 16px auto 0;
+  background: none;
+  border: none;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.install-link[hidden] { display: none; }
+.install-bar {
+  position: fixed;
+  left: 12px; right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--navy); color: #fff;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  font-size: 13px; line-height: 1.3;
+}
+.install-bar img { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; }
+.install-bar span { flex: 1; }
+.install-go {
+  background: var(--yellow); color: var(--navy);
+  border: none; border-radius: 999px;
+  padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.install-x { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 22px; cursor: pointer; padding: 0 4px; }
+.install-modal {
+  position: fixed; inset: 0; z-index: 1001;
+  background: rgba(21,15,51,0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.install-sheet {
+  position: relative;
+  background: var(--white); color: var(--text-dark);
+  width: 100%; max-width: 480px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  font-size: 15px; line-height: 1.5;
+}
+.install-sheet h3 { font-size: 18px; margin: 8px 0 12px; text-align: center; }
+.install-sheet p { margin: 8px 0; }
+.install-sheet ol { padding-left: 22px; margin: 8px 0; }
+.install-sheet li { margin: 8px 0; }
+.install-logo { display: block; width: 56px; height: 56px; border-radius: 12px; margin: 0 auto; }
+.install-close { position: absolute; top: 8px; right: 12px; background: none; border: none; font-size: 26px; color: var(--text-soft); cursor: pointer; }
+.install-note { font-size: 13px; color: var(--text-soft); }
+.install-ico { display: inline-block; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.install-copy {
+  display: block; width: 100%; margin-top: 8px;
+  background: var(--navy); color: #fff; border: none;
+  border-radius: var(--radius-md); padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+}
