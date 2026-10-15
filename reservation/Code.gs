@@ -721,7 +721,7 @@ function sendApprovalEmail(space, eventId, summary) {
 
   // Validée par l'équipe Hiptown de la ville de la salle (ex. bordeaux@hiptown.com)
   MailApp.sendEmail({
-    to: cityTeamEmail(space),
+    to: teamRecipients(space),
     subject: 'Nouvelle demande de réservation — ' + space.name,
     htmlBody:
       '<p>Une nouvelle demande de réservation est en attente :</p>' +

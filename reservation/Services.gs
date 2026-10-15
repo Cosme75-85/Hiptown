@@ -76,6 +76,12 @@ function cityTeamEmail(item) {
   return cityOf(item) + '@' + CITY_TEAM_EMAIL_DOMAIN;
 }
 
+/** Destinataires des emails à l'équipe : la ville de la salle, plus les copies TEAM_COPY_EMAILS. */
+function teamRecipients(item) {
+  return [cityTeamEmail(item)].concat(TEAM_COPY_EMAILS || [])
+    .filter((e, i, all) => e && all.indexOf(e) === i).join(',');
+}
+
 function findService(id) {
   return serviceCatalog().find(s => s.id === id) || null;
 }
