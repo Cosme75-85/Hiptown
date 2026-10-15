@@ -4,6 +4,15 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hiptown — Portail client</title>
+  <!-- Application téléphone (PWA) : icône sur l'écran d'accueil et ouverture plein écran -->
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <meta name="theme-color" content="#1e1847"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png"/>
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Hiptown"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <link rel="stylesheet" href="style.css"/>
   <!-- Chargement en parallèle des modules (sinon le navigateur les découvre l'un après l'autre) -->
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"/>
@@ -1122,5 +1131,10 @@
 <script type="module" src="mes-reservations.js"></script>
 <script type="module" src="resa-salle.js"></script>
 <script type="module" src="agenda.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js"); });
+  }
+</script>
 </body>
 </html>
