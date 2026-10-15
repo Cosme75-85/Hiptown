@@ -532,17 +532,18 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 .logout-btn {
   margin-top: 24px;
   padding: 12px 24px;
-  background: none;
-  border: 1.5px solid var(--border);
+  background: #2563eb;
+  border: none;
   border-radius: var(--radius-md);
-  font-size: 13px;
-  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
   cursor: pointer;
   width: 100%;
   transition: background 0.15s;
 }
 
-.logout-btn:hover { background: #f8fafc; }
+.logout-btn:hover { background: #1d4ed8; }
 
 /* ── FOOTER ── */
 footer {
