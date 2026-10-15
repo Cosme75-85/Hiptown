@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, changeMyPassword } from "./auth.js";
+import { attachPasswordRules, passwordProblem } from "./password-rules.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
@@ -115,6 +116,9 @@ document.getElementById("forgot-password").addEventListener("click", async () =>
   }
 });
 
+attachPasswordRules(document.getElementById("signup-password"), document.getElementById("signup-password-rules"));
+attachPasswordRules(document.getElementById("new-admin-password"), document.getElementById("new-admin-password-rules"));
+
 // ── Soumission inscription ──
 document.getElementById("signup-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -130,6 +134,8 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
   const siteId    = document.getElementById("signup-site")?.value || "";
   const hasSites  = Object.keys(PORTAIL.cities?.[city]?.sites || {}).length > 0;
   if (hasSites && !siteId) { showAuthError("Choisissez votre site Hiptown."); return; }
+  const weak = passwordProblem(password);
+  if (weak) { showAuthError(weak); return; }
   try {
     await signUp(email, password, role, company, firstName, lastName, birthDate,
       { site: city, siteId: siteId || null });
@@ -150,7 +156,7 @@ function friendlyError(err) {
   if (code.includes("email-already-in-use")) return "Un compte existe déjà avec cet email.";
   if (code.includes("wrong-password") || code.includes("invalid-credential")) return "Email ou mot de passe incorrect.";
   if (code.includes("user-not-found")) return "Aucun compte avec cet email.";
-  if (code.includes("weak-password")) return "Mot de passe trop court (6 caractères min.).";
+  if (code.includes("weak-password")) return "Mot de passe trop faible.";
   return "Une erreur est survenue. Réessayez.";
 }
 
@@ -1312,7 +1318,9 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   const password = document.getElementById("new-admin-password").value;
   const firstName = document.getElementById("new-admin-firstname").value.trim();
   const lastName = document.getElementById("new-admin-lastname").value.trim();
-  if (!email || password.length < 6) { alert("Email + mot de passe (6 car. min.) requis."); return; }
+  if (!email) { alert("Email requis."); return; }
+  const weak = passwordProblem(password);
+  if (weak) { alert(weak); return; }
   // Niveau, ville et sites du nouveau compte (voir buildAccessFields)
   const place = readAccessFields(document.getElementById("new-admin-access"), "admin");
   if (place.error) { alert(place.error); return; }
@@ -1326,6 +1334,7 @@ document.getElementById("create-admin-btn")?.addEventListener("click", async () 
   }
   document.getElementById("new-admin-email").value = "";
   document.getElementById("new-admin-password").value = "";
+  document.getElementById("new-admin-password").dispatchEvent(new Event("input"));
   document.getElementById("new-admin-firstname").value = "";
   document.getElementById("new-admin-lastname").value = "";
   renderAdminPanel();

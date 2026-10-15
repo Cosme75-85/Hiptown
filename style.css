@@ -1192,3 +1192,10 @@ button.agenda-item:hover { background: #fff4a2; }
 .auth-switch-link { background: none; border: none; color: var(--navy); font-weight: 700; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; }
 .choice-team-note { margin-top: 14px; padding: 16px; font-size: 13px; line-height: 1.5; color: var(--text-soft); }
 .choice-team-note[hidden] { display: none; }
+
+/* Règles des mots de passe (password-rules.js) */
+.password-rules { list-style: none; margin: 4px 0 10px; padding: 0; font-size: 12px; color: var(--text-soft); text-align: left; }
+.password-rules li { margin: 2px 0; }
+.password-rules li::before { content: "○ "; }
+.password-rules li.ok { color: #166534; }
+.password-rules li.ok::before { content: "✓ "; }
