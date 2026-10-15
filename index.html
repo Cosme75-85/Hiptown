@@ -601,8 +601,11 @@
       <button class="direct-btn" id="profile-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer</button>
     </div>
 
-    <form class="pin-box" id="password-form" style="text-align:left;margin-top:16px;" autocomplete="on">
-      <p class="profile-label" style="margin-top:0;font-size:15px;">🔒 Modifier le mot de passe</p>
+    <button class="direct-btn" id="password-open" type="button" style="background:var(--navy);color:#fff;display:block;width:100%;max-width:320px;margin:16px auto 0;">🔒 Changer le mot de passe</button>
+    <p id="password-done" class="profile-help" role="status" hidden style="color:#166534;text-align:center;">Mot de passe modifié ✓</p>
+
+    <form class="pin-box" id="password-form" style="text-align:left;margin-top:16px;" autocomplete="on" hidden>
+      <p class="profile-label" style="margin-top:0;font-size:15px;">🔒 Changer le mot de passe</p>
       <input type="text" id="password-username" autocomplete="username" hidden/>
       <label class="profile-label" for="password-current">Mot de passe actuel</label>
       <input type="password" id="password-current" class="profile-input" autocomplete="current-password" required/>
@@ -612,7 +615,8 @@
       <input type="password" id="password-confirm" class="profile-input" autocomplete="new-password" minlength="6" required/>
       <p class="profile-help">6 caractères minimum.</p>
       <p id="password-message" class="profile-help" role="status" hidden></p>
-      <button class="direct-btn" id="password-save" type="submit" style="background:var(--navy);color:#fff;">Changer le mot de passe</button>
+      <button class="direct-btn" id="password-save" type="submit" style="background:var(--navy);color:#fff;">Valider le nouveau mot de passe</button>
+      <button class="direct-btn" id="password-cancel" type="button" style="border:none;font-size:13px;">Annuler</button>
     </form>
   </section>
 
