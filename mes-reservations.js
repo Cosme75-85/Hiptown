@@ -8,6 +8,8 @@
 //  Le serveur (reservation/MesReservations.gs) vérifie le compte.
 //  Coworking : « Modifier ou annuler » ouvre la tuile de réservation.
 //  Salle de réunion : modification ou annulation par email à l'équipe.
+//  Équipe Hiptown (Admin) : page « Réservations » avec toutes les réservations
+//  clients de toutes les salles (serveur : getAllUpcomingBookings).
 //  Coworkers : en dessous, crédits du mois et détail des réunions décomptées,
 //  passées comprises (serveur : getCoworkingCredits, reservation/Coworking.gs).
 // ═══════════════════════════════════════════════════════
@@ -16,6 +18,7 @@ import { auth } from "./firebase-config.js";
 
 const BASE_URL = PORTAIL.reservationUrl;
 const SHOWN_AT_FIRST = 3; // au-delà, bouton « Voir les autres »
+const TEAM_SHOWN_AT_FIRST = 15; // équipe Hiptown : toutes les réservations clients
 const SPACES_WITH_LIST = ["salle", "coworking", "hiptown"]; // l'équipe aussi : ses propres réservations
 
 const $ = id => document.getElementById(id);
@@ -49,7 +52,7 @@ async function load() {
     const res = await fetch(BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
-      body: JSON.stringify({ action: "getMyUpcomingBookings", idToken: idToken })
+      body: JSON.stringify({ action: isTeam() ? "getAllUpcomingBookings" : "getMyUpcomingBookings", idToken: idToken })
     }).then(r => r.json());
     if (token !== requestToken) return;
     if (!res.success || !Array.isArray(res.bookings)) {
@@ -64,6 +67,21 @@ async function load() {
   } catch (err) {
     if (token === requestToken) showMessage("Liste indisponible pour le moment, merci de réessayer plus tard.");
   }
+}
+
+function isTeam() { return currentSpace === "hiptown"; }
+
+function shownAtFirst() { return isTeam() ? TEAM_SHOWN_AT_FIRST : SHOWN_AT_FIRST; }
+
+/** Équipe Hiptown : la tuile et la page s'appellent « Réservations » (toutes les réservations clients). */
+function applyLabels() {
+  const team = isTeam();
+  const tile = $("salles-mine");
+  if (tile) {
+    tile.querySelector(".tile-title").textContent = team ? "Réservations" : "Mes prochaines réservations";
+    tile.querySelector(".tile-desc").textContent = team ? "Toutes les réservations clients" : "Salles réservées à venir";
+  }
+  $("mes-resa-title").textContent = team ? "📅 Réservations" : "📅 Mes prochaines réservations";
 }
 
 // ==================== CRÉDITS DU MOIS (COWORKERS) ====================
@@ -120,12 +138,12 @@ function showMessage(text) {
 }
 
 function render() {
-  if (!bookings.length) return showMessage("Aucune réservation à venir.");
-  const shown = showAll ? bookings : bookings.slice(0, SHOWN_AT_FIRST);
+  if (!bookings.length) return showMessage(isTeam() ? "Aucune réservation client à venir." : "Aucune réservation à venir.");
+  const shown = showAll ? bookings : bookings.slice(0, shownAtFirst());
   $("my-bookings-list").innerHTML = shown.map(bookingCard).join("");
   const more = $("my-bookings-more");
   const hiddenCount = bookings.length - shown.length;
-  more.hidden = bookings.length <= SHOWN_AT_FIRST;
+  more.hidden = bookings.length <= shownAtFirst();
   more.textContent = hiddenCount === 1 ? "Voir l'autre réservation"
     : hiddenCount > 1 ? "Voir les " + hiddenCount + " autres réservations" : "Afficher moins";
 }
@@ -140,10 +158,12 @@ function bookingCard(b, i) {
     : '<span class="rc-bk-day">' + d + "</span>";
   const status = b.status === "pending"
     ? '<span class="my-status my-status-pending">En attente de validation</span>'
-    : '<span class="my-status my-status-confirmed">Confirmée</span>';
+    : b.status === "confirmed" ? '<span class="my-status my-status-confirmed">Confirmée</span>' : "";
 
   let actions = "";
-  if (b.status === "confirmed") {
+  if (isTeam()) {
+    // Équipe : consultation seulement (la gestion se fait dans Gestion et dans Google Agenda)
+  } else if (b.status === "confirmed") {
     actions += '<details class="rc-addcal"><summary class="rc-option">📅 Ajouter à mon agenda</summary><div class="rc-addcal-menu">'
       + '<a href="' + escapeHtml(googleCalendarUrl(b)) + '" target="_blank" rel="noopener">Google Agenda</a>'
       + '<button type="button" data-ics="' + i + '">Apple, Outlook… (fichier .ics)</button>'
@@ -162,11 +182,12 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-room">' + escapeHtml(b.spaceName) + status + "</div>"
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(describeSlot(b)) + "</div>"
     + '<ul class="rc-bk-facts">'
+    + (isTeam() && b.requestedBy ? "<li>👤 " + escapeHtml(b.requestedBy) + "</li>" : "")
     + (b.numberOfPeople ? "<li>👥 " + b.numberOfPeople + " personne(s)</li>" : "")
     + (b.total ? "<li>💶 " + escapeHtml(b.total.replace(".", ",")) + " (estimé)</li>" : "")
     + "</ul>"
     + (actions ? '<div class="rc-bk-actions">' + actions + "</div>" : "")
-    + (b.kind === "room" && b.status === "pending"
+    + (!isTeam() && b.kind === "room" && b.status === "pending"
       ? '<p class="my-bookings-help">Le créneau est bloqué pour vous. Vous recevrez un email dès que l\'équipe aura validé la demande.</p>'
       : "")
     + "</div></article>";
@@ -250,6 +271,7 @@ function openPage() {
 // Connexion : on retient l'espace ; arrivée par le lien bleu -> on ouvre directement la page
 document.addEventListener("hiptown-dashboard", e => {
   currentSpace = e.detail && e.detail.space;
+  applyLabels();
   if (location.hash !== PAGE_HASH) return;
   history.replaceState(null, "", location.pathname + location.search); // un rechargement ramène au tableau de bord
   window.hideAll();
