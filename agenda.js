@@ -1,13 +1,9 @@
 // ═══════════════════════════════════════════════════════
 //  PORTAIL HIPTOWN — Agenda des réunions à venir (tableau de bord)
-//  En haut de l'espace, semaine par semaine :
-//   - clients salle de réunion et coworkers : leurs propres réservations
-//     (serveur : getMyUpcomingBookings, reservation/MesReservations.gs) ;
-//   - équipe Hiptown : toutes les réunions de toutes les salles
-//     (serveur : getAllUpcomingBookings, réservé aux comptes Hiptown),
-//     affichées dans la page « Salle de réunion » et non sur l'accueil.
-//  Un clic sur une réunion d'un client ouvre « Mes prochaines réservations »
-//  (détail, ajout à l'agenda, modification ou annulation).
+//  Équipe Hiptown seulement, semaine par semaine, dans la page « Salle de réunion » :
+//  toutes les réunions de toutes les salles (serveur : getAllUpcomingBookings,
+//  réservé aux comptes Hiptown). Les clients voient leurs réservations dans
+//  « Mes réservations » (mes-reservations.js), pas sur l'accueil.
 // ═══════════════════════════════════════════════════════
 
 import { auth } from "./firebase-config.js";
@@ -67,7 +63,8 @@ async function load() {
   const token = ++requestToken;
   const box = $("agenda");
   placeBox();
-  if (!auth.currentUser || !["salle", "coworking", "hiptown"].includes(space)) { box.hidden = true; return; }
+  // Équipe Hiptown seulement : les clients retrouvent leurs réservations dans « Mes réservations »
+  if (!auth.currentUser || space !== "hiptown") { box.hidden = true; return; }
   box.hidden = false;
   $("agenda-title").textContent = space === "hiptown" ? "📅 Réunions à venir (toutes les salles)" : "📅 Mes réunions à venir";
   if (!bookings.length) showMessage("Chargement de l'agenda...");
