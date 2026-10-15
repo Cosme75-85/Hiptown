@@ -151,6 +151,10 @@ function doPost(e) {
     if (body.action === 'createManualQuote') {
       return jsonResponse(createManualQuote(body.idToken, body.payload));
     }
+    // Messagerie du portail : email à l'équipe de la ville ou au client après un message (voir Messagerie.gs)
+    if (body.action === 'notifyNewMessage') {
+      return jsonResponse(notifyNewMessage(body.idToken, body.payload));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });
