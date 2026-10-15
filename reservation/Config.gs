@@ -86,6 +86,9 @@ const NOTIFY_ON_EXPIRY = true;  // prévenir le client par email quand sa demand
 // et les copies des devis faits à la main partent à <ville>@hiptown.com
 // (ex. bordeaux@hiptown.com pour une salle de Bordeaux ; voir cityTeamEmail dans Services.gs).
 const CITY_TEAM_EMAIL_DOMAIN = 'hiptown.com';
+// Adresses qui reçoivent aussi, en copie directe, les demandes de salle à valider et les emails
+// « un coworker a réservé » (Gmail n'affiche pas à l'expéditeur ce que le groupe de la ville lui renvoie)
+const TEAM_COPY_EMAILS = ['cc@hiptown.com'];
 // Contact général : affiché dans « Mes prochaines réservations », reçoit les emails de test (Tests.gs)
 const OWNER_EMAIL = 'cc@hiptown.com';
 

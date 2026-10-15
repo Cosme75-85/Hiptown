@@ -918,7 +918,7 @@ function notifyTeamMeals(kind, user, space, title, booking, start, end, quote, o
   ].filter(Boolean);
   try {
     MailApp.sendEmail({
-      to: cityTeamEmail(space),
+      to: teamRecipients(space),
       subject: (hasServices(meals) ? '🧾 ' : '📅 ') + 'Coworking — ' + kind + ' — ' + space.name + ' — ' + when,
       htmlBody: '<p><b>' + escapeHtml(kind) + '</b> depuis l\'espace coworking du portail'
         + (hasServices(meals) ? ', avec des services' : '') + '.</p>'
