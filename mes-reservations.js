@@ -8,6 +8,8 @@
 //  Le serveur (reservation/MesReservations.gs) vérifie le compte.
 //  Coworking : « Modifier ou annuler » ouvre la tuile de réservation.
 //  Salle de réunion : modification ou annulation par email à l'équipe.
+//  Coworkers : en dessous, crédits du mois et détail des réunions décomptées,
+//  passées comprises (serveur : getCoworkingCredits, reservation/Coworking.gs).
 // ═══════════════════════════════════════════════════════
 
 import { auth } from "./firebase-config.js";
@@ -62,6 +64,53 @@ async function load() {
   } catch (err) {
     if (token === requestToken) showMessage("Liste indisponible pour le moment, merci de réessayer plus tard.");
   }
+}
+
+// ==================== CRÉDITS DU MOIS (COWORKERS) ====================
+
+async function loadCredits() {
+  const token = requestToken;
+  const box = $("my-credits");
+  box.hidden = true;
+  if (currentSpace !== "coworking" || !auth.currentUser) return;
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "getCoworkingCredits", idToken: idToken })
+    }).then(r => r.json());
+    if (token !== requestToken || !res.success || !res.chargesCredits) return;
+    box.innerHTML = '<h3 class="my-credits-title">Crédits ' + escapeHtml(res.company ? "de " + res.company + " " : "")
+      + "pour " + escapeHtml(res.monthLabel) + " : <b>" + res.remaining + "</b> restant(s) sur " + res.allowance + "</h3>"
+      + creditDetailsHtml(res);
+    box.hidden = false;
+  } catch (err) {
+    box.hidden = true;
+  }
+}
+
+/**
+ * Toutes les réunions de l'entreprise décomptées ce mois-ci, passées comprises
+ * et quel que soit le membre qui a réservé : de quoi comprendre le solde.
+ */
+function creditDetailsHtml(res) {
+  if (!Array.isArray(res.details)) { // ancienne version de l'outil de réservation : pas de détail
+    return '<p class="my-bookings-help">' + res.used + " crédit(s) utilisé(s) ce mois-ci.</p>";
+  }
+  if (!res.details.length) return '<p class="my-bookings-help">Aucune réunion décomptée ce mois-ci.</p>';
+  const rows = res.details.map(d => {
+    const when = d.endDateString
+      ? "Du " + formatDate(d.dateString) + " au " + formatDate(d.endDateString)
+      : formatDate(d.dateString) + ", " + d.startHour + "h – " + d.endHour + "h";
+    return '<li class="rc-credits-row' + (d.past ? " rc-credits-past" : "") + '">'
+      + '<span class="rc-credits-when">' + escapeHtml(when) + (d.past ? ' <span class="rc-credits-tag">passée</span>' : "") + "</span>"
+      + '<span class="rc-credits-what">' + escapeHtml(d.spaceName) + " · " + escapeHtml(d.title)
+      + (d.bookedBy && !d.mine ? " · par " + escapeHtml(d.bookedBy) : "") + "</span>"
+      + '<span class="rc-credits-cost">' + d.credits + " crédit(s)</span></li>";
+  }).join("");
+  return '<p class="my-credits-sub">Réunions du mois (' + res.details.length + "), passées comprises : "
+    + res.used + " crédit(s) utilisé(s)</p><ul class=\"rc-credits-list\">" + rows + "</ul>";
 }
 
 /** Message à la place de la liste (aucune réservation, erreur). */
@@ -195,6 +244,7 @@ function openPage() {
   $("my-bookings-list").innerHTML = '<p class="my-bookings-help">Chargement...</p>';
   $("my-bookings-more").hidden = true;
   load();
+  loadCredits();
 }
 
 // Connexion : on retient l'espace ; arrivée par le lien bleu -> on ouvre directement la page

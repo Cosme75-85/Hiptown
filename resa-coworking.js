@@ -214,33 +214,12 @@ async function loadCredits() {
     const now = new Date();
     if (year === now.getFullYear() && month === now.getMonth() + 1) showHeaderCredits(res);
     box.innerHTML = "Crédits " + escapeHtml(res.company ? "de " + res.company + " " : "") + "pour " + escapeHtml(res.monthLabel)
-      + " : <b>" + res.remaining + "</b> restant(s) sur " + res.allowance + creditDetailsHtml(res);
+      + " : <b>" + res.remaining + "</b> restant(s) sur " + res.allowance;
     box.hidden = false;
   } catch (err) {
     creditBalance = null;
     box.hidden = true;
   }
-}
-
-/**
- * Détail du solde : toutes les réunions de l'entreprise décomptées ce mois-ci,
- * passées comprises et quel que soit le membre qui a réservé.
- */
-function creditDetailsHtml(res) {
-  const list = Array.isArray(res.details) ? res.details : []; // ancienne version de l'outil : pas de détail
-  if (!list.length) return "";
-  const rows = list.map(d => {
-    const when = d.endDateString
-      ? "Du " + formatDate(d.dateString) + " au " + formatDate(d.endDateString)
-      : formatDate(d.dateString) + ", " + d.startHour + "h – " + d.endHour + "h";
-    return '<li class="rc-credits-row' + (d.past ? " rc-credits-past" : "") + '">'
-      + '<span class="rc-credits-when">' + escapeHtml(when) + (d.past ? ' <span class="rc-credits-tag">passée</span>' : "") + "</span>"
-      + '<span class="rc-credits-what">' + escapeHtml(d.spaceName) + " · " + escapeHtml(d.title)
-      + (d.bookedBy && !d.mine ? " · par " + escapeHtml(d.bookedBy) : "") + "</span>"
-      + '<span class="rc-credits-cost">' + d.credits + " crédit(s)</span></li>";
-  }).join("");
-  return '<details class="rc-credits-details"><summary>Voir les ' + list.length + " réunion(s) du mois ("
-    + res.used + " crédit(s) utilisé(s))</summary><ul>" + rows + "</ul></details>";
 }
 
 /**
