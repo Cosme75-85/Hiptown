@@ -60,9 +60,10 @@ export async function resizePhoto(file) {
  * @param {() => {profile: Object, space: string, companyName: string}} options.getContext
  *        profil Firestore courant, espace ("salle" | "coworking" | "hiptown") et entreprise affichée
  * @param {(fields: Object) => Promise<void>} options.save  enregistre les champs modifiés
+ * @param {(current: string, next: string) => Promise<void>} options.changePassword  change le mot de passe
  * @param {() => void} options.onClose  retour au tableau de bord
  */
-export function initProfilePage({ getContext, save, onClose }) {
+export function initProfilePage({ getContext, save, changePassword, onClose }) {
   const $ = id => document.getElementById(id);
   const avatar = $("profile-avatar");
   const photoInput = $("profile-photo-input");
@@ -133,6 +134,7 @@ export function initProfilePage({ getContext, save, onClose }) {
     renderAvatar();
     renderNameBlock();
     showMessage(infoMessage || "", false);
+    resetPasswordForm(profile.email || "");
     window.hideAllAuth();
     $("step-profile").hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -182,9 +184,64 @@ export function initProfilePage({ getContext, save, onClose }) {
     }
   });
 
+  // ── Modifier le mot de passe ──
+  const passwordForm = $("password-form");
+  const passwordMessage = $("password-message");
+  const passwordSave = $("password-save");
+
+  function showPasswordMessage(text, isError) {
+    passwordMessage.textContent = text;
+    passwordMessage.style.color = isError ? "#dc2626" : "#166534";
+    passwordMessage.hidden = !text;
+  }
+
+  function resetPasswordForm(email) {
+    passwordForm.reset();
+    $("password-username").value = email; // aide les gestionnaires de mots de passe
+    showPasswordMessage("", false);
+  }
+
+  passwordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const current = $("password-current").value;
+    const next = $("password-new").value;
+    const confirm = $("password-confirm").value;
+    if (!current) return showPasswordMessage("Saisissez votre mot de passe actuel.", true);
+    if (next.length < 6) return showPasswordMessage("Le nouveau mot de passe doit faire au moins 6 caractères.", true);
+    if (next !== confirm) return showPasswordMessage("Les deux nouveaux mots de passe ne sont pas identiques.", true);
+    if (next === current) return showPasswordMessage("Le nouveau mot de passe doit être différent de l'actuel.", true);
+
+    passwordSave.disabled = true;
+    try {
+      await changePassword(current, next);
+      passwordForm.reset();
+      showPasswordMessage("Mot de passe modifié ✓", false);
+    } catch (err) {
+      showPasswordMessage(passwordErrorMessage(err), true);
+    } finally {
+      passwordSave.disabled = false;
+    }
+  });
+
   $("back-from-profile").addEventListener("click", onClose);
 
   return { open };
+}
+
+/** Message lisible pour une erreur Firebase lors du changement de mot de passe. */
+function passwordErrorMessage(err) {
+  const code = (err && err.code) || "";
+  if (code.includes("wrong-password") || code.includes("invalid-credential") || code.includes("invalid-login-credentials")) {
+    return "Mot de passe actuel incorrect.";
+  }
+  if (code.includes("weak-password")) return "Nouveau mot de passe trop faible (6 caractères min.).";
+  if (code.includes("too-many-requests")) return "Trop d'essais. Patientez quelques minutes avant de réessayer.";
+  if (code.includes("requires-recent-login") || code.includes("user-mismatch") || code.includes("user-token-expired")) {
+    return "Pour votre sécurité, déconnectez-vous puis reconnectez-vous avant de réessayer.";
+  }
+  if (code.includes("network-request-failed")) return "Pas de connexion Internet. Réessayez.";
+  if (!code && err && err.message) return err.message;
+  return "Modification impossible. Réessayez.";
 }
 
 /** « Prénom Nom » (vide s'ils ne sont pas renseignés). */

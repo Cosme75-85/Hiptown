@@ -8,7 +8,10 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   doc, setDoc, getDoc, updateDoc, serverTimestamp
@@ -77,6 +80,19 @@ export async function logOut() {
 
 export async function resetPassword(email) {
   await sendPasswordResetEmail(auth, email);
+}
+
+/**
+ * Change le mot de passe de l'utilisateur connecté.
+ * Firebase exige une connexion récente pour cette opération : on vérifie
+ * donc d'abord le mot de passe actuel, puis on enregistre le nouveau.
+ */
+export async function changeMyPassword(currentPassword, newPassword) {
+  const user = auth.currentUser;
+  if (!user || !user.email) throw new Error("Vous n'êtes plus connecté. Reconnectez-vous.");
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
 }
 
 /**
