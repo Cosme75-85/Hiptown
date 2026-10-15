@@ -282,7 +282,7 @@ function routeToDashboard(client, space) {
   }
 }
 
-// ── Bouton "Changer d'espace" -> déconnexion propre ──
+// ── Bouton « Déconnexion » (bas du tableau de bord) ──
 document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(); });
 
 // ═══════════════════════════════════════════════════════
