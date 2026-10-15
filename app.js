@@ -9,6 +9,7 @@
   const eventsBanner       = document.getElementById("events-banner");
   const stepWelcome        = document.getElementById("step-welcome");
   const welcomeConnexionBtn = document.getElementById("welcome-connexion-btn");
+  const welcomeInscriptionBtn = document.getElementById("welcome-inscription-btn");
   const backFromChoice     = document.getElementById("back-from-choice");
   const stepChoice         = document.getElementById("step-choice");
   const stepDashboard      = document.getElementById("step-dashboard");
@@ -46,6 +47,7 @@
   const choiceSalle     = document.getElementById("choice-salle");
   const choiceCoworking = document.getElementById("choice-coworking");
   const choiceHiptown   = document.getElementById("choice-hiptown");
+  const choiceTeamNote  = document.getElementById("choice-team-note");
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -249,21 +251,26 @@
     eventsBanner.hidden = true;
   }
 
-  // ── Accueil ⇄ Choix de l'espace ────────────────────────
-  welcomeConnexionBtn.addEventListener("click", function () {
-    hideAll(); stepChoice.hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  // ── Accueil : Connexion ou Inscription ────────────────
+  // Connexion : e-mail + mot de passe, l'espace s'ouvre selon le compte (app-auth.js).
+  // Inscription : on choisit d'abord le type de compte (step-choice).
+  welcomeConnexionBtn.addEventListener("click", function () { window.openLoginScreen(); });
+  welcomeInscriptionBtn.addEventListener("click", function () { window.openSignupChoice(); });
 
   backFromChoice.addEventListener("click", function () {
     hideAll(); stepWelcome.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // ── Choix de l'espace ─────────────────────────────────
-  choiceSalle.addEventListener("click", function () { window.openAuthScreen("salle"); });
-  choiceCoworking.addEventListener("click", function () { window.openAuthScreen("coworking"); });
-  choiceHiptown.addEventListener("click", function () { window.openAuthScreen("admin"); });
+  // ── Inscription : type de compte ──────────────────────
+  choiceSalle.addEventListener("click", function () { window.openSignupScreen("salle"); });
+  choiceCoworking.addEventListener("click", function () { window.openSignupScreen("coworking"); });
+  // L'équipe ne s'inscrit pas elle-même : on explique et on propose la connexion
+  choiceHiptown.addEventListener("click", function () {
+    choiceTeamNote.hidden = false;
+    choiceTeamNote.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  document.getElementById("choice-team-login").addEventListener("click", function () { window.openLoginScreen(); });
 
   // ── Dashboard ─────────────────────────────────────────
   /**
