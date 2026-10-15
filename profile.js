@@ -195,11 +195,28 @@ export function initProfilePage({ getContext, save, changePassword, onClose }) {
     passwordMessage.hidden = !text;
   }
 
-  function resetPasswordForm(email) {
+  /** Replie le formulaire : seul le bouton « Changer le mot de passe » reste visible. */
+  function closePasswordForm() {
     passwordForm.reset();
-    $("password-username").value = email; // aide les gestionnaires de mots de passe
     showPasswordMessage("", false);
+    passwordForm.hidden = true;
+    $("password-open").hidden = false;
   }
+
+  function resetPasswordForm(email) {
+    closePasswordForm();
+    $("password-done").hidden = true;
+    $("password-username").value = email; // aide les gestionnaires de mots de passe
+  }
+
+  $("password-open").addEventListener("click", () => {
+    $("password-open").hidden = true;
+    $("password-done").hidden = true;
+    passwordForm.hidden = false;
+    $("password-current").focus();
+  });
+
+  $("password-cancel").addEventListener("click", closePasswordForm);
 
   passwordForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -214,8 +231,8 @@ export function initProfilePage({ getContext, save, changePassword, onClose }) {
     passwordSave.disabled = true;
     try {
       await changePassword(current, next);
-      passwordForm.reset();
-      showPasswordMessage("Mot de passe modifié ✓", false);
+      closePasswordForm();
+      $("password-done").hidden = false;
     } catch (err) {
       showPasswordMessage(passwordErrorMessage(err), true);
     } finally {
