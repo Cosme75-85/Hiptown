@@ -5,8 +5,10 @@
  * personne connectée, quel que soit l'outil qui a servi à réserver :
  *   - demandes faites avec l'outil de réservation des salles (en attente ou confirmées),
  *     retrouvées grâce à l'email du demandeur enregistré dans l'événement ;
- *   - réservations coworking faites depuis le portail (même email, enregistré aussi).
- * Lecture seule : rien n'est modifié dans les agendas.
+ *   - réservations coworking faites depuis le portail : liste propre à chaque compte,
+ *     tenue à jour au moment de la réservation, de la modification ou de l'annulation
+ *     (rememberCoworkingEvent / forgetCoworkingEvent), sans recherche dans les agendas.
+ * Rien n'est modifié dans les agendas.
  */
 
 /** Réservations à venir du compte connecté, dans tous les espaces, sur les 12 prochains mois. */
@@ -21,6 +23,38 @@ function getMyUpcomingBookings(idToken) {
   const now = new Date();
   const to = new Date(now.getTime() + 366 * DAY_MS);
   const bookings = [];
+
+  // Coworker (ou équipe) qui a déjà réservé depuis le portail : sa liste enregistrée
+  const records = readCoworkingRecords(account.uid);
+  if (records) {
+    records.forEach(r => {
+      const space = findSpace(r.spaceId);
+      if (!space || r.end <= now.getTime()) return;
+      const view = coworkingBookingView(space, r, false);
+      bookings.push({
+        kind: 'coworking',
+        status: 'confirmed',
+        editable: r.start > now.getTime(), // modifiable ou annulable jusqu'à son début
+        spaceId: view.spaceId,
+        spaceName: view.spaceName,
+        color: view.color,
+        address: view.address,
+        eventId: view.eventId,
+        title: view.title || 'Réservation',
+        start: view.start,
+        end: view.end,
+        dateString: view.dateString,
+        endDateString: view.endDateString,
+        startHour: view.startHour,
+        endHour: view.endHour,
+        numberOfPeople: view.numberOfPeople,
+        total: ''
+      });
+    });
+    return { success: true, bookings: bookings, contactEmail: OWNER_EMAIL };
+  }
+
+  // Sinon (clients salle de réunion) : demandes retrouvées dans les agendas par l'email du compte
   try {
     getAllSpaces().forEach(space => {
       listMyEvents(space, account, now, to).forEach(ev => {
@@ -245,5 +279,80 @@ function tokenEmail(idToken) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= MAX_TEXT_LENGTH ? email : '';
   } catch (err) {
     return '';
+  }
+}
+
+// ==================== LISTE « MES RÉSERVATIONS » DES COWORKERS ====================
+// Une liste par compte du portail, enregistrée dans les propriétés du script :
+// la réservation y entre dès qu'elle est faite, y suit ses modifications et en sort
+// à son annulation (ou une fois terminée). Rangée par date.
+
+const MY_BOOKINGS_KEY_PREFIX = 'mesReservations_';
+const MY_BOOKINGS_MAX_SIZE = 8500; // une propriété du script contient au plus 9 ko
+
+/** Liste enregistrée du compte, ou null s'il n'en a pas encore. */
+function readCoworkingRecords(uid) {
+  const raw = PropertiesService.getScriptProperties().getProperty(MY_BOOKINGS_KEY_PREFIX + uid);
+  if (!raw) return null;
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Liste du compte. La toute première fois, elle est reprise des agendas
+ * (réservations faites avant que la liste existe), puis enregistrée.
+ */
+function myCoworkingRecords(uid) {
+  const stored = readCoworkingRecords(uid);
+  if (stored) return stored;
+  const now = new Date();
+  const to = new Date(now.getTime() + 366 * DAY_MS);
+  const list = [];
+  getCoworkingSpaceList().forEach(space => {
+    listOwnEvents(space, uid, now, to).forEach(ev => {
+      if (ev.title.indexOf(COWORKING.titlePrefix) === 0) list.push(coworkingRecord(space, ev));
+    });
+  });
+  return writeCoworkingRecords(uid, list);
+}
+
+/** Enregistre la liste sans les réservations terminées, par date ; la plus lointaine part si c'est trop long. */
+function writeCoworkingRecords(uid, list) {
+  const now = Date.now();
+  const kept = list.filter(r => r && r.end > now).sort((a, b) => a.start - b.start);
+  let json = JSON.stringify(kept);
+  while (json.length > MY_BOOKINGS_MAX_SIZE && kept.length) {
+    Logger.log('⚠️ Liste « Mes réservations » trop longue pour ' + uid + ' : réservation du '
+      + new Date(kept[kept.length - 1].start) + ' non affichée.');
+    kept.pop();
+    json = JSON.stringify(kept);
+  }
+  PropertiesService.getScriptProperties().setProperty(MY_BOOKINGS_KEY_PREFIX + uid, json);
+  return kept;
+}
+
+/** Ajoute (ou met à jour) une réservation coworking dans la liste du compte. Ne bloque jamais la réservation. */
+function rememberCoworkingEvent(uid, space, event) {
+  try {
+    const record = coworkingRecord(space, ownEventFromCalendarEvent(event));
+    const list = myCoworkingRecords(uid).filter(r => r.eventId !== record.eventId);
+    list.push(record);
+    writeCoworkingRecords(uid, list);
+  } catch (err) {
+    Logger.log('⚠️ « Mes réservations » non mise à jour pour ' + uid + ' : ' + err.message);
+  }
+}
+
+/** Retire une réservation annulée de la liste du compte. */
+function forgetCoworkingEvent(uid, eventId) {
+  try {
+    const list = readCoworkingRecords(uid);
+    if (list) writeCoworkingRecords(uid, list.filter(r => r.eventId !== eventId));
+  } catch (err) {
+    Logger.log('⚠️ « Mes réservations » non mise à jour pour ' + uid + ' : ' + err.message);
   }
 }
