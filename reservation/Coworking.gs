@@ -94,6 +94,7 @@ function bookCoworkingRoom(idToken, rawBooking) {
   const quote = hasServices(booking)
     ? handleMealsOrder(user, booking, done.event, done.title, done.start, done.end, 'Nouvelle réservation')
     : notifyTeamMeals('Nouvelle réservation', user, booking.space, done.title, booking, done.start, done.end, null, null);
+  rememberCoworkingEvent(user.uid, booking.space, done.event); // ajoutée à « Mes réservations » (avec son devis)
   try {
     sendCoworkingConfirmation(user, booking, done.title, done.start, done.end, done.credits, quote);
   } catch (err) {
@@ -345,7 +346,7 @@ function frenchMonthLabel(year, month) {
 
 /**
  * Réservations à venir du compte connecté (celles qui n'ont pas encore commencé),
- * dans les salles proposées aux coworkers, sur les 12 prochains mois.
+ * dans les salles proposées aux coworkers.
  */
 function getMyCoworkingBookings(idToken) {
   let user;
@@ -355,47 +356,83 @@ function getMyCoworkingBookings(idToken) {
     return { success: false, message: err.message };
   }
 
-  const now = new Date();
-  const to = new Date(now.getTime() + 366 * DAY_MS);
+  // Liste « Mes réservations » tenue à jour à chaque réservation, modification ou annulation
+  // (MesReservations.gs) : pas de recherche dans les agendas
+  const now = Date.now();
   const bookings = [];
   try {
-    getCoworkingSpaceList().forEach(space => {
-      listOwnEvents(space, user.uid, now, to).forEach(ev => {
-        if (ev.title.indexOf(COWORKING.titlePrefix) !== 0 || ev.start <= now) return;
-        const slot = eventSlot(ev.start, ev.end);
-        const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
-        // La note va jusqu'à la ligne « Dernière modification » ou « Statut » (elle peut faire plusieurs lignes)
-        const note = (ev.description.match(/\nNote : ([\s\S]*?)(?=\n(?:Dernière modification|Devis repas|Statut) : |$)/) || [])[1];
-        let meals = {};
-        try { meals = JSON.parse(ev.meals || '{}'); } catch (err) { /* tag abîmé : pas de repas */ }
-        bookings.push({
-          spaceId: space.id,
-          spaceName: space.name,
-          color: space.color,
-          address: COWORKING.address || '',
-          allowMultiDay: !!space.allowMultiDay,
-          eventId: ev.id,
-          title: ev.title.slice(COWORKING.titlePrefix.length),
-          start: ev.start.getTime(),
-          end: ev.end.getTime(),
-          dateString: slot.dateString,
-          endDateString: slot.isMultiDay ? slot.endDateString : null,
-          startHour: slot.startHour,
-          endHour: slot.endHour,
-          numberOfPeople: people ? Number(people) : 1,
-          notes: note ? note.trim() : '',
-          services: requestedServices(meals),
-          servicesLabel: servicesLabel(meals),
-          quoteNumber: (ev.description.match(/Devis repas : (\S+)/) || [])[1] || '',
-          credits: user.chargesCredits ? (Number(ev.credits) || 0) : null
-        });
-      });
+    myCoworkingRecords(user.uid).forEach(r => {
+      const space = findSpace(r.spaceId);
+      if (!space || r.start <= now) return;
+      bookings.push(coworkingBookingView(space, r, user.chargesCredits));
     });
   } catch (err) {
     return { success: false, message: 'Impossible de lire vos réservations : ' + err.message };
   }
-  bookings.sort((a, b) => a.start - b.start);
   return { success: true, bookings: bookings };
+}
+
+/** Réservation coworking telle que l'affiche la page de réservation, à partir de sa fiche enregistrée. */
+function coworkingBookingView(space, r, chargesCredits) {
+  const slot = eventSlot(new Date(r.start), new Date(r.end));
+  let meals = {};
+  try { meals = JSON.parse(r.meals || '{}'); } catch (err) { /* tag abîmé : pas de repas */ }
+  return {
+    spaceId: space.id,
+    spaceName: space.name,
+    color: space.color,
+    address: COWORKING.address || '',
+    allowMultiDay: !!space.allowMultiDay,
+    eventId: r.eventId,
+    title: r.title,
+    start: r.start,
+    end: r.end,
+    dateString: slot.dateString,
+    endDateString: slot.isMultiDay ? slot.endDateString : null,
+    startHour: slot.startHour,
+    endHour: slot.endHour,
+    numberOfPeople: r.people || 1,
+    notes: r.notes || '',
+    services: requestedServices(meals),
+    servicesLabel: servicesLabel(meals),
+    quoteNumber: r.quote || '',
+    credits: chargesCredits ? (Number(r.credits) || 0) : null
+  };
+}
+
+/**
+ * Fiche enregistrée d'une réservation coworking, à partir de son événement
+ * ({ id, title, start, end, description, credits, meals }, voir listOwnEvents).
+ */
+function coworkingRecord(space, ev) {
+  const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
+  // La note va jusqu'à la ligne « Dernière modification » ou « Statut » (elle peut faire plusieurs lignes)
+  const note = (ev.description.match(/\nNote : ([\s\S]*?)(?=\n(?:Dernière modification|Devis repas|Statut) : |$)/) || [])[1];
+  return {
+    spaceId: space.id,
+    eventId: ev.id,
+    title: ev.title.slice(COWORKING.titlePrefix.length),
+    start: ev.start.getTime(),
+    end: ev.end.getTime(),
+    people: people ? Number(people) : 1,
+    notes: note ? note.trim().slice(0, 500) : '',
+    meals: ev.meals || '',
+    quote: (ev.description.match(/Devis repas : (\S+)/) || [])[1] || '',
+    credits: Number(ev.credits) || 0
+  };
+}
+
+/** Même forme que listOwnEvents, pour un événement CalendarApp. */
+function ownEventFromCalendarEvent(event) {
+  return {
+    id: event.getId(),
+    title: event.getTitle(),
+    start: event.getStartTime(),
+    end: event.getEndTime(),
+    description: event.getDescription() || '',
+    credits: event.getTag(TAG_CREDITS),
+    meals: event.getTag(TAG_MEALS)
+  };
 }
 
 /**
@@ -519,8 +556,10 @@ function cancelCoworkingBooking(idToken, raw) {
     const refunded = user.chargesCredits ? (Number(event.getTag(TAG_CREDITS)) || 0) : 0;
     const oldMeals = eventMeals(event);
 
+    const eventId = event.getId();
     event.deleteEvent();
     invalidateAvailabilityCache(); // le créneau redevient libre
+    forgetCoworkingEvent(user.uid, eventId); // retirée de « Mes réservations »
 
     if (hasServices(oldMeals)) {
       notifyTeamMeals('Annulation', user, space, title, null, start, end, null, oldMeals);
@@ -598,6 +637,7 @@ function modifyCoworkingBooking(idToken, raw) {
   } else if (hasServices(done.oldMeals)) {
     notifyTeamMeals('Annulation', user, space, title, null, done.oldStart, done.oldEnd, null, done.oldMeals);
   }
+  rememberCoworkingEvent(user.uid, space, done.event); // nouveau créneau dans « Mes réservations »
 
   try {
     sendClientEmail(user.email, user.firstName, 'Réservation modifiée — ' + space.name + ' — Hiptown', [
