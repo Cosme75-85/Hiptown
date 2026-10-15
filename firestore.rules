@@ -231,6 +231,42 @@ service cloud.firestore {
       }
     }
 
+    // Discussions de groupe (messagerie.js) :
+    //  - channels/team-{ville} : l'équipe Hiptown de la ville (l'admin général les voit toutes)
+    //  - channels/company-{id} : les coworkers d'une entreprise (l'équipe Hiptown n'y a pas accès)
+    function isChannelMember(channelId) {
+      return (channelId.matches('team-.+') && isAdmin()
+              && (isSuperAdmin() || channelId == 'team-' + mySite()))
+        || (channelId.matches('company-.+') && isApprovedRole('coworking')
+            && myProfile().get('companyId', null) is string
+            && channelId == 'company-' + myProfile().companyId);
+    }
+
+    match /channels/{channelId} {
+      allow read: if isChannelMember(channelId);
+
+      // Aperçu du dernier message, écrit avec chaque message
+      allow create, update: if isChannelMember(channelId)
+        && request.resource.data.keys().hasOnly(['lastText', 'lastAt', 'lastAuthorUid', 'lastAuthorName'])
+        && isMessageText(request.resource.data.lastText, 200)
+        && request.resource.data.lastAt == request.time
+        && request.resource.data.lastAuthorUid == request.auth.uid
+        && isShortText(request.resource.data, 'lastAuthorName', 120);
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isChannelMember(channelId);
+        allow create: if isChannelMember(channelId)
+          && request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorUid == request.auth.uid
+          && isShortText(request.resource.data, 'authorName', 120)
+          && isMessageText(request.resource.data.text, 2000)
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
     // Commandes petit-dejeuner
     match /breakfastOrders/{orderId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);

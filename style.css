@@ -1205,6 +1205,8 @@ button.agenda-item:hover { background: #fff4a2; }
 .tile-badge { position: absolute; top: 10px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 700; line-height: 22px; text-align: center; }
 #msg-inbox[hidden], .msg-thread[hidden], .msg-error[hidden] { display: none; }
 .msg-inbox-list { display: flex; flex-direction: column; gap: 8px; }
+.msg-section { font-size: 11px; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.5px; margin: 10px 2px 0; }
+.msg-section:first-child { margin-top: 0; }
 .msg-empty { color: var(--text-pale); font-size: 13px; text-align: center; padding: 20px 12px; }
 .msg-conv { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; }
 .msg-conv:hover { border-color: var(--navy); }

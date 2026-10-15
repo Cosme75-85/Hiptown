@@ -273,8 +273,8 @@ function routeToDashboard(client, space) {
   document.dispatchEvent(new CustomEvent("hiptown-dashboard", { detail: {
     space,
     uid: session.uid,
-    // Ville et site du compte, et périmètre de l'équipe (messagerie.js)
-    place: { site: profile.site || null, siteId: profile.siteId || null },
+    // Ville, site et entreprise du compte, et périmètre de l'équipe (messagerie.js)
+    place: { site: profile.site || null, siteId: profile.siteId || null, companyId: profile.companyId || null },
     scope: space === "hiptown" ? adminScope() : null,
     contact: { firstName: profile.firstName || "", lastName: profile.lastName || "", company: companyNameOf(session), email: profile.email || "" }
   } }));

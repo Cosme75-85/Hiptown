@@ -80,7 +80,7 @@ function emailTeamAboutMessage(conv, msg) {
       + '<p style="color:#64748b;font-size:13px;">' + escapeHtml(details) + '</p>'
       + messageHtml(msg.text)
       + portalButton('Répondre dans le portail')
-      + '<p style="color:#64748b;font-size:12px;">Répondez depuis le portail (tuile « Messagerie clients ») : '
+      + '<p style="color:#64748b;font-size:12px;">Répondez depuis le portail (tuile « Messagerie ») : '
       + 'le client voit la réponse dans son espace et la reçoit aussi par email.</p>'
   });
 }
