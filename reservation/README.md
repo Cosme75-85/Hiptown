@@ -16,7 +16,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 | `Coworking.gs` | Réservations des coworkers depuis le portail (sans paiement) | ✅ |
 | `Reductions.gs` | Réductions clients appliquées au prochain devis | ✅ |
 | `MesReservations.gs` | Liste « Mes prochaines réservations » du tableau de bord du portail (lecture seule) | ✅ |
-| `Messagerie.gs` | Emails de la messagerie du portail (nouveau message d'un client, réponse de l'équipe) | ✅ |
+| `Messagerie.gs` | Emails et notifications de la messagerie du portail (voir « Notifications de la messagerie ») | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
@@ -193,3 +193,18 @@ Mise en route, **une seule fois** après avoir copié les fichiers :
    l'accès à Firestore). Le journal doit afficher les 4 salles et « Firestore joignable ».
 2. Déployer une nouvelle version (étape 5 ci-dessus). Sans ce déploiement, la tuile du
    portail affiche « Impossible de charger les salles ».
+
+## Notifications de la messagerie
+
+Les notifications (téléphone, ordinateur) partent de `Messagerie.gs` par Firebase Cloud Messaging.
+Réglage, une seule fois :
+
+1. Console Firebase > ⚙️ **Paramètres du projet** > **Comptes de service** > **Générer une nouvelle clé privée** :
+   un fichier `.json` est téléchargé.
+2. Apps Script > ⚙️ **Paramètres du projet** > **Propriétés du script** > **Ajouter une propriété** :
+   nom `FIREBASE_SERVICE_ACCOUNT`, valeur : tout le contenu du fichier `.json`. Enregistrer,
+   puis supprimer le fichier de l'ordinateur (cette clé donne un accès complet au projet Firebase).
+3. Console Firebase > ⚙️ **Paramètres du projet** > **Cloud Messaging** > **Certificats Web Push** >
+   **Générer une paire de clés** : la clé affichée va dans `pushVapidKey` de `config.js` (portail).
+
+Sans la propriété `FIREBASE_SERVICE_ACCOUNT`, les emails partent mais pas les notifications.
