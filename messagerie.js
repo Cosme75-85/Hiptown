@@ -19,13 +19,21 @@
 //  Email (1. seulement) : après chaque message, l'outil de réservation
 //  (reservation/Messagerie.gs) prévient l'équipe de la ville (ex. bordeaux@hiptown.com)
 //  ou, pour une réponse de l'équipe, le client.
+//  Notifications (toutes les discussions) : chaque appareil qui les accepte enregistre son
+//  jeton dans pushTokens/{uid} ; le même script envoie la notification aux destinataires
+//  (Firebase Cloud Messaging), reçue par sw.js même quand l'application est fermée.
+//  Pastille : nombre de messages non lus, sur la tuile et sur l'icône de l'application.
 // ═══════════════════════════════════════════════════════
 
-import { auth, db } from "./firebase-config.js";
+import { app, auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  collection, doc, query, where, orderBy, limitToLast, onSnapshot, writeBatch, updateDoc, serverTimestamp
+  collection, doc, query, where, orderBy, limitToLast, onSnapshot, writeBatch, updateDoc, serverTimestamp,
+  getDoc, setDoc, increment, getCountFromServer, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getMessaging, getToken, deleteToken, isSupported
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const MAX_LENGTH = 2000;          // caractères par message (même limite dans firestore.rules)
 const PREVIEW_LENGTH = 120;       // aperçu du dernier message (listes)
@@ -92,12 +100,29 @@ function markChannelRead(channelId) {
   const ch = channels.find(c => c.id === channelId);
   const at = toDate(ch?.data?.lastAt)?.getTime() || Date.now();
   try { localStorage.setItem(readKey(channelId), String(Math.max(at, lastRead(channelId)))); } catch (err) { /* navigation privée */ }
+  if (ch) ch.unread = 0;
 }
 
-function channelUnread(ch) {
+/** Nombre de messages d'une discussion de groupe arrivés depuis la dernière lecture (sur cet appareil). */
+async function countChannelUnread(ch) {
   const d = ch.data;
-  if (!d || !d.lastAt || d.lastAuthorUid === me.uid) return false;
-  return (toDate(d.lastAt)?.getTime() || 0) > lastRead(ch.id);
+  if (!d || !d.lastAt || d.lastAuthorUid === me.uid || (toDate(d.lastAt)?.getTime() || 0) <= lastRead(ch.id)) {
+    ch.unread = 0;
+    return;
+  }
+  try {
+    const q = query(collection(db, "channels", ch.id, "messages"), where("createdAt", ">", Timestamp.fromMillis(lastRead(ch.id))));
+    ch.unread = (await getCountFromServer(q)).data().count;
+  } catch (err) {
+    console.error(err);
+    ch.unread = 1;
+  }
+}
+
+/** Messages non lus d'une conversation client ↔ équipe (anciennes conversations : 1 si non lue). */
+function directUnread(conv, side) {
+  if (!conv || !conv["unread" + side]) return 0;
+  return conv["unread" + side + "Count"] || 1;
 }
 
 /** Discussions de groupe du compte connecté (mêmes conditions que firestore.rules). */
@@ -120,15 +145,35 @@ function groupChannels() {
 // ── Pastille « non lu » sur la tuile Messagerie ──
 function unreadCount() {
   if (!me) return 0;
-  const direct = isTeam() ? inbox.filter(c => c.unreadTeam).length : (ownConv?.unreadClient ? 1 : 0);
-  return direct + channels.filter(channelUnread).length;
+  const direct = isTeam()
+    ? inbox.reduce((sum, c) => sum + directUnread(c, "Team"), 0)
+    : directUnread(ownConv, "Client");
+  return direct + channels.reduce((sum, ch) => sum + (ch.unread || 0), 0);
+}
+
+// ── Pastille sur l'icône de l'application installée (téléphone, ordinateur) ──
+// Le nombre est aussi rangé dans le cache de sw.js, qui l'augmente à chaque
+// notification reçue quand l'application est fermée.
+const BADGE_CACHE = "hiptown-v1";
+const BADGE_KEY = "./__badge";
+
+async function setAppBadge(n) {
+  try {
+    if (n > 0 && navigator.setAppBadge) await navigator.setAppBadge(n);
+    else if (navigator.clearAppBadge) await navigator.clearAppBadge();
+  } catch (err) { /* non pris en charge */ }
+  try {
+    const cache = await caches.open(BADGE_CACHE);
+    await cache.put(BADGE_KEY, new Response(String(n)));
+  } catch (err) { /* navigation privée */ }
 }
 
 function applyBadge() {
+  const n = unreadCount();
+  if (me) setAppBadge(n);
   const tile = document.querySelector('#tiles-grid .tile[data-id="messages"], #tiles-grid .tile[data-id="msgteam"]');
   if (!tile) return;
   let badge = tile.querySelector(".tile-badge");
-  const n = unreadCount();
   if (!n) { badge?.remove(); return; }
   if (!badge) {
     badge = document.createElement("span");
@@ -136,7 +181,7 @@ function applyBadge() {
     tile.appendChild(badge);
   }
   badge.textContent = n > 99 ? "99+" : String(n);
-  badge.title = n + " discussion(s) non lue(s)";
+  badge.title = n + " message(s) non lu(s)";
 }
 
 function refresh() {
@@ -172,7 +217,7 @@ function watchInbox() {
     if (current?.kind === "direct") {
       currentConv = inbox.find(c => c.uid === current.id) || currentConv;
       renderHeader();
-      if (currentConv?.unreadTeam && isVisible()) markDirectRead();
+      if (directUnread(currentConv, "Team") && isVisible()) markDirectRead();
     }
     refresh();
   }, err => console.error(err)));
@@ -183,16 +228,20 @@ function watchOwnConversation() {
     ownConv = snap.exists() ? snap.data() : null;
     if (current?.kind === "direct") currentConv = ownConv;
     // Conversation affichée : les messages de l'équipe sont lus
-    if (current?.kind === "direct" && ownConv?.unreadClient && isVisible()) markDirectRead();
+    if (current?.kind === "direct" && directUnread(ownConv, "Client") && isVisible()) markDirectRead();
     refresh();
   }, err => console.error(err)));
 }
 
 function watchChannels() {
   channels.forEach(ch => {
-    stops.push(onSnapshot(doc(db, "channels", ch.id), snap => {
+    stops.push(onSnapshot(doc(db, "channels", ch.id), async snap => {
       ch.data = snap.exists() ? snap.data({ serverTimestamps: "estimate" }) : null;
-      if (current?.kind === "channel" && current.id === ch.id && isVisible()) markChannelRead(ch.id);
+      // Discussion affichée, ou dernier message écrit par soi : tout est lu
+      if ((current?.kind === "channel" && current.id === ch.id && isVisible()) || ch.data?.lastAuthorUid === me.uid) {
+        markChannelRead(ch.id);
+      }
+      await countChannelUnread(ch);
       refresh();
     }, err => console.error(err)));
   });
@@ -218,7 +267,7 @@ function channelItem(ch) {
   const d = ch.data || {};
   const who = !d.lastAuthorUid ? "" : (d.lastAuthorUid === me.uid ? "Vous" : (d.lastAuthorName || "")) + " : ";
   return itemHtml({ kind: "channel", id: ch.id, name: ch.title, when: shortWhen(toDate(d.lastAt)), sub: ch.sub,
-    last: d.lastText ? who + d.lastText : "Aucun message pour le moment", unread: channelUnread(ch) });
+    last: d.lastText ? who + d.lastText : "Aucun message pour le moment", unread: ch.unread > 0 });
 }
 
 function renderInbox() {
@@ -238,7 +287,7 @@ function renderInbox() {
       sub: [c.clientCompany, c.clientRole === "salle" ? "Salle de réunion" : "Coworking",
         showCity ? cityName(c.site) : "", siteName(c.site, c.siteId)].filter(Boolean).join(" · "),
       last: (c.lastFrom === "team" ? "Hiptown : " : "") + (c.lastText || ""),
-      unread: c.unreadTeam
+      unread: directUnread(c, "Team") > 0
     })).join(""));
   } else {
     parts.push(itemHtml({
@@ -247,7 +296,7 @@ function renderInbox() {
       when: shortWhen(toDate(ownConv?.lastAt)),
       sub: "Une question, une demande : écrivez-nous",
       last: ownConv ? (ownConv.lastFrom === "team" ? "Hiptown : " : "Vous : ") + ownConv.lastText : "Aucun message pour le moment",
-      unread: !!ownConv?.unreadClient
+      unread: directUnread(ownConv, "Client") > 0
     }));
     parts.push(channels.map(channelItem).join(""));
   }
@@ -354,6 +403,7 @@ function openMessagerie() {
   if (!me) return;
   showPage();
   showInbox();
+  renderPushBanner();
 }
 
 async function markDirectRead() {
@@ -361,8 +411,10 @@ async function markDirectRead() {
   const field = isTeam() ? "unreadTeam" : "unreadClient";
   if (!currentConv || !currentConv[field]) return;
   currentConv[field] = false; // évite d'écrire deux fois
+  currentConv[field + "Count"] = 0;
+  applyBadge();
   try {
-    await updateDoc(doc(db, "conversations", current.id), { [field]: false });
+    await updateDoc(doc(db, "conversations", current.id), { [field]: false, [field + "Count"]: 0 });
   } catch (err) {
     console.error(err);
   }
@@ -401,7 +453,8 @@ async function send() {
     });
     if (isTeam()) {
       batch.update(convRef, {
-        lastText: preview, lastFrom: "team", lastAt: serverTimestamp(), unreadTeam: false, unreadClient: true
+        lastText: preview, lastFrom: "team", lastAt: serverTimestamp(),
+        unreadTeam: false, unreadTeamCount: 0, unreadClient: true, unreadClientCount: increment(1)
       });
     } else {
       // La ville et le site viennent de la fiche du client : sa conversation le suit s'il change de site
@@ -413,7 +466,8 @@ async function send() {
         clientCompany: me.company,
         clientEmail: me.email,
         clientRole: me.space,
-        lastText: preview, lastFrom: "client", lastAt: serverTimestamp(), unreadTeam: true, unreadClient: false
+        lastText: preview, lastFrom: "client", lastAt: serverTimestamp(),
+        unreadTeam: true, unreadTeamCount: increment(1), unreadClient: false, unreadClientCount: 0
       }, { merge: true });
     }
   }
@@ -431,21 +485,82 @@ async function send() {
     $("msg-send").disabled = false;
   }
   if (target.kind === "channel") markChannelRead(target.id);
-  else notifyByEmail(target.id, msgRef.id);
+  notifyRecipients(target.kind === "channel" ? { channelId: target.id, messageId: msgRef.id }
+    : { conversationId: target.id, messageId: msgRef.id });
 }
 
-/** Email à l'équipe de la ville (ou au client) : sans attendre, un échec n'empêche pas le message. */
-async function notifyByEmail(convUid, messageId) {
+/**
+ * Notifications (et email pour une conversation client ↔ équipe) envoyées par l'outil de
+ * réservation (reservation/Messagerie.gs) : sans attendre, un échec n'empêche pas le message.
+ */
+async function notifyRecipients(payload) {
   try {
     const idToken = await auth.currentUser.getIdToken();
     await fetch(PORTAIL.reservationUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
-      body: JSON.stringify({ action: "notifyNewMessage", idToken, payload: { conversationId: convUid, messageId } })
+      body: JSON.stringify({ action: "notifyNewMessage", idToken, payload })
     });
   } catch (err) {
-    console.error("Email de la messagerie non envoyé", err);
+    console.error("Notification de la messagerie non envoyée", err);
   }
+}
+
+// ── Notifications sur cet appareil ──
+// iPhone / iPad : seulement une fois le portail installé sur l'écran d'accueil (iOS 16.4 et plus).
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let messaging = null;
+
+async function pushSupported() {
+  if (!PORTAIL.pushVapidKey || !("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  try { return await isSupported(); } catch (err) { return false; }
+}
+
+/** Bandeau de la messagerie : proposer d'activer les notifications, ou expliquer pourquoi c'est impossible. */
+async function renderPushBanner() {
+  const box = $("msg-push");
+  const supported = await pushSupported();
+  let html = "";
+  if (!supported) {
+    if (isIOS && !isStandalone && PORTAIL.pushVapidKey) {
+      html = "🔔 Pour recevoir les notifications sur iPhone, installez d'abord l'application (bouton « Installer l'application ») puis ouvrez-la depuis l'écran d'accueil.";
+    }
+  } else if (Notification.permission === "default") {
+    html = '<span>🔔 Recevez une notification à chaque nouveau message.</span> <button type="button" id="msg-push-on" class="msg-push-btn">Activer les notifications</button>';
+  } else if (Notification.permission === "denied") {
+    html = "🔕 Les notifications sont bloquées pour ce site. Pour les recevoir, autorisez-les dans les réglages du navigateur ou du téléphone.";
+  }
+  box.innerHTML = html;
+  box.hidden = !html;
+}
+
+/** Enregistre le jeton de cet appareil sur le compte (10 appareils au plus, les plus récents). */
+async function registerPushToken() {
+  if (!me || !(await pushSupported()) || Notification.permission !== "granted") return;
+  try {
+    messaging = messaging || getMessaging(app);
+    const registration = await navigator.serviceWorker.ready;
+    const token = await getToken(messaging, { vapidKey: PORTAIL.pushVapidKey, serviceWorkerRegistration: registration });
+    if (!token || !me) return;
+    const ref = doc(db, "pushTokens", me.uid);
+    const snap = await getDoc(ref);
+    const tokens = (snap.exists() && Array.isArray(snap.data().tokens) ? snap.data().tokens : []).filter(t => t !== token);
+    tokens.push(token);
+    await setDoc(ref, { tokens: tokens.slice(-10), updatedAt: serverTimestamp() });
+  } catch (err) {
+    console.error("Notifications non activées", err);
+  }
+}
+
+async function enablePush() {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") await registerPushToken();
+  } catch (err) {
+    console.error(err);
+  }
+  renderPushBanner();
 }
 
 function showError(text) {
@@ -483,6 +598,7 @@ document.addEventListener("hiptown-dashboard", e => {
   else watchOwnConversation();
   watchChannels();
   applyBadge();
+  registerPushToken();
   // Lien d'un email de notification : on ouvre directement la messagerie
   if (location.hash === PAGE_HASH) {
     history.replaceState(null, "", location.pathname + location.search);
@@ -491,7 +607,17 @@ document.addEventListener("hiptown-dashboard", e => {
 });
 
 onAuthStateChanged(auth, user => {
-  if (!user) { stopAll(); me = null; }
+  if (!user) { stopAll(); me = null; setAppBadge(0); }
+});
+
+// Déconnexion : cet appareil ne reçoit plus les notifications du compte
+document.getElementById("logout-btn")?.addEventListener("click", () => {
+  if (messaging) deleteToken(messaging).catch(() => {});
+}, true);
+
+// Clic sur une notification alors que le portail est déjà ouvert (message envoyé par sw.js)
+navigator.serviceWorker?.addEventListener("message", e => {
+  if (e.data && e.data.hiptown === "open-messagerie") openMessagerie();
 });
 
 document.addEventListener("hiptown-tile-action", e => {
@@ -501,6 +627,10 @@ document.addEventListener("hiptown-tile-action", e => {
 $("msg-inbox-list").addEventListener("click", e => {
   const btn = e.target.closest("[data-kind]");
   if (btn) openThread({ kind: btn.dataset.kind, id: btn.dataset.id });
+});
+
+$("msg-push").addEventListener("click", e => {
+  if (e.target.closest("#msg-push-on")) enablePush();
 });
 
 $("msg-form").addEventListener("submit", e => {

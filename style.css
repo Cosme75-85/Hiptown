@@ -1267,3 +1267,6 @@ button.agenda-item:hover { background: #fff4a2; }
 .msg-foot { display: flex; justify-content: space-between; gap: 8px; padding: 0 12px 8px; font-size: 12px; }
 .msg-error { color: #dc2626; }
 .msg-count { color: var(--text-pale); margin-left: auto; }
+.msg-push { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--text-soft); }
+.msg-push[hidden] { display: none; }
+.msg-push-btn { background: var(--navy); color: #fff; border: none; border-radius: var(--radius-md); padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; }

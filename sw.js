@@ -56,3 +56,61 @@ self.addEventListener("fetch", function (event) {
       })
   );
 });
+
+// ── Notifications de la messagerie (envoyées par reservation/Messagerie.gs) ──
+// Le nombre affiché sur l'icône de l'application est gardé dans le cache : la page
+// l'écrit (messagerie.js), et chaque notification reçue l'augmente de 1.
+const BADGE_KEY = "./__badge";
+
+async function readBadge() {
+  try {
+    const hit = await (await caches.open(CACHE)).match(BADGE_KEY);
+    return hit ? (Number(await hit.text()) || 0) : 0;
+  } catch (err) { return 0; }
+}
+
+async function writeBadge(n) {
+  try { await (await caches.open(CACHE)).put(BADGE_KEY, new Response(String(n))); } catch (err) { /* rien */ }
+  try {
+    if (n > 0 && self.navigator.setAppBadge) await self.navigator.setAppBadge(n);
+    else if (self.navigator.clearAppBadge) await self.navigator.clearAppBadge();
+  } catch (err) { /* non pris en charge */ }
+}
+
+self.addEventListener("push", function (event) {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (err) { payload = {}; }
+  const d = payload.data || payload; // format de Firebase Cloud Messaging : { data: {...} }
+  event.waitUntil((async function () {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const visible = windows.some(function (w) { return w.visibilityState === "visible"; });
+    // Portail ouvert à l'écran : il met déjà à jour la pastille et la discussion
+    if (!visible) await writeBadge((await readBadge()) + 1);
+    // L'iPhone exige une notification à chaque envoi ; ailleurs, inutile si le portail est à l'écran
+    const isIOS = /iPad|iPhone|iPod|Macintosh/.test(self.navigator.userAgent || "");
+    if (visible && !isIOS) return;
+    await self.registration.showNotification(d.title || "Hiptown", {
+      body: d.body || "Nouveau message",
+      tag: d.tag || "messagerie",
+      renotify: true,
+      icon: "icons/icon-192.png",
+      badge: "icons/favicon-32.png",
+      data: { url: d.url || "./#messagerie" }
+    });
+  })());
+});
+
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "./#messagerie", self.registration.scope).href;
+  event.waitUntil((async function () {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const open = windows.find(function (w) { return w.url.indexOf(self.registration.scope) === 0; });
+    if (open) {
+      await open.focus();
+      open.postMessage({ hiptown: "open-messagerie" });
+      return;
+    }
+    await self.clients.openWindow(url);
+  })());
+});
