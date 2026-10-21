@@ -11,7 +11,7 @@ const PORTAIL = {
 
   // Notifications de la messagerie (Firebase Cloud Messaging) : clé publique « Certificats Web Push »
   // (console Firebase > Paramètres du projet > Cloud Messaging). Vide = notifications désactivées.
-  pushVapidKey: "",
+  pushVapidKey: "BATXZYhGekMSy5fIxjZxHAHfjcu3arkV5idNE-P-9VicaK07FrWO6MYA0Rd-p0NzfL2YuVSDiSf2fs6DcPjD-Jk",
 
   // ── Villes et sites Hiptown ───────────────────────────
   // Chaque compte est rattaché à une ville, et chaque client à un site de cette ville.
