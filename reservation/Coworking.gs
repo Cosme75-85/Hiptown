@@ -130,7 +130,7 @@ function createCoworkingEvent(user, booking) {
   }
 
   // Crédits : vérifiés sous le verrou, deux réservations simultanées ne peuvent pas dépasser le solde
-  const cost = computeCoworkingCredits(booking);
+  const cost = coworkingPrice(booking).cost;
   let balance = null;
   if (user.chargesCredits) {
     balance = getCreditBalance(user, booking.startDate.getFullYear(), booking.startDate.getMonth() + 1);
@@ -273,8 +273,9 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits, qu
  * Moins de 4h : crédits par heure × heures. Dès 4h : demi-journée, plus les heures au-delà
  * de 4h, sans dépasser la journée (8h). Plusieurs jours = une journée par jour.
  */
-function computeCoworkingCredits(b) {
-  const rate = COWORKING_CREDITS.find(t => b.numberOfPeople <= t.maxPeople)
+function computeCoworkingCredits(b, people) {
+  const count = people || b.numberOfPeople;
+  const rate = COWORKING_CREDITS.find(t => count <= t.maxPeople)
     || COWORKING_CREDITS[COWORKING_CREDITS.length - 1];
   if (!rate) return 0;
   const duration = b.endHour - b.startHour;
@@ -284,6 +285,56 @@ function computeCoworkingCredits(b) {
   if (rate.halfDay && duration >= 4) perDay = rate.halfDay + perHour * (duration - 4);
   if (rate.fullDay) perDay = Math.min(perDay, rate.fullDay);
   return perDay * days;
+}
+
+/**
+ * Prix d'une réservation coworking : { cost, smallerRoom }.
+ * Le barème suit le nombre de personnes, sauf si une salle plus petite et adaptée est libre
+ * sur le même créneau : la grande salle se paie alors au prix de sa capacité (smallerRoom
+ * donne la salle libre, pour prévenir le coworker avant qu'il réserve). Si toutes les salles
+ * adaptées sont prises, la grande salle reste au prix du nombre de personnes.
+ */
+function coworkingPrice(b) {
+  const smaller = smallerFreeRoom(b);
+  const people = smaller ? (b.space.maxPeople || b.numberOfPeople) : b.numberOfPeople;
+  return {
+    cost: computeCoworkingCredits(b, people),
+    smallerRoom: smaller && { name: smaller.name, maxPeople: smaller.maxPeople }
+  };
+}
+
+/** Plus petite salle coworking adaptée au nombre de personnes, plus petite que b.space et libre sur le créneau, ou null. */
+function smallerFreeRoom(b) {
+  const size = s => s.maxPeople || Infinity;
+  const start = setTime(b.startDate, b.startHour);
+  const end = setTime(b.endDate, b.endHour);
+  const endString = b.isMultiDay ? b.endDateString : b.dateString;
+  return getSpaces()
+    .filter(s => s.coworking && s.id !== b.space.id && size(s) >= b.numberOfPeople && size(s) < size(b.space)
+      && (!b.isMultiDay || s.allowMultiDay))
+    .sort((x, y) => size(x) - size(y))
+    .find(s => {
+      if (closureInRange(s, b.dateString, endString)) return false;
+      try {
+        return maxOverlapInRange(getBookedSlots(s, start, end), start, end) + 1 <= s.capacity;
+      } catch (err) {
+        return false; // agenda illisible : la salle ne compte pas comme libre
+      }
+    }) || null;
+}
+
+/** Coût d'une réservation avant de la confirmer (formulaire du portail), avec l'avertissement « salle plus petite libre ». */
+function getCoworkingPrice(idToken, raw) {
+  let user;
+  try {
+    user = getPortalUser(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  const booking = validateCoworkingBooking(raw, user);
+  if (booking.error) return { success: false, message: booking.error };
+  const price = coworkingPrice(booking);
+  return { success: true, cost: price.cost, smallerRoom: price.smallerRoom };
 }
 
 /**
@@ -721,7 +772,7 @@ function applyCoworkingChange(user, booking, raw, start, end) {
     return { success: false, message: 'Ce créneau est déjà pris, merci de choisir un autre horaire.' };
   }
 
-  const cost = computeCoworkingCredits(booking);
+  const cost = coworkingPrice(booking).cost;
   const oldCost = Number(event.getTag(TAG_CREDITS)) || 0;
   let balance = null;
   if (user.chargesCredits) {

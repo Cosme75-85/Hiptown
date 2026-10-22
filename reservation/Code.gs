@@ -103,6 +103,9 @@ function doPost(e) {
     if (body.action === 'cancelCoworking') {
       return jsonResponse(cancelCoworkingBooking(body.idToken, body.payload));
     }
+    if (body.action === 'getCoworkingPrice') {
+      return jsonResponse(getCoworkingPrice(body.idToken, body.payload));
+    }
     if (body.action === 'modifyCoworking') {
       return jsonResponse(modifyCoworkingBooking(body.idToken, body.payload));
     }
