@@ -465,15 +465,57 @@ function updateCost() {
   const b = pendingBooking;
   if (!b) return;
   const people = parseInt($("rc-people").value, 10) || 1;
-  const cost = creditsFor(people, b.startHour, b.endHour, daysOf(b));
-  const costEl = $("rc-cost");
-  const sameMonth = creditBalance && b.dateString.slice(0, 7) === currentYear + "-" + pad(currentMonth);
-  costEl.hidden = !creditBalance || !cost;
-  costEl.classList.toggle("rc-cost-over", !!(sameMonth && cost > creditBalance.remaining));
-  costEl.textContent = "Coût : " + cost + " crédit(s)"
-    + (sameMonth ? (cost > creditBalance.remaining
-      ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
-      : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
+  const estimate = creditsFor(people, b.startHour, b.endHour, daysOf(b));
+  const render = (cost, smallerRoom) => {
+    const costEl = $("rc-cost");
+    const sameMonth = creditBalance && b.dateString.slice(0, 7) === currentYear + "-" + pad(currentMonth);
+    costEl.hidden = !creditBalance || !cost;
+    costEl.classList.toggle("rc-cost-over", !!(sameMonth && cost > creditBalance.remaining));
+    costEl.textContent = "Coût : " + cost + " crédit(s)"
+      + (sameMonth ? (cost > creditBalance.remaining
+        ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
+        : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
+    showSizeWarning("rc-size-warn", !costEl.hidden && smallerRoom, b.space, cost, estimate);
+  };
+  render(estimate, null);
+  if (!creditBalance) return;
+  checkPrice({
+    spaceId: b.space.id, dateString: b.dateString, endDateString: b.endDateString,
+    startHour: b.startHour, endHour: b.endHour, numberOfPeople: people, services: readServices("rc")
+  }, res => { if (pendingBooking === b) render(res.cost, res.smallerRoom); });
+}
+
+/**
+ * Coût définitif demandé au serveur (getCoworkingPrice) : si une salle plus petite et adaptée
+ * est libre sur le créneau, la salle choisie se paie au prix de sa capacité.
+ * Une seule demande à la fois : seule la réponse à la dernière saisie est gardée.
+ */
+let priceTimer = null;
+let priceRequestToken = 0;
+function checkPrice(payload, onResult) {
+  clearTimeout(priceTimer);
+  const token = ++priceRequestToken;
+  priceTimer = setTimeout(async () => {
+    if (!auth.currentUser) return;
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const res = await postJson({ action: "getCoworkingPrice", idToken: idToken, payload: payload });
+      if (token === priceRequestToken && res && res.success) onResult(res);
+    } catch (err) {
+      // Pas de réponse : l'estimation reste affichée, le serveur recalcule à la réservation
+    }
+  }, 400);
+}
+
+/** Avertissement « une salle adaptée est libre, vous payez le prix fort ». */
+function showSizeWarning(id, smallerRoom, space, cost, fairCost) {
+  const el = $(id);
+  el.hidden = !smallerRoom;
+  if (!smallerRoom) return;
+  el.textContent = "⚠️ Attention : " + smallerRoom.name
+    + (smallerRoom.maxPeople ? " (jusqu'à " + smallerRoom.maxPeople + " personnes)" : "")
+    + " est libre sur ce créneau et suffit pour votre groupe. Une salle adaptée à vos besoins étant disponible, "
+    + "vous payez " + space.name + " au prix fort : " + cost + " crédit(s) au lieu de " + fairCost + ".";
 }
 
 // ==================== ÉQUIPE HIPTOWN : RÉSERVER POUR UN CLIENT ====================
@@ -903,9 +945,17 @@ function updateEditForm() {
   updateMealsTotal("rc-edit", p);
   const space = SPACES.find(s => s.id === editing.spaceId);
   const costEl = $("rc-edit-cost");
+  $("rc-edit-size-warn").hidden = true;
   if (!space || editing.credits === null || !p.dateString || p.startHour >= p.endHour) { costEl.hidden = true; return; }
-  costEl.textContent = "Nouveau coût : " + creditsFor(p.numberOfPeople || 1, p.startHour, p.endHour, daysOf(p)) + " crédit(s) (avant : " + editing.credits + ")";
-  costEl.hidden = false;
+  const estimate = creditsFor(p.numberOfPeople || 1, p.startHour, p.endHour, daysOf(p));
+  const current = editing;
+  const render = (cost, smallerRoom) => {
+    costEl.textContent = "Nouveau coût : " + cost + " crédit(s) (avant : " + current.credits + ")";
+    costEl.hidden = false;
+    showSizeWarning("rc-edit-size-warn", smallerRoom, space, cost, estimate);
+  };
+  render(estimate, null);
+  if (p.numberOfPeople >= 1) checkPrice(p, res => { if (editing === current) render(res.cost, res.smallerRoom); });
 }
 
 async function submitEdit() {

@@ -967,6 +967,12 @@
         <div class="tile-title">Tarifs</div>
         <div class="tile-desc">Salles de réunion et coworking</div>
       </a>
+      <!-- Coworkers et équipe Hiptown (affichée par app.js) -->
+      <a class="tile" href="#" id="salles-credits" hidden>
+        <div class="tile-icon" style="background:#fff9c2;color:#1e1847;">💳</div>
+        <div class="tile-title">Utilisation des crédits</div>
+        <div class="tile-desc">Crédits par réservation</div>
+      </a>
     </div>
   </section>
 
@@ -1086,6 +1092,7 @@
           <div class="rc-slot-banner" id="rc-slot-banner"></div>
           <p class="rc-booker" id="rc-booker"></p>
           <p class="rc-cost" id="rc-cost" hidden></p>
+          <p class="rc-size-warn" id="rc-size-warn" hidden></p>
           <!-- Équipe Hiptown : réserver pour un coworker ou un client salle de réunion (resa-coworking.js) -->
           <fieldset class="rc-meals" id="rc-for" hidden>
             <legend>Pour qui ?</legend>
@@ -1157,6 +1164,7 @@
           <p class="rc-meals-total" id="rc-edit-meals-late" hidden></p>
         </fieldset>
         <p class="rc-cost" id="rc-edit-cost" hidden></p>
+        <p class="rc-size-warn" id="rc-edit-size-warn" hidden></p>
 
         <div class="rc-modal-actions">
           <button type="button" class="rc-btn-secondary" id="rc-edit-close">Fermer</button>
