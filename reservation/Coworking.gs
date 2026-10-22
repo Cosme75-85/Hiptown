@@ -295,7 +295,7 @@ function computeCoworkingCredits(b, people) {
  * adaptées sont prises, la grande salle reste au prix du nombre de personnes.
  */
 function coworkingPrice(b) {
-  const smaller = smallerFreeRoom(b);
+  const smaller = smallerFreeRoom(b, s => s.coworking);
   const people = smaller ? (b.space.maxPeople || b.numberOfPeople) : b.numberOfPeople;
   return {
     cost: computeCoworkingCredits(b, people),
@@ -303,14 +303,17 @@ function coworkingPrice(b) {
   };
 }
 
-/** Plus petite salle coworking adaptée au nombre de personnes, plus petite que b.space et libre sur le créneau, ou null. */
-function smallerFreeRoom(b) {
+/**
+ * Plus petite salle adaptée au nombre de personnes, plus petite que b.space et libre sur le
+ * créneau, parmi celles que isCandidate retient (salles coworking, ou salles des clients salle), ou null.
+ */
+function smallerFreeRoom(b, isCandidate) {
   const size = s => s.maxPeople || Infinity;
   const start = setTime(b.startDate, b.startHour);
   const end = setTime(b.endDate, b.endHour);
   const endString = b.isMultiDay ? b.endDateString : b.dateString;
   return getSpaces()
-    .filter(s => s.coworking && s.id !== b.space.id && size(s) >= b.numberOfPeople && size(s) < size(b.space)
+    .filter(s => isCandidate(s) && s.id !== b.space.id && size(s) >= b.numberOfPeople && size(s) < size(b.space)
       && (!b.isMultiDay || s.allowMultiDay))
     .sort((x, y) => size(x) - size(y))
     .find(s => {
