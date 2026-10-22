@@ -1330,9 +1330,10 @@ button.agenda-item:hover { background: #fff4a2; }
 /* Fonds choisis (attribut posé sur <body>) */
 body[data-fond="gris"]     { background: #f6f5f4; }
 body[data-fond="blanc"]    { background: #ffffff; }
-body[data-fond="citron"]   { background: #fff4a2; }
-body[data-fond="vert-eau"] { background: #b9efe4; }
-body[data-fond="menthe"]   { background: #aaffcf; }
+body[data-fond="mauve"]    { background: #ede6f7; }
+body[data-fond="citron"]   { background: #fffacc; }
+body[data-fond="vert-eau"] { background: #e1f9f5; }
+body[data-fond="menthe"]   { background: #e1f8ed; }
 body[data-fond="nuit"]    { background: var(--navy); }
 body[data-fond="coworking"] { background: var(--navy); }
 /* Illustration fixe derrière tout le contenu (background-attachment: fixed ne marche pas sur iPhone) */
@@ -1397,10 +1398,12 @@ body.fond-sombre .container > section > .step-title { color: var(--navy); box-sh
 .viewer-body img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 body.viewer-open { overflow: hidden; }
 
-/* Couleur des cases choisie (attribut posé sur <body>) : fond des tuiles du tableau de bord */
+/* Couleur des cases choisie (attribut posé sur <body>) : fond des tuiles et de la case profil du tableau de bord */
 body[data-cases="gris"]     { --case: #f6f5f4; }
-body[data-cases="citron"]   { --case: #fff4a2; }
-body[data-cases="vert-eau"] { --case: #b9efe4; }
-body[data-cases="menthe"]   { --case: #aaffcf; }
-body[data-cases] .tile { background: var(--case); border-color: rgba(30,24,71,0.08); }
+body[data-cases="mauve"]    { --case: #ede6f7; }
+body[data-cases="citron"]   { --case: #fffacc; }
+body[data-cases="vert-eau"] { --case: #e1f9f5; }
+body[data-cases="menthe"]   { --case: #e1f8ed; }
+body[data-cases] .tile,
+body[data-cases] .dashboard-header { background: var(--case); border-color: rgba(30,24,71,0.08); }
 body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisible sur les cases colorées */

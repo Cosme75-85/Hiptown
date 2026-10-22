@@ -2,17 +2,19 @@
 //  PORTAIL HIPTOWN — Paramètres : fond du portail et couleur des cases
 // ═══════════════════════════════════════════════════════
 
-// Couleurs pâles de la charte Hiptown (v5, couleurs 2023 ; voir reservation/Index.html)
+// Couleurs de la charte Hiptown (v5, couleurs 2023) éclaircies à 20 %, comme le « gris chaud light » de la charte :
+// vert d'eau #67DFCB, menthe #68DEA4, citron #FFE700, lavande #A781D7, gris chaud #D9D4CD.
 // Les identifiants sont repris dans firestore.rules (isValidProfile) : garder les deux listes identiques.
 
 // Fonds proposés. « sombre » : les titres et textes posés directement sur le fond passent en blanc.
 export const BACKGROUNDS = [
-  { id: "lavande",   label: "Lavande",      swatch: "#f5f4ff" },
-  { id: "gris",      label: "Gris chaud",   swatch: "#f6f5f4" },
+  { id: "lavande",   label: "Par défaut",   swatch: "#f5f4ff" },
   { id: "blanc",     label: "Blanc",        swatch: "#ffffff" },
-  { id: "citron",    label: "Citron",       swatch: "#fff4a2" },
-  { id: "vert-eau",  label: "Vert d'eau",   swatch: "#b9efe4" },
-  { id: "menthe",    label: "Menthe",       swatch: "#aaffcf" },
+  { id: "gris",      label: "Gris chaud",   swatch: "#f6f5f4" },
+  { id: "mauve",     label: "Lavande",      swatch: "#ede6f7" },
+  { id: "citron",    label: "Citron",       swatch: "#fffacc" },
+  { id: "vert-eau",  label: "Vert d'eau",   swatch: "#e1f9f5" },
+  { id: "menthe",    label: "Menthe",       swatch: "#e1f8ed" },
   { id: "nuit",      label: "Nuit",         swatch: "#1e1847", sombre: true },
   { id: "coworking", label: "Coworking",    swatch: "#1e1847 url('fonds/coworking-violet.jpg') center / cover", sombre: true }
 ];
@@ -21,9 +23,10 @@ export const BACKGROUNDS = [
 export const CASES = [
   { id: "blanc",    label: "Blanc",      swatch: "#ffffff" },
   { id: "gris",     label: "Gris chaud", swatch: "#f6f5f4" },
-  { id: "citron",   label: "Citron",     swatch: "#fff4a2" },
-  { id: "vert-eau", label: "Vert d'eau", swatch: "#b9efe4" },
-  { id: "menthe",   label: "Menthe",     swatch: "#aaffcf" }
+  { id: "mauve",    label: "Lavande",    swatch: "#ede6f7" },
+  { id: "citron",   label: "Citron",     swatch: "#fffacc" },
+  { id: "vert-eau", label: "Vert d'eau", swatch: "#e1f9f5" },
+  { id: "menthe",   label: "Menthe",     swatch: "#e1f8ed" }
 ];
 
 // Un réglage = une liste de choix, un champ du profil, un attribut posé sur <body> (lu par style.css)

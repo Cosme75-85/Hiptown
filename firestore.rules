@@ -98,9 +98,9 @@ service cloud.firestore {
         && isShortText(data, 'city', 60)
         // Fond du portail et couleur des cases choisis dans « Paramètres » (mêmes listes que parametres.js)
         && (!('background' in data)
-            || data.background in ['lavande', 'gris', 'blanc', 'citron', 'vert-eau', 'menthe', 'nuit', 'coworking'])
+            || data.background in ['lavande', 'blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe', 'nuit', 'coworking'])
         && (!('cases' in data)
-            || data.cases in ['blanc', 'gris', 'citron', 'vert-eau', 'menthe'])
+            || data.cases in ['blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe'])
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
