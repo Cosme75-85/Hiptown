@@ -1296,6 +1296,73 @@ button.agenda-item:hover { background: #fff4a2; }
 .msg-foot { display: flex; justify-content: space-between; gap: 8px; padding: 0 12px 8px; font-size: 12px; }
 .msg-error { color: #dc2626; }
 .msg-count { color: var(--text-pale); margin-left: auto; }
+
+/* ── PARAMÈTRES : FOND DU PORTAIL (parametres.js) ── */
+.dashboard-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+
+.fond-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.fond-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 8px; background: var(--white); border: 2px solid var(--border);
+  border-radius: var(--radius-md); cursor: pointer; font: inherit; color: var(--text-dark);
+}
+.fond-choice:hover { border-color: var(--teal); }
+.fond-choice[aria-pressed="true"] { border-color: var(--navy); box-shadow: 0 0 0 2px var(--yellow); }
+.fond-swatch {
+  width: 100%; aspect-ratio: 16 / 10; border-radius: 8px;
+  border: 1px solid var(--border); background-size: cover; background-position: center;
+}
+.fond-label { font-size: 13px; font-weight: 600; }
+.fond-choice[aria-pressed="true"] .fond-label::after { content: " ✓"; }
+
+/* Fonds choisis (attribut posé sur <body>) */
+body[data-fond="gris"]     { background: #f6f5f4; }
+body[data-fond="blanc"]    { background: #ffffff; }
+body[data-fond="citron"]   { background: #fff4a2; }
+body[data-fond="vert-eau"] { background: #b9efe4; }
+body[data-fond="menthe"]   { background: #aaffcf; }
+body[data-fond="nuit"]    { background: var(--navy); }
+body[data-fond="coworking"] { background: var(--navy); }
+/* Illustration fixe derrière tout le contenu (background-attachment: fixed ne marche pas sur iPhone) */
+body[data-fond="coworking"]::before {
+  content: ""; position: fixed; inset: 0; z-index: -1;
+  background: var(--navy) url("fonds/coworking-violet.jpg") center / cover no-repeat;
+}
+/* Écran en hauteur (téléphone) : l'illustration, prévue en largeur, serait trop zoomée en « cover ».
+   On la pose en bas, à une taille proche de l'original, et le haut se fond dans le bleu nuit
+   (couleur de fond du dessin). */
+@media (orientation: portrait) {
+  body[data-fond="coworking"]::before {
+    background:
+      linear-gradient(to bottom, var(--navy) 38%, rgba(30,24,71,0) 58%),
+      url("fonds/coworking-violet.jpg") 22% 100% / auto 62% no-repeat,
+      var(--navy);
+  }
+}
+
+/* Fonds sombres : ce qui est posé directement sur le fond passe en clair,
+   les cartes blanches (tuiles, agenda, formulaires) restent telles quelles
+   et gagnent une ombre plus marquée pour se détacher du dessin. */
+body.fond-sombre .container > section > .step-title,
+body.fond-sombre .container > section > h1,
+body.fond-sombre .container > section > h2,
+body.fond-sombre .container > section > h3,
+body.fond-sombre #create-admin-section > h3,
+body.fond-sombre .container > section > p { color: #ffffff; }
+body.fond-sombre .container > section > p[style*="color"],
+body.fond-sombre .container > section > .profile-help,
+body.fond-sombre .outils-category-title,
+body.fond-sombre .rc-legend,
+body.fond-sombre .rc-loading,
+body.fond-sombre .resa-salle-fallback,
+body.fond-sombre .install-link { color: rgba(255,255,255,0.85) !important; }
+body.fond-sombre .container > section > p a,
+body.fond-sombre .resa-salle-fallback a { color: var(--yellow); }
+body.fond-sombre .tile,
+body.fond-sombre .dashboard-header,
+body.fond-sombre .agenda,
+body.fond-sombre .pin-box { box-shadow: 0 6px 24px rgba(0,0,0,0.35); border-color: transparent; }
+
 .msg-push { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--text-soft); }
 .msg-push[hidden] { display: none; }
 .msg-push-btn { background: var(--navy); color: #fff; border: none; border-radius: var(--radius-md); padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; }
@@ -1317,3 +1384,12 @@ button.agenda-item:hover { background: #fff4a2; }
 .viewer-body iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--white); }
 .viewer-body img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 body.viewer-open { overflow: hidden; }
+
+/* Couleur des pastilles choisie (attribut posé sur <body>) : remplace la couleur propre à chaque tuile */
+body[data-pastille="citron"]   { --pastille: #fff4a2; }
+body[data-pastille="vert-eau"] { --pastille: #b9efe4; }
+body[data-pastille="menthe"]   { --pastille: #aaffcf; }
+body[data-pastille="gris"]     { --pastille: #d9d4cd; }
+body[data-pastille] .tile-icon { background: var(--pastille) !important; }
+body[data-pastille] .back-btn { background: var(--pastille); }
+body[data-pastille] .back-btn:hover { background: var(--pastille); filter: brightness(0.95); }
