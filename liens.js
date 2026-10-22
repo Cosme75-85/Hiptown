@@ -50,7 +50,7 @@
   viewer.setAttribute("aria-modal", "true");
   viewer.innerHTML =
     '<div class="viewer-bar">' +
-      '<button type="button" class="back-btn viewer-close">← Retour</button>' +
+      '<button type="button" class="back-btn viewer-close">Retour</button>' +
       '<span class="viewer-title"></span>' +
       '<a class="viewer-out" target="_blank" rel="noopener" data-no-viewer>Ouvrir à part ↗</a>' +
     '</div>' +

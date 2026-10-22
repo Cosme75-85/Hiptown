@@ -389,21 +389,44 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 }
 
 /* ── BOUTONS RETOUR ── */
+/* Pastille turquoise, rond bleu marine avec chevron jaune ; le texte nomme l'écran où l'on revient */
 .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px 0 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
   color: var(--navy);
-  cursor: pointer;
-  margin-bottom: 20px;
-  background: none;
+  background: var(--teal);
   border: none;
-  padding: 0;
-  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: background 0.15s, box-shadow 0.15s;
 }
 
-.back-btn:hover { text-decoration: underline; }
+.back-btn::before {
+  content: "";
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffe700' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E") center / 16px no-repeat;
+}
+
+.back-btn:hover { background: #4fd4be; box-shadow: 0 2px 8px rgba(30,24,71,0.12); }
+.back-btn:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+
+/* Téléphone : bouton plus grand, plus facile à toucher */
+@media (max-width: 599px) {
+  .back-btn { min-height: 44px; padding: 0 18px 0 7px; font-size: 15px; }
+  .back-btn::before { width: 30px; height: 30px; background-size: 18px; }
+}
 
 .step-title {
   font-size: 18px;
@@ -1065,7 +1088,7 @@ footer {
     position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
     background: var(--bg); padding: 10px 0 0;
   }
-  #step-resa-salle .back-btn { margin: 0 16px 10px; align-self: flex-start; min-height: 32px; }
+  #step-resa-salle .back-btn { margin: 0 16px 10px; align-self: flex-start; }
   #step-resa-salle .resa-salle-frame { flex: 1; height: auto; min-height: 0; border-radius: 0; }
   #step-resa-salle .resa-salle-fallback { margin: 0; padding: 6px 16px calc(6px + env(safe-area-inset-bottom)); background: var(--white); }
   body:has(#step-resa-salle:not([hidden])) { overflow: hidden; }
@@ -1287,7 +1310,7 @@ button.agenda-item:hover { background: #fff4a2; }
   display: flex; align-items: center; gap: 12px; padding: 10px 16px;
   background: var(--white); border-bottom: 1px solid var(--border);
 }
-.viewer-bar .back-btn { margin: 0; min-height: 32px; flex-shrink: 0; }
+.viewer-bar .back-btn { margin: 0; flex-shrink: 0; }
 .viewer-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .viewer-out { flex-shrink: 0; font-size: 12px; color: var(--text-soft); text-decoration: none; }
 .viewer-body { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom); }

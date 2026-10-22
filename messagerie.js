@@ -366,6 +366,7 @@ function showInbox() {
   }
   $("msg-inbox").hidden = false;
   $("msg-thread").hidden = true;
+  $("back-from-messagerie").textContent = "Accueil";
   renderInbox();
 }
 
@@ -383,6 +384,8 @@ function openThread(target) {
   $("msg-inbox").hidden = true;
   $("msg-thread").hidden = false;
   $("msg-error").hidden = true;
+  // Le retour mène à la liste des discussions quand il y en a une, sinon au tableau de bord
+  $("back-from-messagerie").textContent = isTeam() || channels.length ? "Discussions" : "Accueil";
   $("msg-list").innerHTML = '<p class="msg-empty">Chargement…</p>';
   renderHeader();
   const parent = target.kind === "channel" ? "channels" : "conversations";

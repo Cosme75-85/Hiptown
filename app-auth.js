@@ -75,6 +75,7 @@ window.openSignupScreen = function (role) {
 function switchAuthTab(tab) {
   stepAuth.dataset.tab = tab;
   document.getElementById("auth-title").textContent = tab === "signup" ? "Inscription" : "Connexion";
+  document.getElementById("back-from-auth").textContent = tab === "signup" ? "Type de compte" : "Accueil";
   document.getElementById("login-form").hidden  = tab !== "login";
   document.getElementById("signup-form").hidden = tab !== "signup";
   authError.hidden = true;
