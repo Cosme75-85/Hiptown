@@ -320,6 +320,8 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 }
 
 .tile:active { transform: scale(0.98); }
+/* Tuile masquée (attribut hidden) : sans cette règle, display: flex la laisserait visible */
+.tile[hidden] { display: none; }
 
 .tile-wide {
   grid-column: 1 / -1;
@@ -387,21 +389,44 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 }
 
 /* ── BOUTONS RETOUR ── */
+/* Pastille turquoise, rond bleu marine avec chevron jaune ; le texte nomme l'écran où l'on revient */
 .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px 0 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
   color: var(--navy);
-  cursor: pointer;
-  margin-bottom: 20px;
-  background: none;
+  background: var(--teal);
   border: none;
-  padding: 0;
-  font-weight: 500;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: background 0.15s, box-shadow 0.15s;
 }
 
-.back-btn:hover { text-decoration: underline; }
+.back-btn::before {
+  content: "";
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffe700' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E") center / 16px no-repeat;
+}
+
+.back-btn:hover { background: #4fd4be; box-shadow: 0 2px 8px rgba(30,24,71,0.12); }
+.back-btn:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+
+/* Téléphone : bouton plus grand, plus facile à toucher */
+@media (max-width: 599px) {
+  .back-btn { min-height: 44px; padding: 0 18px 0 7px; font-size: 15px; }
+  .back-btn::before { width: 30px; height: 30px; background-size: 18px; }
+}
 
 .step-title {
   font-size: 18px;
@@ -998,6 +1023,10 @@ footer {
 .rc-option.rc-danger { color: #dc2626; }
 .rc-option.rc-danger:hover { background: #fee2e2; }
 .rc-cost.rc-cost-over { color: #dc2626; }
+.rc-size-warn {
+  font-size: 13px; line-height: 1.45; margin-top: 8px; padding: 10px 12px;
+  background: #fff7d6; border: 1px solid #f5d76e; border-radius: 8px; color: #7a5a00;
+}
 .rc-modal-actions {
   display: flex; gap: 8px; margin-top: 18px; padding: 12px 0 20px;
   position: sticky; bottom: 0; background: var(--white);
@@ -1059,7 +1088,7 @@ footer {
     position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
     background: var(--bg); padding: 10px 0 0;
   }
-  #step-resa-salle .back-btn { margin: 0 16px 10px; align-self: flex-start; min-height: 32px; }
+  #step-resa-salle .back-btn { margin: 0 16px 10px; align-self: flex-start; }
   #step-resa-salle .resa-salle-frame { flex: 1; height: auto; min-height: 0; border-radius: 0; }
   #step-resa-salle .resa-salle-fallback { margin: 0; padding: 6px 16px calc(6px + env(safe-area-inset-bottom)); background: var(--white); }
   body:has(#step-resa-salle:not([hidden])) { overflow: hidden; }
@@ -1298,11 +1327,21 @@ body[data-fond="coworking"]::before {
   content: ""; position: fixed; inset: 0; z-index: -1;
   background: var(--navy) url("fonds/coworking-violet.jpg") center / cover no-repeat;
 }
+/* Écran en hauteur (téléphone) : l'illustration, prévue en largeur, serait trop zoomée en « cover ».
+   On la pose en bas, à une taille proche de l'original, et le haut se fond dans le bleu nuit
+   (couleur de fond du dessin). */
+@media (orientation: portrait) {
+  body[data-fond="coworking"]::before {
+    background:
+      linear-gradient(to bottom, var(--navy) 38%, rgba(30,24,71,0) 58%),
+      url("fonds/coworking-violet.jpg") 22% 100% / auto 62% no-repeat,
+      var(--navy);
+  }
+}
 
 /* Fonds sombres : ce qui est posé directement sur le fond passe en clair,
    les cartes blanches (tuiles, agenda, formulaires) restent telles quelles
    et gagnent une ombre plus marquée pour se détacher du dessin. */
-body.fond-sombre .container > section > .back-btn,
 body.fond-sombre .container > section > .step-title,
 body.fond-sombre .container > section > h1,
 body.fond-sombre .container > section > h2,
@@ -1322,3 +1361,25 @@ body.fond-sombre .tile,
 body.fond-sombre .dashboard-header,
 body.fond-sombre .agenda,
 body.fond-sombre .pin-box { box-shadow: 0 6px 24px rgba(0,0,0,0.35); border-color: transparent; }
+
+.msg-push { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--text-soft); }
+.msg-push[hidden] { display: none; }
+.msg-push-btn { background: var(--navy); color: #fff; border: none; border-radius: var(--radius-md); padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; }
+
+/* ── Visionneuse : pages ouvertes dans le portail (liens.js) ── */
+.viewer {
+  position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+  background: var(--bg); padding-top: env(safe-area-inset-top);
+}
+.viewer[hidden] { display: none; }
+.viewer-bar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: var(--white); border-bottom: 1px solid var(--border);
+}
+.viewer-bar .back-btn { margin: 0; flex-shrink: 0; }
+.viewer-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewer-out { flex-shrink: 0; font-size: 12px; color: var(--text-soft); text-decoration: none; }
+.viewer-body { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom); }
+.viewer-body iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--white); }
+.viewer-body img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+body.viewer-open { overflow: hidden; }

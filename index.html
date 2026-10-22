@@ -71,7 +71,7 @@
 
   <!-- ÉTAPE -1 : INSCRIPTION — CHOIX DU TYPE DE COMPTE -->
   <section id="step-choice" hidden>
-    <button class="back-btn" id="back-from-choice">← Retour</button>
+    <button class="back-btn" id="back-from-choice">Accueil</button>
     <p class="step-title">Quel compte souhaitez-vous créer ?</p>
     <div class="choice-grid">
 
@@ -113,7 +113,7 @@
 
   <!-- ÉTAPE : CONNEXION / INSCRIPTION -->
   <section id="step-auth" hidden>
-    <button class="back-btn" id="back-from-auth">← Retour</button>
+    <button class="back-btn" id="back-from-auth">Accueil</button>
     <div class="pin-box" style="max-width:360px;">
 
       <p class="pin-title" id="auth-title">Connexion</p>
@@ -191,7 +191,7 @@
 
   <!-- ÉTAPE : MENU GESTION (admin) -->
   <section id="step-gestion" hidden>
-    <button class="back-btn" id="back-from-gestion">← Retour</button>
+    <button class="back-btn" id="back-from-gestion">Accueil</button>
     <h2 class="step-title">🔑 Gestion</h2>
     <div class="outils-grid">
       <a class="outil-card" href="#" id="open-gestion-comptes">
@@ -223,7 +223,7 @@
 
   <!-- ÉTAPE : DEVIS FAITS À LA MAIN (admin) — coworker ou client salle, destination au choix (devis.js) -->
   <section id="step-gestion-devis" hidden>
-    <button class="back-btn" id="back-from-gestion-devis">← Retour</button>
+    <button class="back-btn" id="back-from-gestion-devis">Gestion</button>
     <h2 class="step-title" style="margin-bottom:4px;">🧾 Faire un devis</h2>
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Pour un <b>coworker</b>, le devis ne porte que sur les services : sa salle est sur les crédits de son entreprise.
@@ -304,7 +304,7 @@
 
   <!-- ÉTAPE : SALLES DE RÉUNION (admin) — ajout, modification, retrait, indisponibilités (salles.js) -->
   <section id="step-gestion-salles" hidden>
-    <button class="back-btn" id="back-from-gestion-salles">← Retour</button>
+    <button class="back-btn" id="back-from-gestion-salles">Gestion</button>
     <h2 class="step-title" style="margin-bottom:4px;">🚪 Salles de réunion</h2>
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Les salles proposées à la réservation (site public et espace coworking). Une période
@@ -354,16 +354,8 @@
         <input type="checkbox" id="room-multiday"/> Réservable sur plusieurs jours
       </label>
       <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px;">
-        <input type="checkbox" id="room-coworking"/> Proposée aux coworkers (réservation sur crédits)
+        <input type="checkbox" id="room-coworking"/> Proposée aux coworkers (réservation sur crédits, selon le nombre de personnes)
       </label>
-      <div id="room-credits" hidden>
-        <label class="profile-label">Crédits coworking : par heure (obligatoire) · demi-journée · journée</label>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <input type="number" id="room-credits-hour" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="par heure"/>
-          <input type="number" id="room-credits-half" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="demi-journée"/>
-          <input type="number" id="room-credits-full" class="profile-input" style="flex:1;min-width:110px;" min="0" step="0.5" placeholder="journée"/>
-        </div>
-      </div>
 
       <h3 style="font-size:14px;font-weight:700;margin:20px 0 6px;">Indisponibilités</h3>
       <p class="profile-help" style="margin-top:0;">Du premier au dernier jour inclus. Le motif reste interne.</p>
@@ -385,7 +377,7 @@
 
   <!-- ÉTAPE : SERVICES EN OPTION (admin) — ajout, prix, clients concernés, retrait (services.js) -->
   <section id="step-gestion-services" hidden>
-    <button class="back-btn" id="back-from-gestion-services">← Retour</button>
+    <button class="back-btn" id="back-from-gestion-services">Gestion</button>
     <h2 class="step-title" style="margin-bottom:4px;">🥐 Services</h2>
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Les services proposés en option au moment de réserver une salle, avec leurs prix € HT.
@@ -428,7 +420,7 @@
 
   <!-- ÉTAPE : RÉDUCTIONS CLIENTS (admin) — remise appliquée au prochain devis du client -->
   <section id="step-reductions" hidden>
-    <button class="back-btn" id="back-from-reductions">← Retour</button>
+    <button class="back-btn" id="back-from-reductions">Gestion</button>
     <h2 class="step-title" style="margin-bottom:4px;">🏷️ Réductions clients</h2>
     <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
       Un souci lors d'une réservation ? Accordez une remise : elle est gardée en mémoire et
@@ -464,7 +456,7 @@
 
   <!-- ÉTAPE : MES INFORMATIONS (client coworking) -->
   <section id="step-mes-infos" hidden>
-    <button class="back-btn" id="back-from-mes-infos">← Retour</button>
+    <button class="back-btn" id="back-from-mes-infos">Accueil</button>
     <h2 class="step-title">👤 Mes informations</h2>
     <div class="outils-grid">
       <a class="outil-card" href="#" id="open-mon-contrat">
@@ -480,7 +472,7 @@
 
   <!-- ÉTAPE : MON CONTRAT (client coworking, lecture seule) -->
   <section id="step-contrat" hidden>
-    <button class="back-btn" id="back-from-contrat">← Retour</button>
+    <button class="back-btn" id="back-from-contrat">Mes informations</button>
     <h2 class="step-title">📝 Mon contrat</h2>
     <div class="outils-grid" style="margin-bottom:16px;">
       <a class="outil-card contrat-tab" href="#" data-tab="contrat">
@@ -497,7 +489,7 @@
 
   <!-- ÉTAPE : INFORMATIONS DU COWORKING -->
   <section id="step-info-cowork" hidden>
-    <button class="back-btn" id="back-from-info-cowork">← Retour</button>
+    <button class="back-btn" id="back-from-info-cowork">Accueil</button>
     <h2 class="step-title">🏢 Informations du coworking</h2>
     <div class="outils-grid">
       <a class="outil-card" href="#" id="open-info-equipements">
@@ -517,7 +509,7 @@
 
   <!-- ÉTAPE : GESTION DES ENTREPRISES COWORKING (admin) -->
   <section id="step-companies" hidden>
-    <button class="back-btn" id="back-from-companies">← Retour</button>
+    <button class="back-btn" id="back-from-companies">Gestion</button>
     <h2 class="step-title">🏢 Gestion des entreprises</h2>
 
     <button class="direct-btn" id="open-new-company" type="button" style="background:var(--navy);color:#fff;margin-top:0;">➕ Créer une nouvelle entreprise</button>
@@ -534,7 +526,7 @@
 
   <!-- ÉTAPE : PANNEAU ADMINISTRATEUR -->
   <section id="step-admin" hidden>
-    <button class="back-btn" id="back-from-admin">← Retour</button>
+    <button class="back-btn" id="back-from-admin">Gestion</button>
     <h2 class="step-title" style="margin-bottom:4px;">🔑 Gestion des comptes</h2>
     <p id="admin-site-label" style="font-size:13px;color:#64748b;margin-bottom:18px;"></p>
     <input type="search" id="admin-search" class="profile-input" placeholder="Rechercher un compte (nom, email, entreprise, site)" style="margin-bottom:18px;"/>
@@ -568,7 +560,7 @@
 
   <!-- MON PROFIL -->
   <section id="step-profile" hidden>
-    <button class="back-btn" id="back-from-profile">← Retour</button>
+    <button class="back-btn" id="back-from-profile">Accueil</button>
     <h2 class="step-title">Mon profil</h2>
     <div class="pin-box" style="text-align:left;">
       <div class="profile-photo-row">
@@ -626,7 +618,7 @@
 
   <!-- PARAMÈTRES (parametres.js) -->
   <section id="step-settings" hidden>
-    <button class="back-btn" id="back-from-settings">← Retour</button>
+    <button class="back-btn" id="back-from-settings">Accueil</button>
     <h2 class="step-title">⚙️ Paramètres</h2>
     <div class="pin-box" style="text-align:left;max-width:none;">
       <p class="profile-label" style="margin-top:0;font-size:15px;">Fond du portail</p>
@@ -679,7 +671,7 @@
 
   <!-- PAGE INFORMATIONS -->
   <section id="step-info" hidden>
-    <button class="back-btn" id="back-from-info">← Retour</button>
+    <button class="back-btn" id="back-from-info">Accueil</button>
     <h2 class="step-title">Informations pratiques</h2>
     <div class="info-grid">
 
@@ -756,7 +748,7 @@
 
   <!-- PAGE LES SERVICES -->
   <section id="step-services" hidden>
-    <button class="back-btn" id="back-from-services">← Retour</button>
+    <button class="back-btn" id="back-from-services">Accueil</button>
     <h2 class="step-title">✨ Mes services</h2>
     <h3 class="services-part-title">Services inclus</h3>
     <div class="services-grid">
@@ -768,7 +760,7 @@
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🌐</div><div class="service-card-title">Internet Haut débit</div><div class="service-card-desc">Fibre 1Gb/s et Wi-Fi dernière génération.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🚿</div><div class="service-card-title">Douches</div><div class="service-card-desc">Douches disponibles pour les sportifs.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🏢</div><div class="service-card-title">Espace commun</div><div class="service-card-desc">Grand espace de convivialité et de détente.</div></div>
-      <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🍎</div><div class="service-card-title">Corbeille de fruits</div><div class="service-card-desc">Une corbeille de fruits frais offerte une fois par mois.</div></div>
+      <div class="service-card" id="service-fruits" onclick="this.classList.toggle('open')"><div class="service-card-icon">🍎</div><div class="service-card-title">Corbeille de fruits</div><div class="service-card-desc">Une corbeille de fruits frais offerte une fois par mois.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">👥</div><div class="service-card-title">Salles de réunion</div><div class="service-card-desc">Accès aux salles de réunion, à réserver depuis votre espace.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">📞</div><div class="service-card-title">Phonebox</div><div class="service-card-desc">Cabines insonorisées pour vos appels en toute confidentialité.</div></div>
       <div class="service-card" onclick="this.classList.toggle('open')"><div class="service-card-icon">🧑‍💼</div><div class="service-card-title">Un opérateur</div><div class="service-card-desc">Un interlocuteur Hiptown sur place pour vous accompagner au quotidien.</div></div>
@@ -823,7 +815,7 @@
 
   <!-- PAGE UTILISATION DES SALLES -->
   <section id="step-salle-info" hidden>
-    <button class="back-btn" id="back-from-salle-info">← Retour</button>
+    <button class="back-btn" id="back-from-salle-info">Salle de réunion</button>
     <h2 class="step-title">🗓️ Utilisation de nos salles de réunion</h2>
     <div class="services-list">
       <a class="service-item-link" href="https://drive.google.com/file/d/1XsyCSzgavAKIJyBJB9kQE7Wn7wNlTrwz/view?usp=drive_link" target="_blank" rel="noopener">
@@ -834,7 +826,7 @@
         <span class="service-icon">🚪</span>
         <span>Quitter la salle de réunion</span>
       </a>
-      <a class="service-item-link" href="#" target="_blank">
+      <a class="service-item-link" href="#">
         <span class="service-icon">🖥️</span>
         <span>Connexion écran</span>
       </a>
@@ -843,7 +835,7 @@
 
   <!-- PAGE HIPTOWN OUTILS -->
   <section id="step-hiptown-outils" hidden>
-  <button class="back-btn" id="back-from-hiptown-outils">← Retour</button>
+  <button class="back-btn" id="back-from-hiptown-outils">Accueil</button>
   <h2 class="step-title">🛠️ Outils Hiptown</h2>
   <div class="search-wrap">
     <input type="text" id="outils-search" placeholder="🔍 Rechercher un outil…" autocomplete="off"/>
@@ -947,7 +939,7 @@
 
   <!-- PAGE HIPTOWN SITES -->
   <section id="step-hiptown-espaces" hidden>
-    <button class="back-btn" id="back-from-hiptown-espaces">← Retour</button>
+    <button class="back-btn" id="back-from-hiptown-espaces">Accueil</button>
     <h2 class="step-title">📍 Sites</h2>
     <a href="https://docs.google.com/spreadsheets/d/1kSqZlOv1uvlL-8Q4PtGjqLOTz0-_iMezAPrrHnNjOr4/edit?gid=2091960551#gid=2091960551" target="_blank"
        style="display:block;background:#0369a1;color:#fff;text-align:center;font-weight:700;padding:14px;border-radius:var(--radius-md);margin-bottom:16px;text-decoration:none;">
@@ -967,7 +959,7 @@
   <!-- PAGE RÉSERVATION DES SALLES (ESPACE COWORKING) — logique dans resa-coworking.js -->
   <!-- SALLE DE RÉUNION : réserver, mes prochaines réservations, et pour les clients salle : utilisation et tarifs (app.js) -->
   <section id="step-salles" hidden>
-    <button class="back-btn" id="back-from-salles">← Retour</button>
+    <button class="back-btn" id="back-from-salles">Accueil</button>
     <h2 class="step-title">📅 Salle de réunion</h2>
     <div class="tiles-grid">
       <a class="tile" href="#" id="salles-book">
@@ -991,20 +983,27 @@
         <div class="tile-title">Tarifs</div>
         <div class="tile-desc">Salles de réunion et coworking</div>
       </a>
+      <!-- Coworkers et équipe Hiptown (affichée par app.js) -->
+      <a class="tile" href="#" id="salles-credits" hidden>
+        <div class="tile-icon" style="background:#fff9c2;color:#1e1847;">💳</div>
+        <div class="tile-title">Utilisation des crédits</div>
+        <div class="tile-desc">Crédits par réservation</div>
+      </a>
     </div>
   </section>
 
   <!-- RÉSERVER UNE SALLE (clients salle de réunion) : l'outil de réservation affiché dans le portail (resa-salle.js) -->
   <section id="step-resa-salle" class="resa-salle-step" hidden>
-    <button class="back-btn" id="back-from-resa-salle">← Retour</button>
+    <button class="back-btn" id="back-from-resa-salle">Salle de réunion</button>
     <iframe id="resa-salle-frame" class="resa-salle-frame" title="Réserver une salle" allow="clipboard-write"></iframe>
     <p class="resa-salle-fallback">La page ne s'affiche pas ? <a id="resa-salle-open" href="#" target="_blank" rel="noopener">Ouvrir la réservation dans un nouvel onglet</a></p>
   </section>
 
   <!-- MESSAGERIE (messagerie.js) : client <-> équipe Hiptown de sa ville ; l'équipe a une boîte de réception -->
   <section id="step-messagerie" hidden>
-    <button class="back-btn" id="back-from-messagerie">← Retour</button>
+    <button class="back-btn" id="back-from-messagerie">Accueil</button>
     <h2 class="step-title" id="messagerie-title">💬 Messagerie</h2>
+    <div class="msg-push" id="msg-push" hidden></div>
     <div id="msg-inbox" hidden>
       <div class="msg-inbox-list" id="msg-inbox-list"></div>
     </div>
@@ -1024,7 +1023,7 @@
 
   <!-- MES PROCHAINES RÉSERVATIONS (mes-reservations.js) : tuile, ou lien bleu de l'outil de réservation (#mes-reservations) -->
   <section id="step-mes-resa" hidden>
-    <button class="back-btn" id="back-from-mes-resa">← Retour</button>
+    <button class="back-btn" id="back-from-mes-resa">Salle de réunion</button>
     <h2 class="step-title" id="mes-resa-title">📅 Mes réservations</h2>
     <div class="rc-mine my-bookings" id="my-bookings">
       <div class="rc-mine-list" id="my-bookings-list"><p class="my-bookings-help">Chargement...</p></div>
@@ -1035,7 +1034,7 @@
   </section>
 
   <section id="step-resa-cowork" hidden>
-    <button class="back-btn" id="back-from-resa-cowork">← Retour</button>
+    <button class="back-btn" id="back-from-resa-cowork">Salle de réunion</button>
     <h2 class="step-title">📅 Réserver une salle de réunion</h2>
     <p class="rc-intro">Choisissez une salle et un jour libre. Votre réservation est confirmée tout de suite et vous recevez un email récapitulatif. Vous pouvez ensuite l'annuler ou la modifier vous-même jusqu'à son début.</p>
 
@@ -1109,6 +1108,7 @@
           <div class="rc-slot-banner" id="rc-slot-banner"></div>
           <p class="rc-booker" id="rc-booker"></p>
           <p class="rc-cost" id="rc-cost" hidden></p>
+          <p class="rc-size-warn" id="rc-size-warn" hidden></p>
           <!-- Équipe Hiptown : réserver pour un coworker ou un client salle de réunion (resa-coworking.js) -->
           <fieldset class="rc-meals" id="rc-for" hidden>
             <legend>Pour qui ?</legend>
@@ -1180,6 +1180,7 @@
           <p class="rc-meals-total" id="rc-edit-meals-late" hidden></p>
         </fieldset>
         <p class="rc-cost" id="rc-edit-cost" hidden></p>
+        <p class="rc-size-warn" id="rc-edit-size-warn" hidden></p>
 
         <div class="rc-modal-actions">
           <button type="button" class="rc-btn-secondary" id="rc-edit-close">Fermer</button>
@@ -1193,7 +1194,7 @@
 
   <!-- PAGE DÉTAIL SITE -->
   <section id="step-site-detail" hidden>
-    <button class="back-btn" id="back-from-site-detail">← Retour aux sites</button>
+    <button class="back-btn" id="back-from-site-detail">Sites</button>
     <h2 class="step-title" id="site-detail-title"></h2>
     <div class="info-grid" id="site-detail-tools"></div>
   </section>
@@ -1215,6 +1216,7 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="historique.js"></script>
+<script src="liens.js"></script>
 <script type="module" src="app-auth.js"></script>
 <script type="module" src="breakfast.js"></script>
 <script type="module" src="resa-coworking.js"></script>

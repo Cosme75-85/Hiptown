@@ -9,6 +9,10 @@ const PORTAIL = {
   // réservation intégrée de l'espace coworking (resa-coworking.js).
   reservationUrl: "https://script.google.com/macros/s/AKfycbxQi0MRfoJZ4YVroQfKe3l6mUBKwBZH8fMlMCLQa5YavhnKiZMsn6ULtb4-DHth47GsOw/exec",
 
+  // Notifications de la messagerie (Firebase Cloud Messaging) : clé publique « Certificats Web Push »
+  // (console Firebase > Paramètres du projet > Cloud Messaging). Vide = notifications désactivées.
+  pushVapidKey: "BATXZYhGekMSy5fIxjZxHAHfjcu3arkV5idNE-P-9VicaK07FrWO6MYA0Rd-p0NzfL2YuVSDiSf2fs6DcPjD-Jk",
+
   // ── Villes et sites Hiptown ───────────────────────────
   // Chaque compte est rattaché à une ville, et chaque client à un site de cette ville.
   //  - admin général : pas de ville, gère tout

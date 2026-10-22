@@ -164,10 +164,16 @@ service cloud.firestore {
       return value is string && value.size() > 0 && value.size() <= max;
     }
 
+    // Nombre de messages non lus (pastille) : entier raisonnable
+    function isUnreadCount(data, field, min) {
+      return data.get(field, 0) is int && data.get(field, 0) >= min && data.get(field, 0) <= 9999;
+    }
+
     // Conversation écrite par le client lui-même, avec un nouveau message
     function isValidClientConversation(uid, data) {
       return data.keys().hasOnly(['uid', 'site', 'siteId', 'clientName', 'clientCompany', 'clientEmail',
-                                  'clientRole', 'lastText', 'lastFrom', 'lastAt', 'unreadTeam', 'unreadClient'])
+                                  'clientRole', 'lastText', 'lastFrom', 'lastAt', 'unreadTeam', 'unreadClient',
+                                  'unreadTeamCount', 'unreadClientCount'])
         && data.uid == uid
         && data.get('site', null) == mySite()
         && data.get('siteId', null) == myProfile().get('siteId', null)
@@ -179,7 +185,9 @@ service cloud.firestore {
         && data.lastFrom == 'client'
         && data.lastAt == request.time
         && data.unreadTeam == true
-        && data.unreadClient == false;
+        && data.unreadClient == false
+        && isUnreadCount(data, 'unreadTeamCount', 0)
+        && data.get('unreadClientCount', 0) == 0;
     }
 
     match /conversations/{uid} {
@@ -192,19 +200,23 @@ service cloud.firestore {
         // Client : nouveau message, ou messages de l'équipe marqués comme lus
         (isOwner(uid) && isClientAccount()
           && (isValidClientConversation(uid, request.resource.data)
-              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadClient'])
-                  && request.resource.data.unreadClient == false)))
+              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadClient', 'unreadClientCount'])
+                  && request.resource.data.unreadClient == false
+                  && request.resource.data.get('unreadClientCount', 0) == 0)))
         // Équipe : réponse, ou messages du client marqués comme lus
         || (canManageUser(resource.data)
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['lastText', 'lastFrom', 'lastAt', 'unreadTeam', 'unreadClient'])
-          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadTeam'])
-               && request.resource.data.unreadTeam == false)
+               .hasOnly(['lastText', 'lastFrom', 'lastAt', 'unreadTeam', 'unreadClient', 'unreadTeamCount', 'unreadClientCount'])
+          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadTeam', 'unreadTeamCount'])
+               && request.resource.data.unreadTeam == false
+               && request.resource.data.get('unreadTeamCount', 0) == 0)
               || (isMessageText(request.resource.data.lastText, 200)
                   && request.resource.data.lastFrom == 'team'
                   && request.resource.data.lastAt == request.time
                   && request.resource.data.unreadTeam == false
-                  && request.resource.data.unreadClient == true)));
+                  && request.resource.data.get('unreadTeamCount', 0) == 0
+                  && request.resource.data.unreadClient == true
+                  && isUnreadCount(request.resource.data, 'unreadClientCount', 0))));
 
       allow delete: if false;
 
@@ -268,6 +280,18 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
         allow update, delete: if false;
       }
+    }
+
+    // Appareils qui reçoivent les notifications de la messagerie (messagerie.js).
+    // Seul le compte lui-même les voit ; l'outil de réservation les lit avec le compte
+    // de service Firebase pour envoyer les notifications (reservation/Messagerie.gs).
+    match /pushTokens/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['tokens', 'updatedAt'])
+        && request.resource.data.tokens is list
+        && request.resource.data.tokens.size() <= 10
+        && request.resource.data.updatedAt == request.time;
     }
 
     // Commandes petit-dejeuner
