@@ -470,6 +470,20 @@
       return fetch(BASE_URL + '?' + new URLSearchParams(params)).then(r => r.json());
     }
 
+    // Statistiques de la phase de test (Stats.gs) : simples compteurs, sans donnée personnelle
+    // ni rien d'enregistré sur l'appareil. Un clic non compté ne gêne jamais la réservation.
+    const STATS_SOURCE = IS_EMBEDDED ? 'portal' : 'external';
+    let statsOpenedOnce = false; // première fenêtre « Réserver » ouverte depuis l'arrivée sur la page
+    function countStat(type, spaceId) {
+      const payload = { type: type, spaceId: spaceId || null, source: STATS_SOURCE };
+      if (type === 'open') { payload.first = !statsOpenedOnce; statsOpenedOnce = true; }
+      fetch(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // évite une requête préalable (CORS)
+        body: JSON.stringify({ action: 'trackBookingStat', payload: payload })
+      }).catch(() => {});
+    }
+
     let toastTimer = null;
     function showToast(message) {
       const toast = $('toast');
@@ -634,6 +648,7 @@
       toggleMultiDay();
 
       $('modalOverlay').classList.add('open');
+      countStat('open', spaceId);
 
       const requestId = ++dayRequestToken;
       getJson({ action: 'getDayAvailability', spaceId: spaceId, dateString: dateString })
@@ -906,6 +921,7 @@
         .then(res => {
           showToast(res.message);
           if (!res.success) return;
+          countStat('sent', b.space.id);
           closeModal();
           resetForm();
           Object.keys(monthCache).forEach(k => delete monthCache[k]); // la disponibilité vient de changer
@@ -968,6 +984,7 @@
 
     renderSkeleton();
     loadMonth();
+    countStat('visit');
   </script>
 </body>
 </html>

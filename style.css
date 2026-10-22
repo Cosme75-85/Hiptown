@@ -1407,3 +1407,14 @@ body[data-cases="menthe"]   { --case: #e1f8ed; }
 body[data-cases] .tile,
 body[data-cases] .dashboard-header { background: var(--case); border-color: rgba(30,24,71,0.08); }
 body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisible sur les cases colorées */
+
+/* ── Gestion > Statistiques (statistiques.js) ── */
+.stats-scroll { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text-dark); }
+.stats-table th, .stats-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: center; vertical-align: top; }
+.stats-table th { font-size: 12px; font-weight: 600; color: var(--text-soft); background: #f8fafc; min-width: 90px; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; min-width: 150px; }
+.stats-table tbody tr:last-child td { border-bottom: none; }
+.stats-table .stats-total td { font-weight: 700; background: #f8fafc; }
+.stats-sub { font-size: 11px; color: var(--text-pale); font-weight: 400; }
+.stats-h4 { font-size: 13px; font-weight: 700; margin: 14px 0 8px; }

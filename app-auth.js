@@ -17,6 +17,7 @@ import { renderDiscountsPanel } from "./reductions.js";
 import { renderRoomsPanel } from "./salles.js";
 import { renderServicesPanel } from "./services.js";
 import { renderManualQuotePanel } from "./devis.js";
+import { renderStatsPanel } from "./statistiques.js";
 
 const stepAuth    = document.getElementById("step-auth");
 const stepPending = document.getElementById("step-pending");
@@ -28,6 +29,7 @@ const stepReductions = document.getElementById("step-reductions");
 const stepGestionSalles = document.getElementById("step-gestion-salles");
 const stepGestionServices = document.getElementById("step-gestion-services");
 const stepGestionDevis = document.getElementById("step-gestion-devis");
+const stepGestionStats = document.getElementById("step-gestion-stats");
 const stepSettings = document.getElementById("step-settings");
 const authError   = document.getElementById("auth-error");
 
@@ -37,7 +39,7 @@ const authError   = document.getElementById("auth-error");
 // masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepSettings].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepSettings].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -311,7 +313,7 @@ document.getElementById("logout-btn")?.addEventListener("click", () => { logOut(
 //  PANNEAU ADMIN + NOTIFICATIONS
 // ═══════════════════════════════════════════════════════
 
-// Menu « Gestion » : comptes, entreprises, réductions, salles de réunion, services et devis.
+// Menu « Gestion » : comptes, entreprises, réductions, salles de réunion, services, devis et statistiques.
 // Réservé au personnel Hiptown (rôle admin) : pour tout autre compte, rien ne s'ouvre,
 // même si la tuile apparaissait par erreur (ancienne page en cache, tuile ajoutée à la main).
 // Les données restent de toute façon protégées côté serveur (règles Firestore, Apps Script).
@@ -346,10 +348,13 @@ onGestionButton("open-gestion-reductions", stepReductions, async () =>
 onGestionButton("open-gestion-salles", stepGestionSalles, renderRoomsPanel);
 onGestionButton("open-gestion-services", stepGestionServices, renderServicesPanel);
 onGestionButton("open-gestion-devis", stepGestionDevis, renderManualQuotePanel);
+// Remise à zéro des compteurs : admin général seulement (règles Firestore et Stats.gs)
+onGestionButton("open-gestion-stats", stepGestionStats, () => renderStatsPanel(adminScope(), myAdminLevel() === "general"));
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-services")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-devis")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-gestion-stats")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 

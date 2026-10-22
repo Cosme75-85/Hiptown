@@ -157,6 +157,9 @@
   // Tuiles réservées au personnel Hiptown (jamais affichées à un client, même ajoutées à la main)
   const STAFF_ONLY_TILES = ["gestion"];
 
+  // Titre d'une tuile, pour la page Gestion > Statistiques (statistiques.js)
+  window.tileTitle = function (id) { return TILE_DEFS[id] ? TILE_DEFS[id].title : ""; };
+
   // ── Données des sites ─────────────────────────────────
   const SITES = {
     nabo02: { name: "NABO02 — Place de la Bourse CCI Tetris", tools: [
@@ -428,6 +431,7 @@
       el.className = "tile" + (tile.wide ? " tile-wide" : "");
       el.href      = tile.url || "#";
       el.setAttribute("data-id", id);
+      el.setAttribute("data-stat", id); // clic compté pour le compte connecté (statistiques.js)
       el.draggable = true;
       if (tile.url) el.target = "_blank";
 
