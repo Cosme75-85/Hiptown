@@ -943,6 +943,13 @@
     $('multiDayCheckbox').addEventListener('change', toggleMultiDay);
     $('multiDayConfirm').addEventListener('click', selectMultiDay);
 
+    // Nombre de personnes ramené à la capacité de la salle dès la saisie (le serveur refuse aussi au-delà)
+    $('numberOfPeople').addEventListener('input', () => {
+      const space = pendingBooking && pendingBooking.space;
+      if (!space || !space.maxPeople || !(parseInt($('numberOfPeople').value, 10) > space.maxPeople)) return;
+      $('numberOfPeople').value = space.maxPeople;
+      showToast(space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.');
+    });
     $('formStep').addEventListener('input', updatePriceSummary);
     // Service à l'unité coché : son champ quantité apparaît
     $('serviceRows').addEventListener('change', e => {

@@ -507,6 +507,14 @@ function checkPrice(payload, onResult) {
   }, 400);
 }
 
+/** Nombre de personnes ramené à la capacité de la salle dès la saisie (le serveur refuse aussi au-delà). */
+function capPeople(id, space) {
+  const input = $(id);
+  if (!space || !space.maxPeople || !(parseInt(input.value, 10) > space.maxPeople)) return;
+  input.value = space.maxPeople;
+  showToast(space.name + " accueille au maximum " + space.maxPeople + " personnes.");
+}
+
 /** Avertissement « une salle adaptée est libre, vous payez le prix fort ». */
 function showSizeWarning(id, smallerRoom, space, cost, fairCost) {
   const el = $(id);
@@ -1080,8 +1088,16 @@ document.addEventListener("click", e => {
 });
 ["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end"]
   .forEach(id => $(id).addEventListener("change", updateEditForm));
-$("rc-edit-people").addEventListener("input", updateEditForm);
-$("rc-people").addEventListener("input", () => { updateMealsTotal("rc", pendingBooking); updateCost(); });
+$("rc-edit-people").addEventListener("input", () => {
+  const space = editing && SPACES.find(s => s.id === editing.spaceId);
+  capPeople("rc-edit-people", space);
+  updateEditForm();
+});
+$("rc-people").addEventListener("input", () => {
+  capPeople("rc-people", pendingBooking && pendingBooking.space);
+  updateMealsTotal("rc", pendingBooking);
+  updateCost();
+});
 $("rc-for-email").addEventListener("input", () => { detectAccount(); updateForFields(); });
 document.querySelectorAll('input[name="rc-for"]').forEach(r => r.addEventListener("change", updateForFields));
 // Services : une case cochée affiche sa quantité (service à l'unité), puis le total est recalculé
