@@ -320,6 +320,8 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 }
 
 .tile:active { transform: scale(0.98); }
+/* Tuile masquée (attribut hidden) : sans cette règle, display: flex la laisserait visible */
+.tile[hidden] { display: none; }
 
 .tile-wide {
   grid-column: 1 / -1;
