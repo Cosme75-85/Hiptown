@@ -1267,3 +1267,58 @@ button.agenda-item:hover { background: #fff4a2; }
 .msg-foot { display: flex; justify-content: space-between; gap: 8px; padding: 0 12px 8px; font-size: 12px; }
 .msg-error { color: #dc2626; }
 .msg-count { color: var(--text-pale); margin-left: auto; }
+
+/* ── PARAMÈTRES : FOND DU PORTAIL (parametres.js) ── */
+.dashboard-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+
+.fond-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.fond-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 8px; background: var(--white); border: 2px solid var(--border);
+  border-radius: var(--radius-md); cursor: pointer; font: inherit; color: var(--text-dark);
+}
+.fond-choice:hover { border-color: var(--teal); }
+.fond-choice[aria-pressed="true"] { border-color: var(--navy); box-shadow: 0 0 0 2px var(--yellow); }
+.fond-swatch {
+  width: 100%; aspect-ratio: 16 / 10; border-radius: 8px;
+  border: 1px solid var(--border); background-size: cover; background-position: center;
+}
+.fond-swatch-coworking { background-image: url("fonds/coworking-violet.jpg"); }
+.fond-label { font-size: 13px; font-weight: 600; }
+.fond-choice[aria-pressed="true"] .fond-label::after { content: " ✓"; }
+
+/* Fonds choisis (attribut posé sur <body>) */
+body[data-fond="blanc"]   { background: #ffffff; }
+body[data-fond="menthe"]  { background: #e3f8f4; }
+body[data-fond="soleil"]  { background: #fffbd6; }
+body[data-fond="nuit"]    { background: var(--navy); }
+body[data-fond="coworking"] { background: var(--navy); }
+/* Illustration fixe derrière tout le contenu (background-attachment: fixed ne marche pas sur iPhone) */
+body[data-fond="coworking"]::before {
+  content: ""; position: fixed; inset: 0; z-index: -1;
+  background: var(--navy) url("fonds/coworking-violet.jpg") center / cover no-repeat;
+}
+
+/* Fonds sombres : ce qui est posé directement sur le fond passe en clair,
+   les cartes blanches (tuiles, agenda, formulaires) restent telles quelles
+   et gagnent une ombre plus marquée pour se détacher du dessin. */
+body.fond-sombre .container > section > .back-btn,
+body.fond-sombre .container > section > .step-title,
+body.fond-sombre .container > section > h1,
+body.fond-sombre .container > section > h2,
+body.fond-sombre .container > section > h3,
+body.fond-sombre #create-admin-section > h3,
+body.fond-sombre .container > section > p { color: #ffffff; }
+body.fond-sombre .container > section > p[style*="color"],
+body.fond-sombre .container > section > .profile-help,
+body.fond-sombre .outils-category-title,
+body.fond-sombre .rc-legend,
+body.fond-sombre .rc-loading,
+body.fond-sombre .resa-salle-fallback,
+body.fond-sombre .install-link { color: rgba(255,255,255,0.85) !important; }
+body.fond-sombre .container > section > p a,
+body.fond-sombre .resa-salle-fallback a { color: var(--yellow); }
+body.fond-sombre .tile,
+body.fond-sombre .dashboard-header,
+body.fond-sombre .agenda,
+body.fond-sombre .pin-box { box-shadow: 0 6px 24px rgba(0,0,0,0.35); border-color: transparent; }

@@ -7,6 +7,7 @@
 import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, changeMyPassword } from "./auth.js";
 import { attachPasswordRules, passwordProblem } from "./password-rules.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
+import { initSettingsPage, applyBackground, backgroundOf, DEFAULT_BACKGROUND } from "./parametres.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
@@ -27,6 +28,7 @@ const stepReductions = document.getElementById("step-reductions");
 const stepGestionSalles = document.getElementById("step-gestion-salles");
 const stepGestionServices = document.getElementById("step-gestion-services");
 const stepGestionDevis = document.getElementById("step-gestion-devis");
+const stepSettings = document.getElementById("step-settings");
 const authError   = document.getElementById("auth-error");
 
 
@@ -35,7 +37,7 @@ const authError   = document.getElementById("auth-error");
 // masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepSettings].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -169,7 +171,7 @@ document.getElementById("pending-logout")?.addEventListener("click", async () =>
 
 // ── Routage automatique selon l'état de connexion ──
 watchAuthState(async (user, profile) => {
-  if (!user) { session = null; return; } // reste sur l'écran de choix / auth, rien à faire
+  if (!user) { session = null; applyBackground(DEFAULT_BACKGROUND); return; } // reste sur l'écran de choix / auth, rien à faire
 
   if (!profile || profile.status === "pending") {
     hideAllAuth();
@@ -192,6 +194,7 @@ watchAuthState(async (user, profile) => {
     company = companies.find(c => c.id === profile.companyId) || null;
   }
   session = { uid: user.uid, profile, space, company };
+  applyBackground(backgroundOf(user.uid, profile));
   routeToDashboard(buildClient(), space);
 
   // Compte sans entreprise (créé avant qu'elle soit obligatoire) : on invite à la renseigner
@@ -260,6 +263,20 @@ const profilePage = initProfilePage({
 ["company-badge", "profile-link"].forEach(id => {
   document.getElementById(id)?.addEventListener("click", () => { if (session) profilePage.open(); });
 });
+
+// ── Page « Paramètres » (fond du portail, mémorisé sur le profil) ──
+const settingsPage = initSettingsPage({
+  getContext: () => ({ uid: session.uid, profile: session.profile }),
+  save: async (fields) => {
+    await updateMyProfile(session.uid, fields);
+    Object.assign(session.profile, fields);
+  },
+  onClose: () => {
+    hideAllAuth();
+    document.getElementById("step-dashboard").hidden = false;
+  }
+});
+document.getElementById("settings-link")?.addEventListener("click", () => { if (session) settingsPage.open(); });
 
 function routeToDashboard(client, space) {
   // Ferme explicitement l'écran de connexion avant d'afficher le dashboard

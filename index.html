@@ -21,6 +21,7 @@
   <link rel="modulepreload" href="firebase-config.js"/>
   <link rel="modulepreload" href="auth.js"/>
   <link rel="modulepreload" href="profile.js"/>
+  <link rel="modulepreload" href="parametres.js"/>
   <link rel="modulepreload" href="password-rules.js"/>
   <link rel="modulepreload" href="admin.js"/>
   <link rel="modulepreload" href="reductions.js"/>
@@ -623,6 +624,18 @@
     </form>
   </section>
 
+  <!-- PARAMÈTRES (parametres.js) -->
+  <section id="step-settings" hidden>
+    <button class="back-btn" id="back-from-settings">← Retour</button>
+    <h2 class="step-title">⚙️ Paramètres</h2>
+    <div class="pin-box" style="text-align:left;max-width:none;">
+      <p class="profile-label" style="margin-top:0;font-size:15px;">Fond du portail</p>
+      <p class="profile-help" style="margin-bottom:14px;">Choisissez le fond de votre espace. Il est retenu sur votre compte, sur tous vos appareils.</p>
+      <div class="fond-grid" id="settings-backgrounds"></div>
+      <p id="settings-message" class="profile-help" role="status" hidden></p>
+    </div>
+  </section>
+
   <!-- TABLEAU DE BORD -->
   <section id="step-dashboard" hidden>
     <div class="dashboard-header">
@@ -631,7 +644,10 @@
         <h1 class="welcome-title" id="welcome-title"></h1>
         <p class="welcome-nickname" id="welcome-nickname" hidden></p>
         <p class="welcome-sub" id="welcome-sub">Bienvenue sur votre espace Hiptown</p>
-        <button class="profile-link" id="profile-link" type="button">✏️ Mon profil</button>
+        <div class="dashboard-links">
+          <button class="profile-link" id="profile-link" type="button">✏️ Mon profil</button>
+          <button class="profile-link" id="settings-link" type="button">⚙️ Paramètres</button>
+        </div>
       </div>
       <div class="header-credits" id="header-credits" hidden title="Crédits restants de votre entreprise ce mois-ci">
         <span class="header-credits-value" id="header-credits-value"></span>

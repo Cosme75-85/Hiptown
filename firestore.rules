@@ -96,6 +96,9 @@ service cloud.firestore {
         && isShortText(data, 'companyNameHint', 100)
         && isShortText(data, 'jobTitle', 60)
         && isShortText(data, 'city', 60)
+        // Fond du portail choisi dans « Paramètres » (même liste que parametres.js)
+        && (!('background' in data)
+            || data.background in ['lavande', 'blanc', 'menthe', 'soleil', 'nuit', 'coworking'])
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
@@ -123,12 +126,12 @@ service cloud.firestore {
             && !request.resource.data.keys().hasAny(['adminLevel', 'siteIds']));
 
       // Un admin modifie les comptes de son périmètre, sans pouvoir les en sortir.
-      // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste et sa ville
+      // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste, sa ville et son fond
       allow update: if (canWriteUser(resource.data) && canWriteUser(request.resource.data))
         || canMoveClientToCity(resource.data, request.resource.data)
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city'])
+                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background'])
             && isValidProfile(request.resource.data));
 
       allow delete: if canWriteUser(resource.data);
