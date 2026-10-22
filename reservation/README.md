@@ -17,6 +17,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 | `Reductions.gs` | Réductions clients appliquées au prochain devis | ✅ |
 | `MesReservations.gs` | Liste « Mes prochaines réservations » du tableau de bord du portail (lecture seule) | ✅ |
 | `Messagerie.gs` | Emails et notifications de la messagerie du portail (voir « Notifications de la messagerie ») | ✅ |
+| `Accueil.gs` | Email à l'entreprise quand un visiteur se présente à l'accueil (page Hiptown-Accueil-1) | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |

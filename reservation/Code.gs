@@ -163,6 +163,10 @@ function doPost(e) {
     if (body.action === 'notifyNewMessage') {
       return jsonResponse(notifyNewMessage(body.idToken, body.payload));
     }
+    // Accueil visiteurs (page publique, sans connexion) : email à l'entreprise du visiteur (voir Accueil.gs)
+    if (body.action === 'notifyVisitor') {
+      return jsonResponse(notifyVisitor(body.payload));
+    }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {
     return jsonResponse({ success: false, message: 'Erreur serveur : ' + err.message });

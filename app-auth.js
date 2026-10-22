@@ -8,6 +8,7 @@ import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, 
 import { attachPasswordRules, passwordProblem } from "./password-rules.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import { initSettingsPage, applyUserSettings } from "./parametres.js";
+import { initAccueilFiche, ensureAccueilCard } from "./accueil-fiche.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
@@ -196,6 +197,11 @@ watchAuthState(async (user, profile) => {
   }
   session = { uid: user.uid, profile, space, company };
   applyUserSettings(user.uid, profile);
+  // Première connexion d'un salarié coworking : la case de son entreprise apparaît à l'accueil visiteurs
+  if (company) {
+    ensureAccueilCard(company.id, { name: company.name || company.id, siteId: profile.siteId || null })
+      .catch(err => console.error("Case de l'accueil visiteurs non créée", err));
+  }
   routeToDashboard(buildClient(), space);
 
   // Compte sans entreprise (créé avant qu'elle soit obligatoire) : on invite à la renseigner
@@ -261,8 +267,13 @@ const profilePage = initProfilePage({
     document.getElementById("step-dashboard").hidden = false;
   }
 });
+const accueilFiche = initAccueilFiche(() => ({ profile: session.profile, space: session.space, company: session.company }));
 ["company-badge", "profile-link"].forEach(id => {
-  document.getElementById(id)?.addEventListener("click", () => { if (session) profilePage.open(); });
+  document.getElementById(id)?.addEventListener("click", () => {
+    if (!session) return;
+    profilePage.open();
+    accueilFiche.open();
+  });
 });
 
 // ── Page « Paramètres » (fond du portail et couleur des cases, mémorisés sur le profil) ──
@@ -670,6 +681,11 @@ function createPendingCard(u, companies, onDone) {
     const role = card.querySelector(".approve-role").value;
     const companyId = card.querySelector(".approve-company").value.replace("__new__", "") || null;
     await approveUser(u.uid, role, role === "coworking" ? companyId : null);
+    if (role === "coworking" && companyId) {
+      const company = companies.find(c => c.id === companyId);
+      ensureAccueilCard(companyId, { name: (company && company.name) || companyId, siteId: u.siteId || null }, { asAdmin: true })
+        .catch(err => console.error("Case de l'accueil visiteurs non créée", err));
+    }
     onDone();
   });
   card.querySelector(".reject-btn").addEventListener("click", async () => {
@@ -1003,6 +1019,12 @@ async function renderCompaniesPanel() {
   const users = await listAllUsers(adminScope());
   const members = {};
   users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
+  // Cases de l'accueil visiteurs : une par entreprise, au nom à jour, sur le site de ses salariés
+  companies.forEach(c => {
+    const member = users.find(u => u.companyId === c.id && u.siteId);
+    ensureAccueilCard(c.id, { name: c.name || c.id, siteId: member ? member.siteId : null }, { asAdmin: true })
+      .catch(err => console.error("Case de l'accueil visiteurs non synchronisée", c.id, err));
+  });
   companiesCache = companies;
   companyMembers = members;
   closeNewCompanyForm();

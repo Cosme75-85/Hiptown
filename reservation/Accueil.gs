@@ -1,0 +1,84 @@
+// ==================== ACCUEIL VISITEURS ====================
+// Page publique https://cosme75-85.github.io/Hiptown-Accueil-1/ : le visiteur clique sur la case
+// d'une entreprise (Firestore accueil/{companyId}), tape son nom, et l'entreprise est prévenue
+// par email à l'adresse de accueilEmails/{companyId}. Cette adresse n'est jamais publique :
+// elle est lue ici avec le compte de service (FIREBASE_SERVICE_ACCOUNT, voir Messagerie.gs).
+// Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.
+
+const ACCUEIL_CITY = 'bordeaux';            // équipe prévenue quand l'entreprise n'a pas mis d'adresse
+const ACCUEIL_MAX_PER_COMPANY = 20;         // visites notifiées au plus par entreprise...
+const ACCUEIL_MAX_TOTAL = 150;              // ...et pour toute la page...
+const ACCUEIL_WINDOW_SECONDS = 60 * 60;     // ...sur une heure (protection contre l'envoi en rafale)
+
+/**
+ * Point d'entrée (doPost, action notifyVisitor), appelé sans connexion :
+ * payload = { companyId, visitor, message }.
+ */
+function notifyVisitor(raw) {
+  try {
+    raw = raw || {};
+    const companyId = String(raw.companyId || '');
+    if (!/^[A-Za-z0-9_-]{1,120}$/.test(companyId)) return { success: false, message: 'Entreprise inconnue.' };
+    const visitor = cleanText(raw.visitor, 80);
+    if (!visitor) return { success: false, message: 'Merci d\'indiquer votre nom.' };
+    const note = cleanText(raw.message, 300);
+
+    const cache = CacheService.getScriptCache();
+    const companyKey = 'accueil:' + companyId;
+    const companyCount = Number(cache.get(companyKey)) || 0;
+    const totalCount = Number(cache.get('accueil:total')) || 0;
+    if (companyCount >= ACCUEIL_MAX_PER_COMPANY || totalCount >= ACCUEIL_MAX_TOTAL) {
+      return { success: false, message: 'Trop de visites signalées, merci de patienter un moment.' };
+    }
+
+    const token = serviceAccountToken();
+    if (!token) return { success: false, message: 'Envoi indisponible pour le moment.' };
+    const card = readAdminDoc(token, 'accueil/' + companyId);
+    if (!card || !card.name) return { success: false, message: 'Entreprise inconnue.' };
+    const mail = readAdminDoc(token, 'accueilEmails/' + companyId);
+    const email = normalizeEmail(mail && mail.email);
+
+    cache.put(companyKey, String(companyCount + 1), ACCUEIL_WINDOW_SECONDS);
+    cache.put('accueil:total', String(totalCount + 1), ACCUEIL_WINDOW_SECONDS);
+
+    const company = cleanText(card.name, 100);
+    const text = note
+      ? visitor + ' vous attend à l\'accueil. Message : « ' + note + ' »'
+      : visitor + ' vous attend à l\'accueil.';
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      MailApp.sendEmail({
+        to: email,
+        subject: '🔔 ' + visitor + ' est arrivé(e) à l\'accueil Hiptown',
+        htmlBody: '<p>Bonjour,</p>'
+          + '<p>Un visiteur pour <b>' + escapeHtml(company) + '</b> vient de se présenter à l\'accueil Hiptown.</p>'
+          + messageHtml(text)
+          + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown. '
+          + 'Pour changer l\'adresse qui reçoit ces messages : portail Hiptown > Mon profil > Ma case à l\'accueil visiteurs.</p>'
+      });
+    } else {
+      MailApp.sendEmail({
+        to: teamRecipients({ city: ACCUEIL_CITY }),
+        subject: '🔔 Visiteur pour ' + company + ' à l\'accueil (pas d\'adresse renseignée)',
+        htmlBody: '<p>Un visiteur pour <b>' + escapeHtml(company) + '</b> vient de se présenter à l\'accueil.</p>'
+          + messageHtml(text)
+          + '<p style="color:#64748b;font-size:12px;">Cette entreprise n\'a pas encore indiqué d\'adresse pour recevoir '
+          + 'ses visites (portail > Mon profil > Ma case à l\'accueil visiteurs) : merci de la prévenir.</p>'
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('notifyVisitor', err);
+    return { success: false, message: 'Envoi impossible pour le moment.' };
+  }
+}
+
+/** Document Firestore lu avec le compte de service, ou null s'il n'existe pas. */
+function readAdminDoc(token, path) {
+  const res = UrlFetchApp.fetch(firestoreAdminUrl('/' + path), {
+    headers: { Authorization: 'Bearer ' + token },
+    muteHttpExceptions: true
+  });
+  if (res.getResponseCode() === 404) return null;
+  if (res.getResponseCode() !== 200) throw new Error('Firestore ' + res.getResponseCode());
+  return firestoreFields(JSON.parse(res.getContentText()).fields);
+}

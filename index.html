@@ -597,6 +597,23 @@
       <button class="direct-btn" id="profile-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer</button>
     </div>
 
+    <!-- Case de l'entreprise sur l'accueil visiteurs (clients coworking, voir accueil-fiche.js) -->
+    <div class="pin-box" id="accueil-fiche" style="text-align:left;margin-top:16px;" hidden>
+      <p class="profile-label" style="margin-top:0;">🔔 Ma case à l'accueil visiteurs</p>
+      <p class="profile-help">Vos visiteurs cliquent sur la case de votre entreprise à l'accueil, et vous êtes prévenu par e-mail.</p>
+      <div class="accueil-logo-preview" id="accueil-logo-preview"></div>
+      <label class="direct-btn profile-photo-btn" for="accueil-logo-input">🖼️ Choisir le logo</label>
+      <input type="file" id="accueil-logo-input" accept="image/*" hidden/>
+      <button class="profile-link" id="accueil-logo-remove" type="button" hidden>Retirer le logo</button>
+
+      <label class="profile-label" for="accueil-email">E-mail qui reçoit les visites</label>
+      <input type="email" id="accueil-email" class="profile-input" placeholder="Ex : accueil@monentreprise.fr" autocomplete="email"/>
+      <p class="profile-help">Jamais affiché sur la page d'accueil. Sans adresse, c'est l'équipe Hiptown qui est prévenue.</p>
+
+      <p id="accueil-message" class="profile-help" role="status" hidden></p>
+      <button class="direct-btn" id="accueil-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer</button>
+    </div>
+
     <button class="direct-btn" id="password-open" type="button" style="background:var(--navy);color:#fff;display:block;width:100%;max-width:320px;margin:16px auto 0;">🔒 Changer le mot de passe</button>
     <p id="password-done" class="profile-help" role="status" hidden style="color:#166534;text-align:center;">Mot de passe modifié ✓</p>
 

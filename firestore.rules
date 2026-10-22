@@ -145,6 +145,56 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Accueil visiteurs (page publique Hiptown-Accueil-1) ──
+    // Compte coworking validé, rattaché à cette entreprise
+    function isCompanyMember(companyId) {
+      return isApprovedRole('coworking') && myProfile().get('companyId', null) == companyId;
+    }
+
+    // Logo de la case : image JPEG ou PNG réduite dans le navigateur (accueil-fiche.js)
+    function isValidLogo(data) {
+      return !('logo' in data) || data.logo == ''
+        || (data.logo is string
+            && data.logo.size() <= 150000
+            && data.logo.matches('^data:image/(jpeg|png);base64,[A-Za-z0-9+/=]+$'));
+    }
+
+    function isValidAccueilCard(data) {
+      return data.keys().hasOnly(['name', 'siteId', 'logo', 'updatedAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && isOptionalText(data, 'siteId', 40)
+        && isValidLogo(data);
+    }
+
+    // Case de l'entreprise : nom, site et logo, lisibles par tous (page sans connexion).
+    // Créée par l'équipe, ou par un salarié de l'entreprise avec le nom officiel et son propre site ;
+    // ensuite, un salarié ne change que le logo.
+    match /accueil/{companyId} {
+      allow read: if true;
+      allow create: if isValidAccueilCard(request.resource.data)
+        && (isAdmin()
+            || (isCompanyMember(companyId)
+                && request.resource.data.name == get(/databases/$(database)/documents/companies/$(companyId)).data.name
+                && request.resource.data.get('siteId', null) == myProfile().get('siteId', null)));
+      allow update: if isValidAccueilCard(request.resource.data)
+        && (isAdmin()
+            || (isCompanyMember(companyId)
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'updatedAt'])));
+      allow delete: if isAdmin();
+    }
+
+    // Adresse qui reçoit les visites : jamais publique, lue par Apps Script (Accueil.gs)
+    // avec le compte de service, au moment d'envoyer l'e-mail.
+    match /accueilEmails/{companyId} {
+      allow read: if isAdmin() || isCompanyMember(companyId);
+      allow write: if (isAdmin() || isCompanyMember(companyId))
+        && request.resource.data.keys().hasOnly(['email', 'updatedAt'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 120
+        && (request.resource.data.email == ''
+            || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'));
+    }
+
     // Reservations de salles
     match /bookings/{bookingId} {
       allow read: if isSignedIn();
