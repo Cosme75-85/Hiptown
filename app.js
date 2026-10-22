@@ -649,6 +649,8 @@
   window.renderIdentity = renderIdentity;
   window.showDashboardFromAuth = function (client, space) {
     currentSpace       = space;
+    // En coworking, « Informations » et « Mes services » reviennent à « Informations du coworking »
+    backFromInfo.textContent = backFromServ.textContent = space === "coworking" ? "Coworking" : "Accueil";
     currentExtraTiles  = client.extraTiles  || [];
     currentHiddenTiles = client.hiddenTiles || [];
     showDashboard(client);
