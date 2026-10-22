@@ -45,6 +45,7 @@ const PRICES = {
   // (grille « Tarifs salles de réunion »). Tranches rangées par nombre croissant. Si une salle plus petite
   // et adaptée est libre sur le créneau, la salle choisie se paie au tarif de sa capacité (voir salleRoomPrice).
   roomsByPeople: [
+    { maxPeople: 3, hourly: 25, halfDay: 90, fullDay: 180 },
     { maxPeople: 4, hourly: 30, halfDay: 105, fullDay: 200 },
     { maxPeople: 6, hourly: 35, halfDay: 120, fullDay: 220 },
     { maxPeople: 8, hourly: 40, halfDay: 140, fullDay: 260 },
