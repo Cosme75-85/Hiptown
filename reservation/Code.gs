@@ -1139,6 +1139,16 @@ function computeQuote(space, q, prices) {
     const rate = tier || { hourly: space.hourlyPrice, halfDay: space.halfDayPrice, fullDay: space.fullDayPrice };
     const roomLabel = spaceLabel + (tier && tier.maxPeople < space.maxPeople ? ' – tarif ' + tier.maxPeople + ' pers.' : '');
     if (days > 1) addLine('room', roomLabel + ' – journée complète', days, rate.fullDay); // multi-jours : 1 journée par jour
+    else if (space.maxPeople) {
+      // Salle de réunion : demi-journée = 4h, journée = 8h. Entre les deux : demi-journée + heures
+      // en plus, sans dépasser la journée. Moins de 4h : à l'heure.
+      const extra = duration - 4;
+      const halfPlus = rate.halfDay + rate.hourly * extra;
+      if (duration >= 8 || (extra > 0 && halfPlus >= rate.fullDay)) addLine('room', roomLabel + ' – journée complète', 1, rate.fullDay);
+      else if (extra > 0) addLine('room', roomLabel + ' – demi-journée + ' + extra + 'h', 1, halfPlus);
+      else if (extra === 0) addLine('room', roomLabel + ' – demi-journée', 1, rate.halfDay);
+      else addLine('room', roomLabel + ' – à l\'heure', duration, rate.hourly);
+    }
     else if (isFullDay) addLine('room', roomLabel + ' – journée complète', 1, rate.fullDay);
     else if (duration === 5) addLine('room', roomLabel + ' – demi-journée', 1, rate.halfDay);
     else addLine('room', roomLabel + ' – à l\'heure', duration, rate.hourly);
