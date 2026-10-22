@@ -429,11 +429,23 @@ button.company-badge { border: none; cursor: pointer; font-family: inherit; }
 }
 
 .step-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-dark);
+  /* Bandeau blanc avec un trait citron : le titre se lit sur tous les fonds (Paramètres) */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--navy);
+  background: var(--white);
+  border-left: 6px solid var(--yellow);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  box-shadow: 0 2px 12px rgba(30,24,71,0.08);
   margin-bottom: 18px;
+  overflow-wrap: anywhere;
 }
+.step-title:empty { display: none; }
 
 /* ── INFORMATIONS ── */
 .info-grid {
@@ -1343,7 +1355,6 @@ body[data-fond="coworking"]::before {
 /* Fonds sombres : ce qui est posé directement sur le fond passe en clair,
    les cartes blanches (tuiles, agenda, formulaires) restent telles quelles
    et gagnent une ombre plus marquée pour se détacher du dessin. */
-body.fond-sombre .container > section > .step-title,
 body.fond-sombre .container > section > h1,
 body.fond-sombre .container > section > h2,
 body.fond-sombre .container > section > h3,
@@ -1362,6 +1373,7 @@ body.fond-sombre .tile,
 body.fond-sombre .dashboard-header,
 body.fond-sombre .agenda,
 body.fond-sombre .pin-box { box-shadow: 0 6px 24px rgba(0,0,0,0.35); border-color: transparent; }
+body.fond-sombre .container > section > .step-title { color: var(--navy); box-shadow: 0 6px 24px rgba(0,0,0,0.35); }
 
 .msg-push { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--text-soft); }
 .msg-push[hidden] { display: none; }
