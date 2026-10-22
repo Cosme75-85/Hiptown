@@ -255,7 +255,6 @@ function cleanRoom(raw) {
     allowMultiDay: raw.allowMultiDay === true,
     badgeLabel: cleanText(raw.badgeLabel, 40) || null,
     coworking: raw.coworking === true,
-    credits: null,
     closures: []
   };
   if (!room.name) return { error: 'Merci de donner un nom à la salle.' };
@@ -269,15 +268,6 @@ function cleanRoom(raw) {
   for (const key of ['hourlyPrice', 'halfDayPrice', 'fullDayPrice']) {
     if (room[key] !== null && !(room[key] >= 0 && room[key] <= 100000)) return { error: 'Tarif invalide.' };
     if (room[key] === 0) room[key] = null;
-  }
-  if (room.coworking) {
-    const c = raw.credits || {};
-    room.credits = { hourly: price(c.hourly), halfDay: price(c.halfDay), fullDay: price(c.fullDay) };
-    for (const key of ['hourly', 'halfDay', 'fullDay']) {
-      if (room.credits[key] !== null && !(room.credits[key] >= 0 && room.credits[key] <= 100000)) return { error: 'Barème en crédits invalide.' };
-      if (!room.credits[key]) delete room.credits[key];
-    }
-    if (!room.credits.hourly) return { error: 'Indiquez au moins le nombre de crédits par heure pour les coworkers.' };
   }
 
   const today = toDateString(startOfToday());

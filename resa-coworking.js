@@ -22,6 +22,7 @@ let currentYear  = today.getFullYear();
 let currentMonth = today.getMonth() + 1; // 1-12
 
 let SPACES = [];          // salles reçues du serveur
+let CREDIT_TIERS = [];    // barème en crédits selon le nombre de personnes [{ maxPeople, hourly, halfDay, fullDay }]
 let MEALS = null;         // services en option { services, vatRate, maxQuantity, noticeHours } (€ HT), null si aucun
 let isTeam = false;       // compte Hiptown : tous les services de la ville lui sont proposés
 let START_HOUR = 8;
@@ -173,15 +174,15 @@ function applyMealsDeadline(prefix, dateString, startHour) {
 
 // ==================== CRÉDITS ====================
 
-/** Même barème que le serveur (reservation/Coworking.gs, computeCoworkingCredits). */
-function creditsFor(space, startHour, endHour, numberOfDays) {
-  const rate = space.credits;
+/** Même barème que le serveur (reservation/Coworking.gs, computeCoworkingCredits) : selon le nombre de personnes. */
+function creditsFor(people, startHour, endHour, numberOfDays) {
+  const rate = CREDIT_TIERS.find(t => people <= t.maxPeople) || CREDIT_TIERS[CREDIT_TIERS.length - 1];
   if (!rate) return 0;
   const duration = endHour - startHour;
-  const hourly = (rate.hourly || 0) * duration;
-  let perDay = hourly;
-  if (duration > 5) perDay = rate.fullDay || hourly;
-  else if (duration === 5) perDay = rate.halfDay || hourly;
+  const perHour = rate.hourly || 0;
+  let perDay = perHour * duration;
+  if (rate.halfDay && duration >= 4) perDay = rate.halfDay + perHour * (duration - 4);
+  if (rate.fullDay) perDay = Math.min(perDay, rate.fullDay);
   return perDay * (numberOfDays || 1);
 }
 
@@ -449,9 +450,22 @@ function showFormStep() {
   const email = auth.currentUser ? auth.currentUser.email : "";
   $("rc-booker").textContent = email ? "Confirmation envoyée à " + email : "";
   $("rc-people").max = b.space.maxPeople || "";
+  updateCost();
+  applyMealsDeadline("rc", b.dateString, b.startHour);
+  updateMealsTotal("rc", b);
+  $("rc-for").hidden = !isTeam;
+  if (isTeam) { updateForFields(); loadAccounts(); }
+  $("rc-form-step").hidden = false;
+  $("rc-submit").hidden = false;
+  $("rc-form-step").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
-  // Coût en crédits (le serveur revérifie le solde au moment de réserver)
-  const cost = creditsFor(b.space, b.startHour, b.endHour, daysOf(b));
+/** Coût en crédits selon le nombre de personnes (le serveur revérifie le solde au moment de réserver). */
+function updateCost() {
+  const b = pendingBooking;
+  if (!b) return;
+  const people = parseInt($("rc-people").value, 10) || 1;
+  const cost = creditsFor(people, b.startHour, b.endHour, daysOf(b));
   const costEl = $("rc-cost");
   const sameMonth = creditBalance && b.dateString.slice(0, 7) === currentYear + "-" + pad(currentMonth);
   costEl.hidden = !creditBalance || !cost;
@@ -460,13 +474,6 @@ function showFormStep() {
     + (sameMonth ? (cost > creditBalance.remaining
       ? " — solde insuffisant (" + creditBalance.remaining + " restant(s))"
       : ", il vous en restera " + (creditBalance.remaining - cost)) : "");
-  applyMealsDeadline("rc", b.dateString, b.startHour);
-  updateMealsTotal("rc", b);
-  $("rc-for").hidden = !isTeam;
-  if (isTeam) { updateForFields(); loadAccounts(); }
-  $("rc-form-step").hidden = false;
-  $("rc-submit").hidden = false;
-  $("rc-form-step").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ==================== ÉQUIPE HIPTOWN : RÉSERVER POUR UN CLIENT ====================
@@ -897,7 +904,7 @@ function updateEditForm() {
   const space = SPACES.find(s => s.id === editing.spaceId);
   const costEl = $("rc-edit-cost");
   if (!space || editing.credits === null || !p.dateString || p.startHour >= p.endHour) { costEl.hidden = true; return; }
-  costEl.textContent = "Nouveau coût : " + creditsFor(space, p.startHour, p.endHour, daysOf(p)) + " crédit(s) (avant : " + editing.credits + ")";
+  costEl.textContent = "Nouveau coût : " + creditsFor(p.numberOfPeople || 1, p.startHour, p.endHour, daysOf(p)) + " crédit(s) (avant : " + editing.credits + ")";
   costEl.hidden = false;
 }
 
@@ -937,6 +944,7 @@ function start() {
       SPACES = data.spaces;
       START_HOUR = data.startHour;
       MEALS = data.meals || null;
+      CREDIT_TIERS = Array.isArray(data.creditTiers) ? data.creditTiers : [];
       END_HOUR = data.endHour;
       renderSpaces();
       loadMonth();
@@ -1023,7 +1031,7 @@ document.addEventListener("click", e => {
 ["rc-edit-date", "rc-edit-end-date", "rc-edit-start", "rc-edit-end"]
   .forEach(id => $(id).addEventListener("change", updateEditForm));
 $("rc-edit-people").addEventListener("input", updateEditForm);
-$("rc-people").addEventListener("input", () => updateMealsTotal("rc", pendingBooking));
+$("rc-people").addEventListener("input", () => { updateMealsTotal("rc", pendingBooking); updateCost(); });
 $("rc-for-email").addEventListener("input", () => { detectAccount(); updateForFields(); });
 document.querySelectorAll('input[name="rc-for"]').forEach(r => r.addEventListener("change", updateForFields));
 // Services : une case cochée affiche sa quantité (service à l'unité), puis le total est recalculé
