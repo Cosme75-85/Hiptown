@@ -148,10 +148,6 @@ function openForm(room) {
   setValue("room-badge", room?.badgeLabel);
   $("room-multiday").checked = room ? !!room.allowMultiDay : true;
   $("room-coworking").checked = !!room?.coworking;
-  setValue("room-credits-hour", room?.credits?.hourly);
-  setValue("room-credits-half", room?.credits?.halfDay);
-  setValue("room-credits-full", room?.credits?.fullDay);
-  $("room-credits").hidden = !$("room-coworking").checked;
   $("room-closures").innerHTML = "";
   (room?.closures || []).forEach(addClosureRow);
   showMessage("room-form-message", "");
@@ -209,7 +205,6 @@ function readForm() {
     badgeLabel: $("room-badge").value.trim(),
     allowMultiDay: $("room-multiday").checked,
     coworking: $("room-coworking").checked,
-    credits: { hourly: num("room-credits-hour"), halfDay: num("room-credits-half"), fullDay: num("room-credits-full") },
     closures
   };
 }
@@ -217,17 +212,12 @@ function readForm() {
 $("room-add")?.addEventListener("click", () => openForm(null));
 $("room-cancel")?.addEventListener("click", closeForm);
 $("room-closure-add")?.addEventListener("click", () => addClosureRow(null));
-$("room-coworking")?.addEventListener("change", () => { $("room-credits").hidden = !$("room-coworking").checked; });
 
 $("room-save")?.addEventListener("click", async () => {
   const room = readForm();
   if (!room.name) { showMessage("room-form-message", "Merci de donner un nom à la salle.", true); return; }
   if (room.closures.some(c => !c.start || c.end < c.start)) {
     showMessage("room-form-message", "Indisponibilité : vérifiez les dates (la fin doit être après le début).", true);
-    return;
-  }
-  if (room.coworking && !(room.credits.hourly > 0)) {
-    showMessage("room-form-message", "Indiquez au moins le nombre de crédits par heure pour les coworkers.", true);
     return;
   }
   const btn = $("room-save");

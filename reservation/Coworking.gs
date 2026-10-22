@@ -34,9 +34,9 @@ function getCoworkingSpaces() {
         availableFrom: s.availableFrom,
         availableFromLabel: s.availableFromLabel,
         closureNote: s.closureNote,
-        city: s.city,
-        credits: findSpace(s.id).credits || null
+        city: s.city
       })),
+    creditTiers: COWORKING_CREDITS,
     // Services en option, facturés (devis envoyé dès qu'un service est choisi) ; null s'il n'y en a aucun
     meals: coworkingMeals()
   };
@@ -130,7 +130,7 @@ function createCoworkingEvent(user, booking) {
   }
 
   // Crédits : vérifiés sous le verrou, deux réservations simultanées ne peuvent pas dépasser le solde
-  const cost = computeCoworkingCredits(space.id, booking);
+  const cost = computeCoworkingCredits(booking);
   let balance = null;
   if (user.chargesCredits) {
     balance = getCreditBalance(user, booking.startDate.getFullYear(), booking.startDate.getMonth() + 1);
@@ -269,13 +269,13 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits, qu
 // ==================== CRÉDITS ====================
 
 /**
- * Crédits d'une réservation selon le barème en crédits de la salle (Gestion > Salles de réunion).
+ * Crédits d'une réservation selon le nombre de personnes (barème COWORKING_CREDITS, Config.gs).
  * Même découpage que le devis des salles (computeQuote) : plusieurs jours = une journée
  * par jour, plus de 5h = journée, 5h = demi-journée, sinon tarif horaire × heures.
  */
-function computeCoworkingCredits(spaceId, b) {
-  const space = findSpace(spaceId);
-  const rate = space && space.credits;
+function computeCoworkingCredits(b) {
+  const rate = COWORKING_CREDITS.find(t => b.numberOfPeople <= t.maxPeople)
+    || COWORKING_CREDITS[COWORKING_CREDITS.length - 1];
   if (!rate) return 0;
   const duration = b.endHour - b.startHour;
   const days = b.numberOfDays || 1;
@@ -722,7 +722,7 @@ function applyCoworkingChange(user, booking, raw, start, end) {
     return { success: false, message: 'Ce créneau est déjà pris, merci de choisir un autre horaire.' };
   }
 
-  const cost = computeCoworkingCredits(space.id, booking);
+  const cost = computeCoworkingCredits(booking);
   const oldCost = Number(event.getTag(TAG_CREDITS)) || 0;
   let balance = null;
   if (user.chargesCredits) {
