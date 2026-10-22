@@ -265,7 +265,7 @@ const profilePage = initProfilePage({
   document.getElementById(id)?.addEventListener("click", () => { if (session) profilePage.open(); });
 });
 
-// ── Page « Paramètres » (fond du portail et couleur des pastilles, mémorisés sur le profil) ──
+// ── Page « Paramètres » (fond du portail et couleur des cases, mémorisés sur le profil) ──
 const settingsPage = initSettingsPage({
   getContext: () => ({ uid: session.uid, profile: session.profile }),
   save: async (fields) => {

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Paramètres : fond du portail et couleur des pastilles
+//  PORTAIL HIPTOWN — Paramètres : fond du portail et couleur des cases
 // ═══════════════════════════════════════════════════════
 
 // Couleurs pâles de la charte Hiptown (v5, couleurs 2023 ; voir reservation/Index.html)
@@ -17,20 +17,19 @@ export const BACKGROUNDS = [
   { id: "coworking", label: "Coworking",    swatch: "#1e1847 url('fonds/coworking-violet.jpg') center / cover", sombre: true }
 ];
 
-// Pastilles : carré coloré derrière l'icône de chaque tuile et bouton de retour.
-// « Par défaut » garde les couleurs d'origine (une par tuile, retour turquoise).
-export const PASTILLES = [
-  { id: "defaut",   label: "Par défaut", swatch: "conic-gradient(#e8faf7 0 25%, #fce7f3 0 50%, #fef3c7 0 75%, #eef2ff 0)" },
+// Cases : fond des tuiles du tableau de bord. « Blanc » garde l'aspect d'origine.
+export const CASES = [
+  { id: "blanc",    label: "Blanc",      swatch: "#ffffff" },
+  { id: "gris",     label: "Gris chaud", swatch: "#f6f5f4" },
   { id: "citron",   label: "Citron",     swatch: "#fff4a2" },
   { id: "vert-eau", label: "Vert d'eau", swatch: "#b9efe4" },
-  { id: "menthe",   label: "Menthe",     swatch: "#aaffcf" },
-  { id: "gris",     label: "Gris chaud", swatch: "#d9d4cd" }
+  { id: "menthe",   label: "Menthe",     swatch: "#aaffcf" }
 ];
 
 // Un réglage = une liste de choix, un champ du profil, un attribut posé sur <body> (lu par style.css)
 const SETTINGS = {
   background: { choices: BACKGROUNDS, fallback: "lavande", attr: "fond",     listId: "settings-backgrounds", saved: "Fond enregistré ✓" },
-  pastille:   { choices: PASTILLES,   fallback: "defaut",  attr: "pastille", listId: "settings-pastilles",   saved: "Couleur des pastilles enregistrée ✓" }
+  cases:      { choices: CASES,       fallback: "blanc",   attr: "cases",    listId: "settings-cases",       saved: "Couleur des cases enregistrée ✓" }
 };
 
 const STORAGE_PREFIX = "hiptown-reglages:";
