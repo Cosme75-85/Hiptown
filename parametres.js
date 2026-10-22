@@ -1,52 +1,80 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Paramètres (premier réglage : le fond du portail)
+//  PORTAIL HIPTOWN — Paramètres : fond du portail et couleur des pastilles
 // ═══════════════════════════════════════════════════════
 
-// Fonds proposés : couleurs de la charte et illustration du coworking.
-// « sombre » : les titres et liens posés directement sur le fond passent en blanc.
-// Liste reprise dans firestore.rules (isValidProfile) : garder les deux identiques.
+// Couleurs pâles de la charte Hiptown (v5, couleurs 2023 ; voir reservation/Index.html)
+// Les identifiants sont repris dans firestore.rules (isValidProfile) : garder les deux listes identiques.
+
+// Fonds proposés. « sombre » : les titres et textes posés directement sur le fond passent en blanc.
 export const BACKGROUNDS = [
-  { id: "lavande",   label: "Lavande",   swatch: "#f5f4ff" },
-  { id: "blanc",     label: "Blanc",     swatch: "#ffffff" },
-  { id: "menthe",    label: "Menthe",    swatch: "#e3f8f4" },
-  { id: "soleil",    label: "Soleil",    swatch: "#fffbd6" },
-  { id: "nuit",      label: "Nuit",      swatch: "#1e1847", sombre: true },
-  { id: "coworking", label: "Coworking", swatch: "#1e1847", image: "fonds/coworking-violet.jpg", sombre: true }
+  { id: "lavande",   label: "Lavande",      swatch: "#f5f4ff" },
+  { id: "gris",      label: "Gris chaud",   swatch: "#f6f5f4" },
+  { id: "blanc",     label: "Blanc",        swatch: "#ffffff" },
+  { id: "citron",    label: "Citron",       swatch: "#fff4a2" },
+  { id: "vert-eau",  label: "Vert d'eau",   swatch: "#b9efe4" },
+  { id: "menthe",    label: "Menthe",       swatch: "#aaffcf" },
+  { id: "nuit",      label: "Nuit",         swatch: "#1e1847", sombre: true },
+  { id: "coworking", label: "Coworking",    swatch: "#1e1847 url('fonds/coworking-violet.jpg') center / cover", sombre: true }
 ];
-export const DEFAULT_BACKGROUND = "lavande";
 
-const STORAGE_PREFIX = "hiptown-fond:";
+// Pastilles : carré coloré derrière l'icône de chaque tuile et bouton de retour.
+// « Par défaut » garde les couleurs d'origine (une par tuile, retour turquoise).
+export const PASTILLES = [
+  { id: "defaut",   label: "Par défaut", swatch: "conic-gradient(#e8faf7 0 25%, #fce7f3 0 50%, #fef3c7 0 75%, #eef2ff 0)" },
+  { id: "citron",   label: "Citron",     swatch: "#fff4a2" },
+  { id: "vert-eau", label: "Vert d'eau", swatch: "#b9efe4" },
+  { id: "menthe",   label: "Menthe",     swatch: "#aaffcf" },
+  { id: "gris",     label: "Gris chaud", swatch: "#d9d4cd" }
+];
 
-function findBackground(id) {
-  return BACKGROUNDS.find(b => b.id === id) || BACKGROUNDS.find(b => b.id === DEFAULT_BACKGROUND);
+// Un réglage = une liste de choix, un champ du profil, un attribut posé sur <body> (lu par style.css)
+const SETTINGS = {
+  background: { choices: BACKGROUNDS, fallback: "lavande", attr: "fond",     listId: "settings-backgrounds", saved: "Fond enregistré ✓" },
+  pastille:   { choices: PASTILLES,   fallback: "defaut",  attr: "pastille", listId: "settings-pastilles",   saved: "Couleur des pastilles enregistrée ✓" }
+};
+
+const STORAGE_PREFIX = "hiptown-reglages:";
+
+function valid(key, id) {
+  return SETTINGS[key].choices.some(c => c.id === id) ? id : SETTINGS[key].fallback;
 }
 
-/** Applique un fond à toute la page (attributs lus par style.css). */
-export function applyBackground(id) {
-  const bg = findBackground(id);
-  const body = document.body;
-  if (bg.id === DEFAULT_BACKGROUND) delete body.dataset.fond;
-  else body.dataset.fond = bg.id;
-  body.classList.toggle("fond-sombre", !!bg.sombre);
-}
-
-// Copie locale du choix, par compte : le fond s'affiche tout de suite au chargement,
-// et le choix reste sur cet appareil même si l'enregistrement en ligne échoue.
-export function rememberedBackground(uid) {
-  try { return localStorage.getItem(STORAGE_PREFIX + uid) || ""; } catch (e) { return ""; }
-}
-function rememberBackground(uid, id) {
-  try { localStorage.setItem(STORAGE_PREFIX + uid, id); } catch (e) { /* stockage indisponible */ }
-}
-
-/** Fond d'un compte : celui enregistré sur le profil, sinon la copie locale. */
-export function backgroundOf(uid, profile) {
-  const saved = profile && profile.background;
-  if (saved && BACKGROUNDS.some(b => b.id === saved)) {
-    rememberBackground(uid, saved);
-    return saved;
+/** Applique un réglage à toute la page. */
+function applySetting(key, id) {
+  const { attr, fallback, choices } = SETTINGS[key];
+  id = valid(key, id);
+  if (id === fallback) delete document.body.dataset[attr];
+  else document.body.dataset[attr] = id;
+  if (key === "background") {
+    document.body.classList.toggle("fond-sombre", !!choices.find(c => c.id === id).sombre);
   }
-  return rememberedBackground(uid) || DEFAULT_BACKGROUND;
+}
+
+// Copie locale des réglages, par compte : ils s'affichent tout de suite au chargement,
+// et restent sur cet appareil même si l'enregistrement en ligne échoue.
+function remembered(uid) {
+  try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + uid)) || {}; } catch (e) { return {}; }
+}
+function remember(uid, values) {
+  try { localStorage.setItem(STORAGE_PREFIX + uid, JSON.stringify(values)); } catch (e) { /* stockage indisponible */ }
+}
+
+/** Réglages d'un compte : ceux enregistrés sur le profil, sinon la copie locale. */
+function settingsOf(uid, profile) {
+  const local = remembered(uid);
+  const values = {};
+  for (const key of Object.keys(SETTINGS)) {
+    const saved = profile && profile[key];
+    values[key] = valid(key, SETTINGS[key].choices.some(c => c.id === saved) ? saved : local[key]);
+  }
+  remember(uid, values);
+  return values;
+}
+
+/** Applique les réglages du compte connecté (sans compte : réglages par défaut). */
+export function applyUserSettings(uid, profile) {
+  const values = uid ? settingsOf(uid, profile) : {};
+  for (const key of Object.keys(SETTINGS)) applySetting(key, values[key]);
 }
 
 /**
@@ -58,14 +86,7 @@ export function backgroundOf(uid, profile) {
  */
 export function initSettingsPage({ getContext, save, onClose }) {
   const $ = id => document.getElementById(id);
-  const list = $("settings-backgrounds");
   const message = $("settings-message");
-
-  list.innerHTML = BACKGROUNDS.map(b => `
-    <button type="button" class="fond-choice" data-fond-id="${b.id}" aria-pressed="false">
-      <span class="fond-swatch fond-swatch-${b.id}" style="background-color:${b.swatch};"></span>
-      <span class="fond-label">${b.label}</span>
-    </button>`).join("");
 
   function showMessage(text, isError) {
     message.textContent = text;
@@ -73,36 +94,46 @@ export function initSettingsPage({ getContext, save, onClose }) {
     message.hidden = !text;
   }
 
-  function markSelected(id) {
-    list.querySelectorAll(".fond-choice").forEach(btn => {
-      btn.setAttribute("aria-pressed", btn.dataset.fondId === id ? "true" : "false");
+  function markSelected(key, id) {
+    $(SETTINGS[key].listId).querySelectorAll(".fond-choice").forEach(btn => {
+      btn.setAttribute("aria-pressed", btn.dataset.choice === id ? "true" : "false");
     });
   }
 
-  list.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".fond-choice");
-    if (!btn) return;
-    const id = btn.dataset.fondId;
-    const { uid } = getContext();
-    applyBackground(id);
-    markSelected(id);
-    rememberBackground(uid, id);
-    showMessage("", false);
-    try {
-      await save({ background: id });
-      showMessage("Fond enregistré ✓", false);
-    } catch (err) {
-      console.error("Paramètres : enregistrement du fond impossible", err);
-      showMessage("Fond gardé sur cet appareil, mais pas encore enregistré sur votre compte.", true);
-    }
-  });
+  for (const [key, setting] of Object.entries(SETTINGS)) {
+    const list = $(setting.listId);
+    list.innerHTML = setting.choices.map(c => `
+      <button type="button" class="fond-choice" data-choice="${c.id}" aria-pressed="false">
+        <span class="fond-swatch fond-swatch-${key}-${c.id}" style="background:${c.swatch};"></span>
+        <span class="fond-label">${c.label}</span>
+      </button>`).join("");
+
+    list.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".fond-choice");
+      if (!btn) return;
+      const id = btn.dataset.choice;
+      const { uid } = getContext();
+      applySetting(key, id);
+      markSelected(key, id);
+      remember(uid, { ...remembered(uid), [key]: id });
+      showMessage("", false);
+      try {
+        await save({ [key]: id });
+        showMessage(setting.saved, false);
+      } catch (err) {
+        console.error("Paramètres : enregistrement impossible", err);
+        showMessage("Réglage gardé sur cet appareil, mais pas encore enregistré sur votre compte.", true);
+      }
+    });
+  }
 
   $("back-from-settings").addEventListener("click", onClose);
 
   return {
     open() {
       const { uid, profile } = getContext();
-      markSelected(backgroundOf(uid, profile));
+      const values = settingsOf(uid, profile);
+      for (const key of Object.keys(SETTINGS)) markSelected(key, values[key]);
       showMessage("", false);
       window.hideAllAuth();
       $("step-settings").hidden = false;

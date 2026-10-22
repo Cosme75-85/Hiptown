@@ -1312,14 +1312,15 @@ button.agenda-item:hover { background: #fff4a2; }
   width: 100%; aspect-ratio: 16 / 10; border-radius: 8px;
   border: 1px solid var(--border); background-size: cover; background-position: center;
 }
-.fond-swatch-coworking { background-image: url("fonds/coworking-violet.jpg"); }
 .fond-label { font-size: 13px; font-weight: 600; }
 .fond-choice[aria-pressed="true"] .fond-label::after { content: " ✓"; }
 
 /* Fonds choisis (attribut posé sur <body>) */
-body[data-fond="blanc"]   { background: #ffffff; }
-body[data-fond="menthe"]  { background: #e3f8f4; }
-body[data-fond="soleil"]  { background: #fffbd6; }
+body[data-fond="gris"]     { background: #f6f5f4; }
+body[data-fond="blanc"]    { background: #ffffff; }
+body[data-fond="citron"]   { background: #fff4a2; }
+body[data-fond="vert-eau"] { background: #b9efe4; }
+body[data-fond="menthe"]   { background: #aaffcf; }
 body[data-fond="nuit"]    { background: var(--navy); }
 body[data-fond="coworking"] { background: var(--navy); }
 /* Illustration fixe derrière tout le contenu (background-attachment: fixed ne marche pas sur iPhone) */
@@ -1383,3 +1384,12 @@ body.fond-sombre .pin-box { box-shadow: 0 6px 24px rgba(0,0,0,0.35); border-colo
 .viewer-body iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--white); }
 .viewer-body img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 body.viewer-open { overflow: hidden; }
+
+/* Couleur des pastilles choisie (attribut posé sur <body>) : remplace la couleur propre à chaque tuile */
+body[data-pastille="citron"]   { --pastille: #fff4a2; }
+body[data-pastille="vert-eau"] { --pastille: #b9efe4; }
+body[data-pastille="menthe"]   { --pastille: #aaffcf; }
+body[data-pastille="gris"]     { --pastille: #d9d4cd; }
+body[data-pastille] .tile-icon { background: var(--pastille) !important; }
+body[data-pastille] .back-btn { background: var(--pastille); }
+body[data-pastille] .back-btn:hover { background: var(--pastille); filter: brightness(0.95); }
