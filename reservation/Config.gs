@@ -41,6 +41,16 @@ const PRICES = {
   parkingFullDay: 15,     // par place, créneau > 5h
   deskHalfDay: [15, 25],  // Bureau 2 postes : [1 poste, 2 postes] (tarif dégressif)
   deskFullDay: [30, 50],
+  // Salles de réunion (clients salle, HT) : tarif selon le nombre de personnes, quelle que soit la salle
+  // (grille « Tarifs salles de réunion »). Tranches rangées par nombre croissant. Si une salle plus petite
+  // et adaptée est libre sur le créneau, la salle choisie se paie au tarif de sa capacité (voir salleRoomPrice).
+  roomsByPeople: [
+    { maxPeople: 4, hourly: 30, halfDay: 105, fullDay: 200 },
+    { maxPeople: 6, hourly: 35, halfDay: 120, fullDay: 220 },
+    { maxPeople: 8, hourly: 40, halfDay: 140, fullDay: 260 },
+    { maxPeople: 12, hourly: 55, halfDay: 200, fullDay: 380 },
+    { maxPeople: 15, hourly: 60, halfDay: 220, fullDay: 420 }
+  ],
   vatRate: 0.2            // TVA appliquée à toutes les lignes (salles, repas, parking)
 };
 

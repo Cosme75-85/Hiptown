@@ -232,6 +232,7 @@
     .divider { border: 0; border-top: 1px solid var(--gris-chaud); margin: 18px 0 12px; }
     .slot-banner { background: var(--vert-eau-light); padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }
     .price-summary { background: var(--menthe-light); padding: 12px; border-radius: 8px; font-size: 14px; margin-top: 14px; line-height: 1.6; }
+    .size-warning { background: #fff7d6; border: 1px solid #f5d76e; color: #7a5a00; padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 10px; line-height: 1.45; }
 
     .modal-actions {
       display: flex;
@@ -399,6 +400,7 @@
         </div>
 
         <div class="price-summary" id="priceSummary" hidden></div>
+        <div class="size-warning" id="sizeWarning" hidden></div>
 
         <label for="meetingNotes">Note / demande particulière (optionnel)</label>
         <textarea id="meetingNotes" placeholder="Si vous réservez pour la première fois, merci de nous transmettre la raison sociale et l'adresse complète pour l'envoi de la facture"></textarea>
@@ -802,16 +804,54 @@
       };
     }
 
+    // Tarif de la salle selon le nombre de personnes : le serveur dit si une salle plus petite et
+    // adaptée est libre (le client paie alors le prix fort). Dernière réponse gardée par demande.
+    let roomPrice = { key: '', pricedPeople: 0, smallerRoom: null };
+    let roomPriceTimer = null;
+
+    function roomPriceKey(b, people) {
+      return [b.space.id, b.dateString, b.endDateString || '', b.startHour, b.endHour, people].join('|');
+    }
+
+    function fetchRoomPrice(b, people) {
+      const key = roomPriceKey(b, people);
+      if (roomPrice.key === key) return;
+      clearTimeout(roomPriceTimer);
+      roomPriceTimer = setTimeout(() => {
+        getJson({
+          action: 'getRoomPrice', spaceId: b.space.id, dateString: b.dateString, endDateString: b.endDateString || '',
+          startHour: b.startHour, endHour: b.endHour, numberOfPeople: people
+        }).then(res => {
+          if (!res || !res.success) return;
+          roomPrice = { key: key, pricedPeople: res.pricedPeople, smallerRoom: res.smallerRoom };
+          if (pendingBooking === b) updatePriceSummary();
+        }).catch(() => {}); // sans réponse : tarif du nombre de personnes, le serveur recalcule à l'envoi
+      }, 400);
+    }
+
     function updatePriceSummary() {
       const b = pendingBooking;
       if (!b || b.startHour === null) return;
       const services = readServices();
       const days = numberOfDaysBooked();
+      const people = services.numberOfPeople;
+      const known = roomPrice.key === roomPriceKey(b, people);
+      if (b.space.maxPeople && b.space.hourlyPrice && people >= 1 && people <= b.space.maxPeople) fetchRoomPrice(b, people);
 
       // Même fonction que celle utilisée par le serveur pour facturer
-      const q = computeQuote(b.space, Object.assign({
-        startHour: b.startHour, endHour: b.endHour, numberOfDays: days, spaceQuantity: b.spaceQuantity
-      }, services), PRICES);
+      const base = { startHour: b.startHour, endHour: b.endHour, numberOfDays: days, spaceQuantity: b.spaceQuantity };
+      const q = computeQuote(b.space, Object.assign({}, base, services, { pricedPeople: known ? roomPrice.pricedPeople : 0 }), PRICES);
+
+      const warning = $('sizeWarning');
+      warning.hidden = !(known && roomPrice.smallerRoom);
+      if (!warning.hidden) {
+        const fair = computeQuote(b.space, Object.assign({}, base, { numberOfPeople: people }), PRICES).totalHT;
+        const full = computeQuote(b.space, Object.assign({}, base, { numberOfPeople: people, pricedPeople: roomPrice.pricedPeople }), PRICES).totalHT;
+        warning.textContent = '⚠️ Attention : ' + roomPrice.smallerRoom.name
+          + (roomPrice.smallerRoom.maxPeople ? ' (jusqu\'à ' + roomPrice.smallerRoom.maxPeople + ' personnes)' : '')
+          + ' est libre sur ce créneau et suffit pour votre groupe. Une salle adaptée à vos besoins étant disponible, '
+          + 'vous payez ' + b.space.name + ' au prix fort : ' + formatEuro(full) + ' au lieu de ' + formatEuro(fair) + ' pour la salle.';
+      }
 
       const lines = q.lines.map(l => l.label + (l.qty > 1 ? ' × ' + l.qty : '') + ' : ' + formatEuro(l.total));
 

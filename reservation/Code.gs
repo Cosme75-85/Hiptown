@@ -30,6 +30,11 @@ function doGet(e) {
     return jsonResponse(checkRangeAvailability(p.spaceId, p.dateString, p.endDateString, parseInt(p.quantity, 10)));
   }
 
+  // Page de réservation : tarif selon le nombre de personnes, avertissement « salle plus petite libre »
+  if (action === 'getRoomPrice') {
+    return jsonResponse(getRoomPrice(e.parameter));
+  }
+
   if (action === 'getDayAvailability') {
     return jsonResponse(getDayAvailability(e.parameter.spaceId, e.parameter.dateString));
   }
@@ -531,6 +536,8 @@ function bookRoom(rawBooking, staff) {
       return { success: false, message: 'Ce créneau est complet, merci de choisir un autre horaire.' };
     }
 
+    // Tarif selon le nombre de personnes, ou prix fort si une salle plus petite et adaptée est libre
+    booking.pricedPeople = salleRoomPrice(booking).pricedPeople;
     const title = booking.title || 'Réservation - ' + space.name;
     const summary = summarizeBooking(booking, computeQuote(space, booking, currentPrices()), title);
     // Remise accordée à ce client : signalée au gérant, appliquée au devis à la validation
@@ -578,6 +585,42 @@ function bookRoom(rawBooking, staff) {
 }
 
 /**
+ * Nombre de personnes retenu pour le tarif d'une salle de réunion (client salle) :
+ * { pricedPeople, smallerRoom }. Si une salle plus petite, adaptée au groupe et libre sur le
+ * créneau existe (même ville), la salle choisie se paie au tarif de sa capacité ; sinon au
+ * tarif du nombre de personnes. Un autre espace (café, bureau) garde son tarif.
+ */
+function salleRoomPrice(b) {
+  if (!b.space.maxPeople || !b.space.hourlyPrice) return { pricedPeople: b.numberOfPeople, smallerRoom: null };
+  const smaller = smallerFreeRoom(b, s => s.hourlyPrice && !s.quantitySelectable && cityOf(s) === cityOf(b.space));
+  return {
+    pricedPeople: smaller ? b.space.maxPeople : b.numberOfPeople,
+    smallerRoom: smaller && { name: smaller.name, maxPeople: smaller.maxPeople }
+  };
+}
+
+/** Action getRoomPrice : tarif d'une demande pas encore envoyée (spaceId, dates, heures, nombre de personnes). */
+function getRoomPrice(p) {
+  const space = findSpace(p.spaceId);
+  if (!space || space.archived) return { success: false, message: 'Espace introuvable.' };
+  const b = {
+    space: space,
+    numberOfPeople: toInt(p.numberOfPeople),
+    dateString: String(p.dateString || ''),
+    endDateString: p.endDateString ? String(p.endDateString) : '',
+    startHour: toInt(p.startHour),
+    endHour: toInt(p.endHour)
+  };
+  if (!(b.numberOfPeople >= 1) || (space.maxPeople && b.numberOfPeople > space.maxPeople)) {
+    return { success: false, message: 'Nombre de personnes invalide.' };
+  }
+  const slotError = validateSlot(b);
+  if (slotError) return { success: false, message: slotError };
+  const price = salleRoomPrice(b);
+  return { success: true, pricedPeople: price.pricedPeople, smallerRoom: price.smallerRoom };
+}
+
+/**
  * Données de la demande nécessaires au devis, enregistrées dans l'événement
  * (tag limité à 1024 caractères : les textes libres, titre et note, n'y vont pas).
  */
@@ -591,6 +634,7 @@ function bookingForQuote(b) {
     numberOfDays: b.numberOfDays,
     spaceQuantity: b.spaceQuantity,
     numberOfPeople: b.numberOfPeople,
+    pricedPeople: b.pricedPeople,
     services: b.services,
     civility: b.civility,
     firstName: b.firstName,
@@ -1088,10 +1132,16 @@ function computeQuote(space, q, prices) {
     const deskPrices = isFullDay ? prices.deskFullDay : prices.deskHalfDay;
     addLine('room', spaceLabel + ' – ' + q.spaceQuantity + ' poste(s) – ' + period, 1, deskPrices[q.spaceQuantity >= 2 ? 1 : 0]);
   } else if (space.hourlyPrice) {
-    if (days > 1) addLine('room', spaceLabel + ' – journée complète', days, space.fullDayPrice); // multi-jours : 1 journée par jour
-    else if (isFullDay) addLine('room', spaceLabel + ' – journée complète', 1, space.fullDayPrice);
-    else if (duration === 5) addLine('room', spaceLabel + ' – demi-journée', 1, space.halfDayPrice);
-    else addLine('room', spaceLabel + ' – à l\'heure', duration, space.hourlyPrice);
+    // Salle de réunion : tarif selon le nombre de personnes (prices.roomsByPeople) ; q.pricedPeople
+    // vaut la capacité de la salle quand une salle plus petite et adaptée était libre (prix fort)
+    const people = q.pricedPeople || q.numberOfPeople;
+    const tier = space.maxPeople && people ? (prices.roomsByPeople || []).find(t => people <= t.maxPeople) : null;
+    const rate = tier || { hourly: space.hourlyPrice, halfDay: space.halfDayPrice, fullDay: space.fullDayPrice };
+    const roomLabel = spaceLabel + (tier && tier.maxPeople < space.maxPeople ? ' – tarif ' + tier.maxPeople + ' pers.' : '');
+    if (days > 1) addLine('room', roomLabel + ' – journée complète', days, rate.fullDay); // multi-jours : 1 journée par jour
+    else if (isFullDay) addLine('room', roomLabel + ' – journée complète', 1, rate.fullDay);
+    else if (duration === 5) addLine('room', roomLabel + ' – demi-journée', 1, rate.halfDay);
+    else addLine('room', roomLabel + ' – à l\'heure', duration, rate.hourly);
   }
 
   // Services (voir Services.gs) : par personne (une fois), à l'unité (une fois), ou par unité et par jour
