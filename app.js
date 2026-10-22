@@ -143,6 +143,11 @@
     { title: "Tarifs Coworking",         src: "https://drive.google.com/thumbnail?id=1_3o3qzOX8H569Vudn1cZs06z7WqVkQM7&sz=w2000" },
   ];
 
+  // Affiche des crédits coworking (tuile « Utilisation des crédits » de la page « Salle de réunion »)
+  const CREDITS_IMAGES = [
+    { title: "Utilisation des crédits", src: "https://drive.google.com/thumbnail?id=1Y-x7rwfUIdR1HAjPNYy_tHBgykkqkFD3&sz=w2000" },
+  ];
+
   const SPACE_TILES = {
     salle:     ["accueil", "salles", "messages", "adresses", "services", "avis"],
     coworking: ["salles", "messages", "accueil", "mesinfos", "infocowork", "marcel", "incident", "adresses", "avis"],
@@ -364,11 +369,13 @@
     modal.style.display = "block";
   }
 
-  /** Page « Salle de réunion » : « Utilisation » et « Tarifs » réservées aux clients salle de réunion. */
+  /** Page « Salle de réunion » : « Utilisation » et « Tarifs » réservées aux clients salle de réunion,
+   *  « Utilisation des crédits » aux coworkers et à l'équipe. */
   function openSalles() {
     const isSalle = currentSpace === "salle";
-    document.getElementById("salles-usage").hidden  = !isSalle;
-    document.getElementById("salles-tarifs").hidden = !isSalle;
+    document.getElementById("salles-usage").hidden   = !isSalle;
+    document.getElementById("salles-tarifs").hidden  = !isSalle;
+    document.getElementById("salles-credits").hidden = isSalle;
     stepSalles.hidden = false;
   }
 
@@ -553,6 +560,10 @@
   document.getElementById("salles-tarifs").addEventListener("click", function (e) {
     e.preventDefault();
     openImageModal(TARIFS_IMAGES);
+  });
+  document.getElementById("salles-credits").addEventListener("click", function (e) {
+    e.preventDefault();
+    openImageModal(CREDITS_IMAGES);
   });
   // En coworking, « Informations » et « Mes services » sont rangées dans « Informations du coworking »
   [backFromInfo, backFromServ].forEach(function (btn) {
