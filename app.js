@@ -516,6 +516,8 @@
     hideAll(); stepServices.hidden = false;
     // Les repas avec une réunion ne concernent que la réservation coworking
     document.getElementById("option-repas-reunion").hidden = currentSpace !== "coworking";
+    // La corbeille de fruits est réservée aux coworkers (pas aux clients salle de réunion)
+    document.getElementById("service-fruits").hidden = currentSpace === "salle";
     if (scrollToOptions) document.getElementById("services-options").scrollIntoView({ behavior: "smooth" });
   }
 
