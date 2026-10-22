@@ -270,8 +270,8 @@ function sendCoworkingConfirmation(user, booking, title, start, end, credits, qu
 
 /**
  * Crédits d'une réservation selon le nombre de personnes (barème COWORKING_CREDITS, Config.gs).
- * Même découpage que le devis des salles (computeQuote) : plusieurs jours = une journée
- * par jour, plus de 5h = journée, 5h = demi-journée, sinon tarif horaire × heures.
+ * Moins de 4h : crédits par heure × heures. Dès 4h : demi-journée, plus les heures au-delà
+ * de 4h, sans dépasser la journée (8h). Plusieurs jours = une journée par jour.
  */
 function computeCoworkingCredits(b) {
   const rate = COWORKING_CREDITS.find(t => b.numberOfPeople <= t.maxPeople)
@@ -279,11 +279,10 @@ function computeCoworkingCredits(b) {
   if (!rate) return 0;
   const duration = b.endHour - b.startHour;
   const days = b.numberOfDays || 1;
-  const hourly = (rate.hourly || 0) * duration;
-  let perDay;
-  if (duration > 5) perDay = rate.fullDay || hourly;
-  else if (duration === 5) perDay = rate.halfDay || hourly;
-  else perDay = hourly;
+  const perHour = rate.hourly || 0;
+  let perDay = perHour * duration;
+  if (rate.halfDay && duration >= 4) perDay = rate.halfDay + perHour * (duration - 4);
+  if (rate.fullDay) perDay = Math.min(perDay, rate.fullDay);
   return perDay * days;
 }
 

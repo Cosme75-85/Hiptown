@@ -179,10 +179,10 @@ function creditsFor(people, startHour, endHour, numberOfDays) {
   const rate = CREDIT_TIERS.find(t => people <= t.maxPeople) || CREDIT_TIERS[CREDIT_TIERS.length - 1];
   if (!rate) return 0;
   const duration = endHour - startHour;
-  const hourly = (rate.hourly || 0) * duration;
-  let perDay = hourly;
-  if (duration > 5) perDay = rate.fullDay || hourly;
-  else if (duration === 5) perDay = rate.halfDay || hourly;
+  const perHour = rate.hourly || 0;
+  let perDay = perHour * duration;
+  if (rate.halfDay && duration >= 4) perDay = rate.halfDay + perHour * (duration - 4);
+  if (rate.fullDay) perDay = Math.min(perDay, rate.fullDay);
   return perDay * (numberOfDays || 1);
 }
 

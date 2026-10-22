@@ -114,9 +114,10 @@ const TAG_THANKS_SENT = 'thanksSent'; // date d'envoi de l'email de remerciement
 // tout de suite, dans les mêmes agendas que les réservations externes.
 // Barème en crédits des coworkers, selon le nombre de personnes indiqué à la réservation
 // (quelle que soit la salle). Tranches rangées par nombre de personnes croissant ; au-delà
-// de la dernière, c'est la dernière qui s'applique. Même découpage que les tarifs : demi-journée
-// = 5h, journée = plus de 5h, plusieurs jours = une journée par jour. Sans demi-journée ni
-// journée indiquée, c'est crédits par heure × nombre d'heures (6h = 6 crédits à 1 crédit/heure).
+// de la dernière, c'est la dernière qui s'applique. Moins de 4h : crédits par heure × heures.
+// Dès 4h : demi-journée (4h), plus les heures au-delà de 4h, sans dépasser la journée (8h).
+// Plusieurs jours = une journée par jour. Sans demi-journée ni journée indiquée, c'est
+// crédits par heure × nombre d'heures (6h = 6 crédits à 1 crédit/heure).
 // Les crédits d'une entreprise (fiche « Gestion des entreprises » du portail) sont redonnés
 // chaque mois et ne se cumulent pas d'un mois sur l'autre.
 const COWORKING_CREDITS = [
