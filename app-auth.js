@@ -252,6 +252,7 @@ function buildClient() {
     subtitle: isTeam && teamInfo
       ? teamInfo
       : (companyName || "Entreprise à renseigner") + " · " + style.label,
+    city: profile.site || null, // tuile « Accueil visiteurs » : la page de sa ville
     extraTiles:  Array.isArray(profile.extraTiles)  ? profile.extraTiles  : [],
     hiddenTiles: Array.isArray(profile.hiddenTiles) ? profile.hiddenTiles : []
   };

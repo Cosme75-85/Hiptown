@@ -269,6 +269,7 @@
   // ── État ──────────────────────────────────────────────
   let currentSpace       = null;
   let currentClientId    = null;
+  let currentCity        = null; // ville du compte (PORTAIL.cities), null pour l'admin général
   let currentExtraTiles  = [];
   let currentHiddenTiles = [];
   let dragSrc            = null;
@@ -321,6 +322,7 @@
 
   function showDashboard(client) {
     currentClientId = client.id;
+    currentCity = client.city || null;
     renderIdentity(client);
     buildTiles(currentSpace, client.id);
     hideAll(); stepDashboard.hidden = false;
@@ -330,7 +332,7 @@
   }
 
   logoutBtn.addEventListener("click", function () {
-    currentSpace = null; currentClientId = null;
+    currentSpace = null; currentClientId = null; currentCity = null;
     hideAll(); stepWelcome.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
@@ -424,8 +426,15 @@
     tileIds.forEach(function(id) { if (!sorted.includes(id)) sorted.push(id); });
 
     sorted.forEach(function (id) {
-      const tile = TILE_DEFS[id];
+      let tile = TILE_DEFS[id];
       if (!tile) return;
+      // Accueil visiteurs : la page de la ville du compte (Bordeaux pour l'admin général) ;
+      // pas de tuile pour une ville qui n'a pas encore de page
+      if (id === "accueil") {
+        const url = (PORTAIL.accueilPages || {})[currentCity || PORTAIL.defaultSite];
+        if (!url) return;
+        tile = Object.assign({}, tile, { url: url });
+      }
 
       const el = document.createElement("a");
       el.className = "tile" + (tile.wide ? " tile-wide" : "");
