@@ -22,12 +22,15 @@ const ACCUEIL_TEAM_CONTACTS = {
 /**
  * Point d'entrée (doPost, action notifyVisitor), appelé sans connexion :
  * payload = { companyId, visitor, message } (entreprise du portail)
- *        ou { contactId, visitor, message } (contact de la case Hiptown).
+ *        ou { contactId, visitor, message } (contact de la case Hiptown)
+ *        ou { companyName, contactName, city, visitor, message } (case écrite à la main dans config.js
+ *           de la page, sans adresse : l'équipe Hiptown de la ville est prévenue).
  */
 function notifyVisitor(raw) {
   try {
     raw = raw || {};
     if (raw.contactId) return notifyTeamContact(raw);
+    if (!raw.companyId && raw.companyName) return notifyPageCompany(raw);
     const companyId = String(raw.companyId || '');
     if (!/^[A-Za-z0-9_-]{1,120}$/.test(companyId)) return { success: false, message: 'Entreprise inconnue.' };
     const visitor = cleanText(raw.visitor, 80);
@@ -112,6 +115,41 @@ function notifyTeamContact(raw) {
       + '<p>Un visiteur vient de se présenter pour vous à l\'accueil Hiptown.</p>'
       + messageHtml(text)
       + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown.</p>'
+  });
+  return { success: true };
+}
+
+/** Visiteur pour une entreprise écrite à la main dans la page (pas encore sur le portail). */
+function notifyPageCompany(raw) {
+  const company = cleanText(raw.companyName, 100);
+  const contact = cleanText(raw.contactName, 80);
+  const city = /^[a-z-]{1,40}$/.test(raw.city || '') ? raw.city : ACCUEIL_CITY;
+  const visitor = cleanText(raw.visitor, 80);
+  if (!company) return { success: false, message: 'Entreprise inconnue.' };
+  if (!visitor) return { success: false, message: 'Merci d\'indiquer votre nom.' };
+  const note = cleanText(raw.message, 300);
+
+  const cache = CacheService.getScriptCache();
+  const companyKey = 'accueil:page:' + company.toLowerCase().slice(0, 100);
+  const companyCount = Number(cache.get(companyKey)) || 0;
+  const totalCount = Number(cache.get('accueil:total')) || 0;
+  if (companyCount >= ACCUEIL_MAX_PER_COMPANY || totalCount >= ACCUEIL_MAX_TOTAL) {
+    return { success: false, message: 'Trop de visites signalées, merci de patienter un moment.' };
+  }
+  cache.put(companyKey, String(companyCount + 1), ACCUEIL_WINDOW_SECONDS);
+  cache.put('accueil:total', String(totalCount + 1), ACCUEIL_WINDOW_SECONDS);
+
+  const forWho = contact ? escapeHtml(contact) + ' (' + escapeHtml(company) + ')' : escapeHtml(company);
+  const text = note
+    ? visitor + ' attend à l\'accueil. Message : « ' + note + ' »'
+    : visitor + ' attend à l\'accueil.';
+  MailApp.sendEmail({
+    to: teamRecipients({ city: city }),
+    subject: '🔔 Visiteur pour ' + (contact ? contact + ' (' + company + ')' : company) + ' à l\'accueil',
+    htmlBody: '<p>Un visiteur pour <b>' + forWho + '</b> vient de se présenter à l\'accueil.</p>'
+      + messageHtml(text)
+      + '<p style="color:#64748b;font-size:12px;">Cette entreprise n\'a pas encore sa case sur le portail : '
+      + 'merci de la prévenir.</p>'
   });
   return { success: true };
 }
