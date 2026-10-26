@@ -145,6 +145,75 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Accueil visiteurs (page publique Hiptown-Accueil-1) ──
+    // Compte coworking validé, rattaché à cette entreprise
+    function isCompanyMember(companyId) {
+      return isApprovedRole('coworking') && myProfile().get('companyId', null) == companyId;
+    }
+
+    // Logo de la case : image JPEG ou PNG réduite dans le navigateur (accueil-fiche.js)
+    function isValidLogo(data) {
+      return !('logo' in data) || data.logo == ''
+        || (data.logo is string
+            && data.logo.size() <= 150000
+            && data.logo.matches('^data:image/(jpeg|png);base64,[A-Za-z0-9+/=]+$'));
+    }
+
+    function isValidAccueilCard(data) {
+      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'updatedAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.city is string && data.city.size() > 0 && data.city.size() <= 40
+        && isOptionalText(data, 'siteId', 40)
+        && (!('manual' in data) || data.manual is bool)
+        && isValidLogo(data);
+    }
+
+    // L'équipe d'une ville gère les cases de sa ville (l'admin général, toutes les villes)
+    function canManageAccueilCity(city) {
+      return isSuperAdmin() || (isAdmin() && city != null && city == mySite());
+    }
+
+    function accueilCityOf(id) {
+      return get(/databases/$(database)/documents/accueil/$(id)).data.get('city', null);
+    }
+
+    // Case d'une entreprise : nom, ville, site et logo, lisibles par tous (page sans connexion).
+    //  - entreprise du portail (id = companyId) : créée par l'équipe de sa ville, ou par un salarié
+    //    avec le nom officiel, sa ville et son site ; ensuite, un salarié ne change que le logo ;
+    //  - case ajoutée à la main (id « m-… ») : l'équipe de la ville l'ajoute, la modifie, la retire.
+    match /accueil/{id} {
+      allow read: if true;
+      allow create: if isValidAccueilCard(request.resource.data)
+        && (canManageAccueilCity(request.resource.data.city)
+            || (isCompanyMember(id)
+                && request.resource.data.get('manual', false) == false
+                && request.resource.data.name == get(/databases/$(database)/documents/companies/$(id)).data.name
+                && request.resource.data.city == myProfile().get('site', null)
+                && request.resource.data.get('siteId', null) == myProfile().get('siteId', null)));
+      allow update: if isValidAccueilCard(request.resource.data)
+        && ((canManageAccueilCity(resource.data.get('city', null)) && canManageAccueilCity(request.resource.data.city))
+            || (isCompanyMember(id)
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'updatedAt'])));
+      allow delete: if canManageAccueilCity(resource.data.get('city', null));
+    }
+
+    // Adresse qui reçoit les visites : jamais publique, lue par Apps Script (Accueil.gs)
+    // avec le compte de service, au moment d'envoyer l'e-mail. La case doit exister (sa ville décide).
+    function canManageAccueilEmail(id) {
+      return isCompanyMember(id)
+        || (exists(/databases/$(database)/documents/accueil/$(id)) && canManageAccueilCity(accueilCityOf(id)));
+    }
+
+    match /accueilEmails/{id} {
+      allow read, delete: if canManageAccueilEmail(id);
+      allow create, update: if canManageAccueilEmail(id)
+        && request.resource.data.keys().hasOnly(['email', 'updatedAt'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 120
+        && (request.resource.data.email == ''
+            || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'));
+    }
+
     // Reservations de salles
     match /bookings/{bookingId} {
       allow read: if isSignedIn();

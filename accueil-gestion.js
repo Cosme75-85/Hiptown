@@ -1,0 +1,225 @@
+// ═══════════════════════════════════════════════════════
+//  PORTAIL HIPTOWN — Gestion > Accueil visiteurs
+//  L'équipe d'une ville ajoute, modifie et retire les entreprises affichées sur la page
+//  publique d'accueil de sa ville (lien dans PORTAIL.accueilPages, config.js).
+//  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js) :
+//  ici, on ne change que leur logo et leur e-mail.
+// ═══════════════════════════════════════════════════════
+
+import {
+  listAccueilCards, getAccueilEmail, setAccueilEmail, saveManualAccueilCard,
+  setAccueilLogo, deleteAccueilCard, resizeLogo, isSafeLogo, isValidEmail
+} from "./accueil-fiche.js";
+
+const $ = id => document.getElementById(id);
+
+let cities = [];      // villes que l'admin connecté gère
+let city = null;      // ville affichée
+let editing = null;   // case en cours de modification (null = nouvelle)
+let formLogo = "";
+
+function escapeHtml(text) {
+  return String(text == null ? "" : text)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function showMessage(id, text, isError) {
+  const el = $(id);
+  el.textContent = text;
+  el.style.color = isError ? "#dc2626" : "#166534";
+  el.hidden = !text;
+}
+
+const cityName = c => PORTAIL.cities?.[c]?.name || c;
+const sitesOf = c => PORTAIL.cities?.[c]?.sites || {};
+
+/**
+ * Affiche la page pour les villes de l'admin connecté.
+ * @param {string[]} visibleCities  toutes les villes pour l'admin général, la sienne sinon
+ */
+export async function renderAccueilPanel(visibleCities) {
+  cities = visibleCities;
+  if (!cities.includes(city)) city = cities[0] || null;
+  const select = $("accueil-city");
+  select.innerHTML = cities.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(cityName(c))}</option>`).join("");
+  select.value = city;
+  $("accueil-city-row").hidden = cities.length < 2;
+  closeForm();
+  showMessage("accueil-gestion-message", "");
+  await refresh();
+}
+
+async function refresh() {
+  renderLink();
+  const list = $("accueil-list");
+  if (!city) {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = `<p style="color:#94a3b8;padding:12px;">Chargement…</p>`;
+  try {
+    const cards = await listAccueilCards(city);
+    const emails = await Promise.all(cards.map(c => getAccueilEmail(c.id).catch(() => "")));
+    list.innerHTML = "";
+    if (!cards.length) {
+      list.innerHTML = `<p style="color:#94a3b8;padding:12px;">Aucune entreprise sur la page de ${escapeHtml(cityName(city))} pour le moment.</p>`;
+      return;
+    }
+    cards.forEach((c, i) => list.appendChild(cardRow(c, emails[i])));
+  } catch (err) {
+    console.error(err);
+    list.innerHTML = `<p style="color:#dc2626;padding:12px;">Impossible de charger les entreprises.</p>`;
+  }
+}
+
+function renderLink() {
+  const url = (PORTAIL.accueilPages || {})[city] || "";
+  $("accueil-link").textContent = url || "Pas encore de page d'accueil pour cette ville.";
+  $("accueil-link-open").hidden = !url;
+  $("accueil-link-open").href = url || "#";
+  $("accueil-link-copy").hidden = !url;
+}
+
+function cardRow(c, email) {
+  const sites = sitesOf(city);
+  const details = [
+    c.siteId ? (sites[c.siteId] || c.siteId) : "",
+    email || "pas d'e-mail : l'équipe Hiptown est prévenue",
+    c.manual ? "" : "compte portail"
+  ].filter(Boolean).join(" · ");
+  const logo = isSafeLogo(c.logo) ? `<img src="${escapeHtml(c.logo)}" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;"/>`
+    : `<span class="company-badge" style="width:44px;height:44px;font-size:13px;">${escapeHtml((c.name || "?").slice(0, 2).toUpperCase())}</span>`;
+  const row = document.createElement("div");
+  row.className = "info-card";
+  row.innerHTML = `
+    <div class="info-item" style="gap:12px;">
+      ${logo}
+      <span style="flex:1;min-width:0;">
+        <b>${escapeHtml(c.name)}</b><br>
+        <span style="font-size:11px;color:#94a3b8;">${escapeHtml(details)}</span>
+      </span>
+      <button class="direct-btn" type="button" data-act="edit" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
+      ${c.manual ? `<button class="direct-btn" type="button" data-act="delete" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;color:#dc2626;">Retirer</button>` : ""}
+    </div>`;
+  row.querySelector('[data-act="edit"]').addEventListener("click", () => openForm(c, email));
+  row.querySelector('[data-act="delete"]')?.addEventListener("click", async () => {
+    if (!confirm(`Retirer « ${c.name} » de la page d'accueil ?`)) return;
+    try {
+      await deleteAccueilCard(c.id);
+      showMessage("accueil-gestion-message", `« ${c.name} » est retirée de la page.`, false);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+      showMessage("accueil-gestion-message", "Suppression impossible. Réessayez.", true);
+    }
+  });
+  return row;
+}
+
+function renderFormLogo() {
+  const preview = $("accueil-form-logo-preview");
+  preview.innerHTML = "";
+  if (formLogo) {
+    const img = document.createElement("img");
+    img.src = formLogo;
+    img.alt = "Logo";
+    preview.appendChild(img);
+  } else {
+    preview.textContent = "Pas encore de logo";
+  }
+  $("accueil-form-logo-remove").hidden = !formLogo;
+}
+
+function openForm(card, email) {
+  editing = card || null;
+  const portalCard = !!(card && !card.manual);
+  $("accueil-form-title").textContent = card ? `Modifier « ${card.name} »` : "Nouvelle entreprise";
+  $("accueil-form-name").value = card ? card.name : "";
+  $("accueil-form-name").disabled = portalCard; // nom tenu par Gestion des entreprises
+
+  const sites = sitesOf(city);
+  const siteSelect = $("accueil-form-site");
+  siteSelect.innerHTML = `<option value="">Tous les sites de ${escapeHtml(cityName(city))}</option>`
+    + Object.keys(sites).map(id => `<option value="${escapeHtml(id)}">${escapeHtml(sites[id])}</option>`).join("");
+  siteSelect.value = card && card.siteId ? card.siteId : "";
+  siteSelect.disabled = portalCard;
+  $("accueil-form-site-row").hidden = !Object.keys(sites).length;
+
+  formLogo = card && isSafeLogo(card.logo) ? card.logo : "";
+  renderFormLogo();
+  $("accueil-form-email").value = email || "";
+  showMessage("accueil-form-message", "");
+  $("accueil-form").hidden = false;
+  $("accueil-add").hidden = true;
+  $("accueil-form-name").focus();
+}
+
+function closeForm() {
+  editing = null;
+  $("accueil-form").hidden = true;
+  $("accueil-add").hidden = false;
+}
+
+async function saveForm() {
+  const name = $("accueil-form-name").value.trim();
+  const email = $("accueil-form-email").value.trim().toLowerCase();
+  if (!name) return showMessage("accueil-form-message", "Le nom de l'entreprise est obligatoire.", true);
+  if (email && !isValidEmail(email)) return showMessage("accueil-form-message", "L'adresse e-mail n'est pas valide.", true);
+
+  const btn = $("accueil-form-save");
+  btn.disabled = true;
+  try {
+    let id;
+    if (editing && !editing.manual) {
+      id = editing.id;
+      await setAccueilLogo(id, formLogo);
+    } else {
+      id = await saveManualAccueilCard(editing ? editing.id : null,
+        { name, city, siteId: $("accueil-form-site").value || null, logo: formLogo });
+    }
+    await setAccueilEmail(id, email); // après la case : les règles lisent sa ville
+    showMessage("accueil-gestion-message", `« ${name} » est enregistrée.`, false);
+    closeForm();
+    await refresh();
+  } catch (err) {
+    console.error(err);
+    showMessage("accueil-form-message", "Enregistrement impossible. Réessayez.", true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$("accueil-city")?.addEventListener("change", async e => {
+  city = e.target.value;
+  closeForm();
+  await refresh();
+});
+$("accueil-add")?.addEventListener("click", () => openForm(null, ""));
+$("accueil-form-cancel")?.addEventListener("click", closeForm);
+$("accueil-form-save")?.addEventListener("click", saveForm);
+$("accueil-form-logo-input")?.addEventListener("change", async e => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  try {
+    formLogo = await resizeLogo(file);
+    renderFormLogo();
+    showMessage("accueil-form-message", "");
+  } catch (err) {
+    showMessage("accueil-form-message", err.message, true);
+  }
+});
+$("accueil-form-logo-remove")?.addEventListener("click", () => {
+  formLogo = "";
+  renderFormLogo();
+});
+$("accueil-link-copy")?.addEventListener("click", async () => {
+  const url = (PORTAIL.accueilPages || {})[city];
+  try {
+    await navigator.clipboard.writeText(url);
+    showMessage("accueil-gestion-message", "Lien copié ✓", false);
+  } catch (err) {
+    showMessage("accueil-gestion-message", "Copie impossible : sélectionnez le lien à la main.", true);
+  }
+});

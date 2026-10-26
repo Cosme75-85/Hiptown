@@ -164,6 +164,10 @@ function doPost(e) {
     if (body.action === 'notifyNewMessage') {
       return jsonResponse(notifyNewMessage(body.idToken, body.payload));
     }
+    // Accueil visiteurs (page publique, sans connexion) : email à l'entreprise du visiteur (voir Accueil.gs)
+    if (body.action === 'notifyVisitor') {
+      return jsonResponse(notifyVisitor(body.payload));
+    }
     // Statistiques de la phase de test : clics sur la réservation des salles (voir Stats.gs)
     if (body.action === 'trackBookingStat') {
       return jsonResponse(trackBookingStat(body.payload));

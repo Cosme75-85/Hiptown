@@ -218,11 +218,65 @@
         <div class="outil-logo">🧾</div>
         <div class="outil-name">Devis</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-accueil">
+        <div class="outil-logo">🔔</div>
+        <div class="outil-name">Accueil visiteurs</div>
+      </a>
       <a class="outil-card" href="#" id="open-gestion-stats">
         <div class="outil-logo">📊</div>
         <div class="outil-name">Statistiques</div>
       </a>
     </div>
+  </section>
+
+  <!-- ÉTAPE : ACCUEIL VISITEURS (admin) — cases des entreprises sur la page publique de la ville (accueil-gestion.js) -->
+  <section id="step-gestion-accueil" hidden>
+    <button class="back-btn" id="back-from-gestion-accueil">Gestion</button>
+    <h2 class="step-title" style="margin-bottom:4px;">🔔 Accueil visiteurs</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Les entreprises affichées sur la page d'accueil de la ville : le visiteur clique sur la case,
+      tape son nom, et l'entreprise est prévenue par e-mail. Les entreprises qui ont un compte sur
+      le portail ont leur case automatiquement ; ajoutez ici celles qui n'en ont pas.
+    </p>
+    <div id="accueil-city-row" hidden>
+      <label class="profile-label" for="accueil-city">Ville</label>
+      <select id="accueil-city" class="profile-input"></select>
+    </div>
+    <div class="pin-box" style="max-width:100%;text-align:left;margin:12px 0 16px;">
+      <p class="profile-label" style="margin-top:0;">Lien de la page d'accueil</p>
+      <p id="accueil-link" style="font-size:13px;word-break:break-all;margin-bottom:8px;"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="direct-btn" id="accueil-link-open" target="_blank" rel="noopener" style="width:auto;margin-top:0;padding:8px 14px;">Ouvrir la page</a>
+        <button class="direct-btn" id="accueil-link-copy" type="button" style="width:auto;margin-top:0;padding:8px 14px;">Copier le lien</button>
+      </div>
+    </div>
+    <p class="profile-help" id="accueil-gestion-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
+    <button class="direct-btn" id="accueil-add" type="button" style="background:var(--navy);color:#fff;margin:0 0 16px;">+ Ajouter une entreprise</button>
+
+    <div class="pin-box" id="accueil-form" hidden style="max-width:100%;text-align:left;margin-bottom:24px;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;" id="accueil-form-title">Nouvelle entreprise</h3>
+      <label class="profile-label" for="accueil-form-name">Nom *</label>
+      <input type="text" id="accueil-form-name" class="profile-input" maxlength="100" placeholder="ex. Agence Calanques"/>
+      <div id="accueil-form-site-row">
+        <label class="profile-label" for="accueil-form-site">Site</label>
+        <select id="accueil-form-site" class="profile-input"></select>
+      </div>
+      <p class="profile-label">Logo</p>
+      <div class="accueil-logo-preview" id="accueil-form-logo-preview"></div>
+      <label class="direct-btn profile-photo-btn" for="accueil-form-logo-input">🖼️ Choisir le logo</label>
+      <input type="file" id="accueil-form-logo-input" accept="image/*" hidden/>
+      <button class="profile-link" id="accueil-form-logo-remove" type="button" hidden>Retirer le logo</button>
+      <label class="profile-label" for="accueil-form-email">E-mail qui reçoit les visites</label>
+      <input type="email" id="accueil-form-email" class="profile-input" maxlength="120" placeholder="ex. accueil@entreprise.fr"/>
+      <p class="profile-help">Jamais affiché sur la page. Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.</p>
+      <p class="profile-help" id="accueil-form-message" role="status" hidden></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="direct-btn" id="accueil-form-save" type="button" style="background:var(--navy);color:#fff;width:auto;padding:8px 14px;">Enregistrer</button>
+        <button class="direct-btn" id="accueil-form-cancel" type="button" style="width:auto;padding:8px 14px;">Annuler</button>
+      </div>
+    </div>
+
+    <div id="accueil-list"></div>
   </section>
 
   <!-- ÉTAPE : STATISTIQUES DE CLICS (admin, phase de test) — statistiques.js et reservation/Stats.gs -->
@@ -627,6 +681,23 @@
 
       <p id="profile-message" class="profile-help" role="status" hidden></p>
       <button class="direct-btn" id="profile-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer</button>
+    </div>
+
+    <!-- Case de l'entreprise sur l'accueil visiteurs (clients coworking, voir accueil-fiche.js) -->
+    <div class="pin-box" id="accueil-fiche" style="text-align:left;margin-top:16px;" hidden>
+      <p class="profile-label" style="margin-top:0;">🔔 Ma case à l'accueil visiteurs</p>
+      <p class="profile-help">Vos visiteurs cliquent sur la case de votre entreprise à l'accueil, et vous êtes prévenu par e-mail.</p>
+      <div class="accueil-logo-preview" id="accueil-logo-preview"></div>
+      <label class="direct-btn profile-photo-btn" for="accueil-logo-input">🖼️ Choisir le logo</label>
+      <input type="file" id="accueil-logo-input" accept="image/*" hidden/>
+      <button class="profile-link" id="accueil-logo-remove" type="button" hidden>Retirer le logo</button>
+
+      <label class="profile-label" for="accueil-email">E-mail qui reçoit les visites</label>
+      <input type="email" id="accueil-email" class="profile-input" placeholder="Ex : accueil@monentreprise.fr" autocomplete="email"/>
+      <p class="profile-help">Jamais affiché sur la page d'accueil. Sans adresse, c'est l'équipe Hiptown qui est prévenue.</p>
+
+      <p id="accueil-message" class="profile-help" role="status" hidden></p>
+      <button class="direct-btn" id="accueil-save" type="button" style="background:var(--navy);color:#fff;">Enregistrer</button>
     </div>
 
     <button class="direct-btn" id="password-open" type="button" style="background:var(--navy);color:#fff;display:block;width:100%;max-width:320px;margin:16px auto 0;">🔒 Changer le mot de passe</button>
