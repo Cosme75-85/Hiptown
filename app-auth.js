@@ -9,6 +9,7 @@ import { attachPasswordRules, passwordProblem } from "./password-rules.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import { initSettingsPage, applyUserSettings } from "./parametres.js";
 import { initAccueilFiche, ensureAccueilCard } from "./accueil-fiche.js";
+import { renderAccueilPanel } from "./accueil-gestion.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
   updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
@@ -31,6 +32,7 @@ const stepGestionSalles = document.getElementById("step-gestion-salles");
 const stepGestionServices = document.getElementById("step-gestion-services");
 const stepGestionDevis = document.getElementById("step-gestion-devis");
 const stepGestionStats = document.getElementById("step-gestion-stats");
+const stepGestionAccueil = document.getElementById("step-gestion-accueil");
 const stepSettings = document.getElementById("step-settings");
 const authError   = document.getElementById("auth-error");
 
@@ -40,7 +42,7 @@ const authError   = document.getElementById("auth-error");
 // masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepSettings].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepGestionAccueil, stepSettings].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -201,7 +203,7 @@ watchAuthState(async (user, profile) => {
   applyUserSettings(user.uid, profile);
   // Première connexion d'un salarié coworking : la case de son entreprise apparaît à l'accueil visiteurs
   if (company) {
-    ensureAccueilCard(company.id, { name: company.name || company.id, siteId: profile.siteId || null })
+    ensureAccueilCard(company.id, { name: company.name || company.id, city: profile.site || null, siteId: profile.siteId || null })
       .catch(err => console.error("Case de l'accueil visiteurs non créée", err));
   }
   routeToDashboard(buildClient(), space);
@@ -360,12 +362,15 @@ onGestionButton("open-gestion-salles", stepGestionSalles, renderRoomsPanel);
 onGestionButton("open-gestion-services", stepGestionServices, renderServicesPanel);
 onGestionButton("open-gestion-devis", stepGestionDevis, renderManualQuotePanel);
 // Remise à zéro des compteurs : admin général seulement (règles Firestore et Stats.gs)
+// Accueil visiteurs : les cases de la page publique de sa ville (toutes les villes pour l'admin général)
+onGestionButton("open-gestion-accueil", stepGestionAccueil, () => renderAccueilPanel(visibleCities()));
 onGestionButton("open-gestion-stats", stepGestionStats, () => renderStatsPanel(adminScope(), myAdminLevel() === "general"));
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-services")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-devis")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-stats")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-gestion-accueil")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
 
@@ -688,7 +693,7 @@ function createPendingCard(u, companies, onDone) {
     await approveUser(u.uid, role, role === "coworking" ? companyId : null);
     if (role === "coworking" && companyId) {
       const company = companies.find(c => c.id === companyId);
-      ensureAccueilCard(companyId, { name: (company && company.name) || companyId, siteId: u.siteId || null }, { asAdmin: true })
+      ensureAccueilCard(companyId, { name: (company && company.name) || companyId, city: u.site || null, siteId: u.siteId || null }, { asAdmin: true })
         .catch(err => console.error("Case de l'accueil visiteurs non créée", err));
     }
     onDone();
@@ -1026,8 +1031,8 @@ async function renderCompaniesPanel() {
   users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
   // Cases de l'accueil visiteurs : une par entreprise, au nom à jour, sur le site de ses salariés
   companies.forEach(c => {
-    const member = users.find(u => u.companyId === c.id && u.siteId);
-    ensureAccueilCard(c.id, { name: c.name || c.id, siteId: member ? member.siteId : null }, { asAdmin: true })
+    const member = users.find(u => u.companyId === c.id && u.site);
+    ensureAccueilCard(c.id, { name: c.name || c.id, city: member ? member.site : null, siteId: member ? member.siteId || null : null }, { asAdmin: true })
       .catch(err => console.error("Case de l'accueil visiteurs non synchronisée", c.id, err));
   });
   companiesCache = companies;

@@ -7,7 +7,8 @@
 // La case Hiptown de la page (contacts de l'équipe) passe aussi par ici : la page envoie
 // seulement l'identifiant du contact, l'adresse est dans ACCUEIL_TEAM_CONTACTS.
 
-const ACCUEIL_CITY = 'bordeaux';            // équipe prévenue quand l'entreprise n'a pas mis d'adresse
+const ACCUEIL_CITY = 'bordeaux';            // ville par défaut d'une case sans ville (l'équipe de la ville de la case
+                                            // est prévenue quand l'entreprise n'a pas mis d'adresse)
 const ACCUEIL_MAX_PER_COMPANY = 20;         // visites notifiées au plus par entreprise...
 const ACCUEIL_MAX_TOTAL = 150;              // ...et pour toute la page...
 const ACCUEIL_WINDOW_SECONDS = 60 * 60;     // ...sur une heure (protection contre l'envoi en rafale)
@@ -67,7 +68,7 @@ function notifyVisitor(raw) {
       });
     } else {
       MailApp.sendEmail({
-        to: teamRecipients({ city: ACCUEIL_CITY }),
+        to: teamRecipients({ city: /^[a-z-]{1,40}$/.test(card.city || '') ? card.city : ACCUEIL_CITY }),
         subject: '🔔 Visiteur pour ' + company + ' à l\'accueil (pas d\'adresse renseignée)',
         htmlBody: '<p>Un visiteur pour <b>' + escapeHtml(company) + '</b> vient de se présenter à l\'accueil.</p>'
           + messageHtml(text)
