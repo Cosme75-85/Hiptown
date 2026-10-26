@@ -6,6 +6,7 @@
  *   Salles.gs   → la liste des espaces, gérée depuis le portail (Gestion > Salles de réunion)
  *   Code.gs     → la logique (ce fichier)
  *   Coworking.gs → réservations des coworkers depuis le portail client
+ *   Stats.gs    → compteurs de clics sur la réservation (phase de test)
  *   Tests.gs    → fonctions de diagnostic à lancer à la main
  *   Index.html  → la page affichée au client
  */
@@ -166,6 +167,16 @@ function doPost(e) {
     // Accueil visiteurs (page publique, sans connexion) : email à l'entreprise du visiteur (voir Accueil.gs)
     if (body.action === 'notifyVisitor') {
       return jsonResponse(notifyVisitor(body.payload));
+    }
+    // Statistiques de la phase de test : clics sur la réservation des salles (voir Stats.gs)
+    if (body.action === 'trackBookingStat') {
+      return jsonResponse(trackBookingStat(body.payload));
+    }
+    if (body.action === 'getBookingStats') {
+      return jsonResponse(getBookingStats(body.idToken));
+    }
+    if (body.action === 'resetBookingStats') {
+      return jsonResponse(resetBookingStats(body.idToken));
     }
     return jsonResponse({ success: false, message: 'Action inconnue.' });
   } catch (err) {

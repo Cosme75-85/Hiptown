@@ -346,6 +346,24 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
+    // Statistiques de la phase de test (statistiques.js) : nombre de clics d'un client
+    // sur chaque case du portail. Le client n'écrit que sa propre fiche, avec la ville,
+    // le site et l'espace de son compte ; l'équipe la lit dans son périmètre ;
+    // seul l'admin général remet les compteurs à zéro.
+    match /clickStats/{uid} {
+      allow read: if canManageUser(resource.data);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['space', 'site', 'siteId', 'counts', 'updatedAt'])
+        && request.resource.data.space in ['salle', 'coworking']
+        && isApprovedRole(request.resource.data.space)
+        && request.resource.data.site == myProfile().get('site', null)
+        && request.resource.data.siteId == myProfile().get('siteId', null)
+        && request.resource.data.counts is map
+        && request.resource.data.counts.size() <= 60
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isSuperAdmin();
+    }
+
     // Commandes petit-dejeuner
     match /breakfastOrders/{orderId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);

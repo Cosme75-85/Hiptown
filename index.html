@@ -218,7 +218,39 @@
         <div class="outil-logo">🧾</div>
         <div class="outil-name">Devis</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-stats">
+        <div class="outil-logo">📊</div>
+        <div class="outil-name">Statistiques</div>
+      </a>
     </div>
+  </section>
+
+  <!-- ÉTAPE : STATISTIQUES DE CLICS (admin, phase de test) — statistiques.js et reservation/Stats.gs -->
+  <section id="step-gestion-stats" hidden>
+    <button class="back-btn" id="back-from-gestion-stats">Gestion</button>
+    <h2 class="step-title" style="margin-bottom:4px;">📊 Statistiques</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Phase de test : combien de fois chaque client clique sur chaque case du portail,
+      et combien de personnes cliquent pour réserver une salle de réunion, y compris
+      les visiteurs du lien public de l'outil de réservation (sans compte, donc anonymes).
+    </p>
+    <p class="profile-help" id="stats-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="direct-btn" id="stats-refresh" type="button" style="width:auto;margin-top:0;padding:8px 14px;">↻ Actualiser</button>
+      <button class="direct-btn" id="stats-csv" type="button" style="width:auto;margin-top:0;padding:8px 14px;">⬇️ Clics par compte (Excel)</button>
+      <button class="direct-btn" id="stats-reset" type="button" hidden style="width:auto;margin-top:0;padding:8px 14px;color:#dc2626;">Remettre à zéro</button>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:8px 0 4px;">🗓️ Réserver une salle de réunion</h3>
+    <p class="profile-help" style="margin:0 0 10px;">
+      « ext. » : lien public de l'outil de réservation ; « portail » : clients connectés.
+      Une personne compte une fois par arrivée sur la page (elle compte de nouveau si elle la recharge).
+    </p>
+    <div id="stats-booking"></div>
+
+    <h3 style="font-size:14px;font-weight:700;margin:24px 0 4px;">👥 Clics par compte client</h3>
+    <p class="profile-help" style="margin:0 0 10px;">Clients salle de réunion et coworking (l'équipe Hiptown n'est pas comptée).</p>
+    <div id="stats-accounts"></div>
   </section>
 
   <!-- ÉTAPE : DEVIS FAITS À LA MAIN (admin) — coworker ou client salle, destination au choix (devis.js) -->
@@ -459,11 +491,11 @@
     <button class="back-btn" id="back-from-mes-infos">Accueil</button>
     <h2 class="step-title">👤 Mes informations</h2>
     <div class="outils-grid">
-      <a class="outil-card" href="#" id="open-mon-contrat">
+      <a class="outil-card" href="#" id="open-mon-contrat" data-stat="mesinfos-contrat">
         <div class="outil-logo">📝</div>
         <div class="outil-name">Mon contrat</div>
       </a>
-      <a class="outil-card" href="https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" target="_blank">
+      <a class="outil-card" href="https://billing.stripe.com/p/login/00gg13amLdHUgIUcMM" target="_blank" data-stat="mesinfos-factures">
         <div class="outil-logo">📄</div>
         <div class="outil-name">Mes factures</div>
       </a>
@@ -492,15 +524,15 @@
     <button class="back-btn" id="back-from-info-cowork">Accueil</button>
     <h2 class="step-title">🏢 Informations du coworking</h2>
     <div class="outils-grid">
-      <a class="outil-card" href="#" id="open-info-equipements">
+      <a class="outil-card" href="#" id="open-info-equipements" data-stat="infocowork-equipements">
         <div class="outil-logo">ℹ️</div>
         <div class="outil-name">Informations équipements et espaces</div>
       </a>
-      <a class="outil-card" href="#" id="open-mes-services">
+      <a class="outil-card" href="#" id="open-mes-services" data-stat="infocowork-services">
         <div class="outil-logo">✨</div>
         <div class="outil-name">Mes services</div>
       </a>
-      <a class="outil-card" href="https://drive.google.com/file/d/1IpM3NjFEvfS9EISChSy-JG4F5pbz3Fc6/view?usp=drive_link" target="_blank">
+      <a class="outil-card" href="https://drive.google.com/file/d/1IpM3NjFEvfS9EISChSy-JG4F5pbz3Fc6/view?usp=drive_link" target="_blank" data-stat="infocowork-livret">
         <div class="outil-logo">📘</div>
         <div class="outil-name">Livret d'accueil</div>
       </a>
@@ -983,29 +1015,29 @@
     <button class="back-btn" id="back-from-salles">Accueil</button>
     <h2 class="step-title">📅 Salle de réunion</h2>
     <div class="tiles-grid">
-      <a class="tile" href="#" id="salles-book">
+      <a class="tile" href="#" id="salles-book" data-stat="salles-book">
         <div class="tile-icon" style="background:#e8faf7;color:#085041;">🗓️</div>
         <div class="tile-title">Réserver une salle</div>
         <div class="tile-desc">Disponibilités et réservation</div>
       </a>
-      <a class="tile" href="#" id="salles-mine">
+      <a class="tile" href="#" id="salles-mine" data-stat="salles-mine">
         <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">📅</div>
         <div class="tile-title">Mes réservations</div>
         <div class="tile-desc">Ce mois-ci et à venir</div>
       </a>
       <!-- Clients salle de réunion uniquement (affichées par app.js) -->
-      <a class="tile" href="#" id="salles-usage" hidden>
+      <a class="tile" href="#" id="salles-usage" data-stat="salles-usage" hidden>
         <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">🗓️</div>
         <div class="tile-title">Utilisation des salles</div>
         <div class="tile-desc">Internet, écran, sortie...</div>
       </a>
-      <a class="tile" href="#" id="salles-tarifs" hidden>
+      <a class="tile" href="#" id="salles-tarifs" data-stat="salles-tarifs" hidden>
         <div class="tile-icon" style="background:#e0f2fe;color:#0369a1;">💶</div>
         <div class="tile-title">Tarifs</div>
         <div class="tile-desc">Salles de réunion et coworking</div>
       </a>
       <!-- Coworkers et équipe Hiptown (affichée par app.js) -->
-      <a class="tile" href="#" id="salles-credits" hidden>
+      <a class="tile" href="#" id="salles-credits" data-stat="salles-credits" hidden>
         <div class="tile-icon" style="background:#fff9c2;color:#1e1847;">💳</div>
         <div class="tile-title">Utilisation des crédits</div>
         <div class="tile-desc">Crédits par réservation</div>

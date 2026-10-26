@@ -18,6 +18,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 | `MesReservations.gs` | Liste « Mes prochaines réservations » du tableau de bord du portail (lecture seule) | ✅ |
 | `Messagerie.gs` | Emails et notifications de la messagerie du portail (voir « Notifications de la messagerie ») | ✅ |
 | `Accueil.gs` | Email à l'entreprise quand un visiteur se présente à l'accueil (page Hiptown-Accueil-1) | ✅ |
+| `Stats.gs` | Compteurs de clics sur la réservation (phase de test), lus dans Gestion > Statistiques | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
@@ -209,3 +210,12 @@ Réglage, une seule fois :
    **Générer une paire de clés** : la clé affichée va dans `pushVapidKey` de `config.js` (portail).
 
 Sans la propriété `FIREBASE_SERVICE_ACCOUNT`, les emails partent mais pas les notifications.
+
+## Statistiques de clics (phase de test)
+
+`Index.html` signale à `Stats.gs` chaque arrivée sur la page, chaque fenêtre « Réserver »
+ouverte (clic sur un jour libre) et chaque demande envoyée, en précisant si elle vient du
+portail ou du lien public. Rien n'est enregistré chez le visiteur (ni cookie, ni stockage
+local) et aucune donnée personnelle n'est envoyée : seuls des totaux par jour sont gardés
+dans les propriétés du script (`STATS:AAAA-MM-JJ`), 13 mois au plus.
+Lecture et remise à zéro : portail, Gestion > Statistiques.
