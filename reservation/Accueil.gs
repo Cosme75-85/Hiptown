@@ -4,19 +4,29 @@
 // par email à l'adresse de accueilEmails/{companyId}. Cette adresse n'est jamais publique :
 // elle est lue ici avec le compte de service (FIREBASE_SERVICE_ACCOUNT, voir Messagerie.gs).
 // Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.
+// La case Hiptown de la page (contacts de l'équipe) passe aussi par ici : la page envoie
+// seulement l'identifiant du contact, l'adresse est dans ACCUEIL_TEAM_CONTACTS.
 
 const ACCUEIL_CITY = 'bordeaux';            // équipe prévenue quand l'entreprise n'a pas mis d'adresse
 const ACCUEIL_MAX_PER_COMPANY = 20;         // visites notifiées au plus par entreprise...
 const ACCUEIL_MAX_TOTAL = 150;              // ...et pour toute la page...
 const ACCUEIL_WINDOW_SECONDS = 60 * 60;     // ...sur une heure (protection contre l'envoi en rafale)
 
+// Contacts de la case Hiptown (identifiants : champ id des contacts dans config.js de Hiptown-Accueil-1)
+const ACCUEIL_TEAM_CONTACTS = {
+  'anne-lise': { name: 'Anne-Lise Médalin', email: 'alm@hiptown.com' },
+  'come':      { name: 'Côme Chabridon',    email: 'cc@hiptown.com' }
+};
+
 /**
  * Point d'entrée (doPost, action notifyVisitor), appelé sans connexion :
- * payload = { companyId, visitor, message }.
+ * payload = { companyId, visitor, message } (entreprise du portail)
+ *        ou { contactId, visitor, message } (contact de la case Hiptown).
  */
 function notifyVisitor(raw) {
   try {
     raw = raw || {};
+    if (raw.contactId) return notifyTeamContact(raw);
     const companyId = String(raw.companyId || '');
     if (!/^[A-Za-z0-9_-]{1,120}$/.test(companyId)) return { success: false, message: 'Entreprise inconnue.' };
     const visitor = cleanText(raw.visitor, 80);
@@ -70,6 +80,39 @@ function notifyVisitor(raw) {
     console.error('notifyVisitor', err);
     return { success: false, message: 'Envoi impossible pour le moment.' };
   }
+}
+
+/** Visiteur pour un membre de l'équipe Hiptown (case Hiptown de la page). */
+function notifyTeamContact(raw) {
+  const contactId = String(raw.contactId || '');
+  const contact = Object.prototype.hasOwnProperty.call(ACCUEIL_TEAM_CONTACTS, contactId) ? ACCUEIL_TEAM_CONTACTS[contactId] : null;
+  if (!contact) return { success: false, message: 'Contact inconnu.' };
+  const visitor = cleanText(raw.visitor, 80);
+  if (!visitor) return { success: false, message: 'Merci d\'indiquer votre nom.' };
+  const note = cleanText(raw.message, 300);
+
+  const cache = CacheService.getScriptCache();
+  const contactKey = 'accueil:team:' + contactId;
+  const contactCount = Number(cache.get(contactKey)) || 0;
+  const totalCount = Number(cache.get('accueil:total')) || 0;
+  if (contactCount >= ACCUEIL_MAX_PER_COMPANY || totalCount >= ACCUEIL_MAX_TOTAL) {
+    return { success: false, message: 'Trop de visites signalées, merci de patienter un moment.' };
+  }
+  cache.put(contactKey, String(contactCount + 1), ACCUEIL_WINDOW_SECONDS);
+  cache.put('accueil:total', String(totalCount + 1), ACCUEIL_WINDOW_SECONDS);
+
+  const text = note
+    ? visitor + ' vous attend à l\'accueil. Message : « ' + note + ' »'
+    : visitor + ' vous attend à l\'accueil.';
+  MailApp.sendEmail({
+    to: contact.email,
+    subject: '🔔 ' + visitor + ' est arrivé(e) à l\'accueil Hiptown',
+    htmlBody: '<p>Bonjour ' + escapeHtml(contact.name.split(' ')[0]) + ',</p>'
+      + '<p>Un visiteur vient de se présenter pour vous à l\'accueil Hiptown.</p>'
+      + messageHtml(text)
+      + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown.</p>'
+  });
+  return { success: true };
 }
 
 /** Document Firestore lu avec le compte de service, ou null s'il n'existe pas. */
