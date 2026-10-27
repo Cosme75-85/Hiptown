@@ -12,8 +12,10 @@
 //  Salle de réunion : modification ou annulation par email à l'équipe.
 //  Équipe Hiptown (Admin) : page « Réservations » avec toutes les réservations
 //  clients de toutes les salles (serveur : getAllUpcomingBookings).
-//  Coworkers : en dessous, crédits du mois et détail des réunions décomptées,
-//  passées comprises (serveur : getCoworkingCredits, reservation/Coworking.gs).
+//  Coworkers : page « Réservations de l'entreprise », celles de tous les comptes de
+//  leur entreprise (passées des derniers mois et à venir), avec qui a réservé ; chacun
+//  peut les modifier ou les annuler. En dessous, crédits du mois et détail des réunions
+//  décomptées, passées comprises (serveur : getCoworkingCredits, reservation/Coworking.gs).
 // ═══════════════════════════════════════════════════════
 
 import { auth } from "./firebase-config.js";
@@ -63,7 +65,8 @@ async function load() {
         ? "Liste indisponible : l'outil de réservation n'est pas encore à jour (déploiement Apps Script)."
         : res.message || "Liste indisponible pour le moment.");
     }
-    bookings = res.bookings;
+    // À venir d'abord (la plus proche en tête), puis les passées (la plus récente en tête)
+    bookings = res.bookings.slice().sort((a, b) => (a.past - b.past) || (a.past ? b.start - a.start : a.start - b.start));
     contactEmail = res.contactEmail || "";
     render();
   } catch (err) {
@@ -72,18 +75,24 @@ async function load() {
 }
 
 function isTeam() { return currentSpace === "hiptown"; }
+function isCoworker() { return currentSpace === "coworking"; }
 
 function shownAtFirst() { return isTeam() ? TEAM_SHOWN_AT_FIRST : SHOWN_AT_FIRST; }
 
-/** Équipe Hiptown : la tuile et la page s'appellent « Réservations » (toutes les réservations clients). */
+/**
+ * Nom de la tuile et de la page : « Réservations » pour l'équipe Hiptown (toutes les réservations
+ * clients), « Réservations de l'entreprise » pour un coworker, sinon « Mes réservations ».
+ */
 function applyLabels() {
-  const team = isTeam();
+  const [title, desc] = isTeam() ? ["Réservations", "Toutes les réservations clients"]
+    : isCoworker() ? ["Réservations de l'entreprise", "Passées et à venir"]
+    : ["Mes réservations", "Ce mois-ci et à venir"];
   const tile = $("salles-mine");
   if (tile) {
-    tile.querySelector(".tile-title").textContent = team ? "Réservations" : "Mes réservations";
-    tile.querySelector(".tile-desc").textContent = team ? "Toutes les réservations clients" : "Ce mois-ci et à venir";
+    tile.querySelector(".tile-title").textContent = title;
+    tile.querySelector(".tile-desc").textContent = desc;
   }
-  $("mes-resa-title").textContent = team ? "📅 Réservations" : "📅 Mes réservations";
+  $("mes-resa-title").textContent = "📅 " + title;
 }
 
 // ==================== CRÉDITS DU MOIS (COWORKERS) ====================
@@ -145,7 +154,9 @@ function showMessage(text) {
 }
 
 function render() {
-  if (!bookings.length) return showMessage(isTeam() ? "Aucune réservation client à venir." : "Aucune réservation ce mois-ci ni à venir.");
+  if (!bookings.length) return showMessage(isTeam() ? "Aucune réservation client à venir."
+    : isCoworker() ? "Aucune réservation de votre entreprise ces derniers mois ni à venir."
+    : "Aucune réservation ce mois-ci ni à venir.");
   const shown = showAll ? bookings : bookings.slice(0, shownAtFirst());
   $("my-bookings-list").innerHTML = shown.map(bookingCard).join("");
   const more = $("my-bookings-more");
@@ -193,6 +204,7 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(describeSlot(b)) + "</div>"
     + '<ul class="rc-bk-facts">'
     + (isTeam() && b.requestedBy ? "<li>👤 " + escapeHtml(b.requestedBy) + "</li>" : "")
+    + (!isTeam() && b.bookedBy ? "<li>👤 Réservé par " + (b.mine ? "vous" : escapeHtml(b.bookedBy)) + "</li>" : "")
     + (b.numberOfPeople ? "<li>👥 " + b.numberOfPeople + " personne(s)</li>" : "")
     + (b.total ? "<li>💶 " + escapeHtml(b.total.replace(".", ",")) + " (estimé)</li>" : "")
     + "</ul>"

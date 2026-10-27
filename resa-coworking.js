@@ -255,6 +255,8 @@ document.addEventListener("hiptown-dashboard", e => {
   if (box) box.hidden = true; // masqué tant que le solde n'est pas chargé (et pour les autres espaces)
   if (e.detail && e.detail.space === "coworking") refreshHeaderCredits();
   isTeam = !!(e.detail && e.detail.space === "hiptown");
+  // Coworkers : les réservations de toute l'entreprise ; équipe Hiptown : les siennes
+  $("rc-mine-title").textContent = isTeam ? "Mes réservations à venir" : "Réservations à venir de votre entreprise";
 });
 
 // ==================== SALLES ET CALENDRIERS DU MOIS ====================
@@ -809,6 +811,7 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-room">' + escapeHtml(b.spaceName) + "</div>"
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(when) + "</div>"
     + '<ul class="rc-bk-facts"><li>' + hours + "</li><li>👥 " + b.numberOfPeople + " personne(s)</li>"
+    + (b.bookedBy ? "<li>👤 Réservé par " + (b.mine ? "vous" : escapeHtml(b.bookedBy)) + "</li>" : "")
     + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "")
     + (b.servicesLabel ? "<li>🧾 " + escapeHtml(b.servicesLabel) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + ")" : "") + "</li>" : "")
     + "</ul>"
@@ -879,7 +882,8 @@ function downloadIcs(b) {
 }
 
 async function cancelMine(b, btn) {
-  if (!confirm("Annuler votre réservation « " + b.title + " » (" + b.spaceName + ", " + describeSlot(b) + ") ?")) return;
+  const whose = b.mine === false && b.bookedBy ? "la réservation de " + b.bookedBy : "votre réservation";
+  if (!confirm("Annuler " + whose + " « " + b.title + " » (" + b.spaceName + ", " + describeSlot(b) + ") ?")) return;
   if (!auth.currentUser) return showToast("Session expirée, merci de vous reconnecter.");
   btn.disabled = true;
   btn.textContent = "Annulation...";
