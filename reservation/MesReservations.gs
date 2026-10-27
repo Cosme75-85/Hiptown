@@ -5,16 +5,19 @@
  * personne connectée, quel que soit l'outil qui a servi à réserver :
  *   - demandes faites avec l'outil de réservation des salles (en attente ou confirmées),
  *     retrouvées grâce à l'email du demandeur enregistré dans l'événement ;
- *   - réservations coworking faites depuis le portail : liste propre à chaque compte,
- *     tenue à jour au moment de la réservation, de la modification ou de l'annulation
- *     (rememberCoworkingEvent / forgetCoworkingEvent), sans recherche dans les agendas.
+ *   - coworkers : toutes les réservations de leur entreprise (tous ses comptes), des
+ *     COMPANY_HISTORY_MONTHS derniers mois et à venir, retrouvées dans les agendas ;
+ *   - équipe Hiptown : sa liste propre, tenue à jour au moment de la réservation, de la
+ *     modification ou de l'annulation (rememberCoworkingEvent / forgetCoworkingEvent).
  * Rien n'est modifié dans les agendas.
  */
 
+const COMPANY_HISTORY_MONTHS = 3; // coworkers : réservations passées de l'entreprise montrées (mois précédents)
+
 /**
- * Réservations du compte connecté, dans tous les espaces : celles du mois en cours,
- * passées comprises (elles restent jusqu'à la remise à zéro des crédits le mois
- * suivant, past: true), puis celles des 12 prochains mois.
+ * Réservations du compte connecté (de toute son entreprise pour un coworker), dans tous
+ * les espaces : celles du mois en cours, passées comprises (past: true), et pour un
+ * coworker celles des COMPANY_HISTORY_MONTHS mois précédents, puis celles des 12 prochains mois.
  */
 function getMyUpcomingBookings(idToken) {
   let account;
@@ -29,12 +32,22 @@ function getMyUpcomingBookings(idToken) {
   const to = new Date(now.getTime() + 366 * DAY_MS);
   const bookings = [];
 
-  // Coworker (ou équipe) qui a déjà réservé depuis le portail : sa liste enregistrée
-  const records = readCoworkingRecords(account.uid);
+  // Coworker : toutes les réservations de son entreprise ; équipe qui a déjà réservé
+  // depuis le portail : sa liste enregistrée
+  const isCoworker = account.role === 'coworking' && !!account.companyId;
+  const from = isCoworker
+    ? new Date(now.getFullYear(), now.getMonth() - COMPANY_HISTORY_MONTHS, 1)
+    : monthStart;
+  let records;
+  try {
+    records = isCoworker ? companyCoworkingRecords(account, from, to) : readCoworkingRecords(account.uid);
+  } catch (err) {
+    return { success: false, message: 'Impossible de lire vos réservations : ' + err.message };
+  }
   if (records) {
     records.forEach(r => {
       const space = findSpace(r.spaceId);
-      if (!space || r.end <= monthStart.getTime()) return;
+      if (!space || r.end <= from.getTime()) return;
       const view = coworkingBookingView(space, r, false);
       bookings.push({
         kind: 'coworking',
@@ -54,6 +67,8 @@ function getMyUpcomingBookings(idToken) {
         startHour: view.startHour,
         endHour: view.endHour,
         numberOfPeople: view.numberOfPeople,
+        bookedBy: view.bookedBy,
+        mine: view.mine,
         total: ''
       });
     });
@@ -258,7 +273,7 @@ function listEventsByEmail(space, email, from, to) {
 }
 
 /**
- * Compte du portail à qui appartient le jeton : { uid, email }, quel que soit son rôle
+ * Compte du portail à qui appartient le jeton : { uid, email, role, companyId }, quel que soit son rôle
  * (client salle de réunion, coworker, équipe), à condition qu'il soit validé.
  * L'email vient du jeton de connexion lui-même (pas de la fiche, modifiable) : on ne
  * voit que les réservations faites avec l'adresse de son propre compte.
@@ -273,7 +288,7 @@ function getPortalAccount(idToken) {
   }
   const email = tokenEmail(idToken);
   if (!email) throw new Error('Adresse email manquante sur votre compte. Contactez l\'équipe Hiptown.');
-  return { uid: uid, email: email };
+  return { uid: uid, email: email, role: profile.role || '', companyId: profile.companyId ? String(profile.companyId) : '' };
 }
 
 /** Email écrit dans le jeton (vérifié par Firestore dans getPortalAccount), en minuscules. */

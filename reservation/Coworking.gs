@@ -427,8 +427,8 @@ function frenchMonthLabel(year, month) {
 // ==================== MES RÉSERVATIONS : ANNULER OU MODIFIER ====================
 
 /**
- * Réservations à venir du compte connecté (celles qui n'ont pas encore commencé),
- * dans les salles proposées aux coworkers.
+ * Réservations à venir (pas encore commencées) dans les salles proposées aux coworkers :
+ * celles de toute l'entreprise pour un coworker, les siennes pour l'équipe Hiptown.
  */
 function getMyCoworkingBookings(idToken) {
   let user;
@@ -438,12 +438,15 @@ function getMyCoworkingBookings(idToken) {
     return { success: false, message: err.message };
   }
 
-  // Liste « Mes réservations » tenue à jour à chaque réservation, modification ou annulation
-  // (MesReservations.gs) : pas de recherche dans les agendas
+  // Équipe Hiptown : sa liste tenue à jour à chaque réservation, modification ou annulation
+  // (MesReservations.gs), sans recherche dans les agendas
   const now = Date.now();
   const bookings = [];
   try {
-    myCoworkingRecords(user.uid).forEach(r => {
+    const records = user.chargesCredits
+      ? companyCoworkingRecords(user, new Date(now), new Date(now + 366 * DAY_MS))
+      : myCoworkingRecords(user.uid);
+    records.forEach(r => {
       const space = findSpace(r.spaceId);
       if (!space || r.start <= now) return;
       bookings.push(coworkingBookingView(space, r, user.chargesCredits));
@@ -478,7 +481,9 @@ function coworkingBookingView(space, r, chargesCredits) {
     services: requestedServices(meals),
     servicesLabel: servicesLabel(meals),
     quoteNumber: r.quote || '',
-    credits: chargesCredits ? (Number(r.credits) || 0) : null
+    credits: chargesCredits ? (Number(r.credits) || 0) : null,
+    bookedBy: r.bookedBy || '',
+    mine: r.mine !== false
   };
 }
 
@@ -504,6 +509,30 @@ function coworkingRecord(space, ev) {
   };
 }
 
+/** « Demandé par : Prénom Nom (Entreprise) » de la description d'une réservation -> « Prénom Nom ». */
+function bookedByName(description) {
+  const line = (description.match(/Demandé par : (.+)/) || [])[1] || '';
+  return line.replace(/\s*\([^()]*\)\s*$/, '').trim();
+}
+
+/**
+ * Réservations coworking de toute l'entreprise du compte ({ uid, companyId }) entre deux dates,
+ * par date : fiches (coworkingRecord) avec le nom de qui a réservé (bookedBy) et mine
+ * (true si c'est ce compte). Tous les comptes d'une entreprise les voient et peuvent les gérer.
+ */
+function companyCoworkingRecords(user, from, to) {
+  const list = [];
+  getCoworkingSpaceList().forEach(space => {
+    listCompanyEvents(space, user.companyId, from, to).forEach(ev => {
+      list.push(Object.assign(coworkingRecord(space, ev), {
+        bookedBy: bookedByName(ev.description),
+        mine: ev.portalUid === user.uid
+      }));
+    });
+  });
+  return list.sort((a, b) => a.start - b.start);
+}
+
 /** Même forme que listOwnEvents, pour un événement CalendarApp. */
 function ownEventFromCalendarEvent(event) {
   return {
@@ -513,16 +542,31 @@ function ownEventFromCalendarEvent(event) {
     end: event.getEndTime(),
     description: event.getDescription() || '',
     credits: event.getTag(TAG_CREDITS),
-    meals: event.getTag(TAG_MEALS)
+    meals: event.getTag(TAG_MEALS),
+    portalUid: event.getTag(TAG_PORTAL_UID) || '',
+    email: event.getTag(TAG_EMAIL) || ''
   };
 }
 
 /**
- * Événements d'une salle portant le tag portalUid de ce compte : { id, title, start, end, description, credits }.
+ * Événements d'une salle portant le tag portalUid de ce compte : { id, title, start, end, description, credits, meals, portalUid, email }.
  * id = identifiant utilisé par CalendarApp.getEventById.
- * Voie rapide avec le service avancé Calendar (filtre fait par Google), sinon CalendarApp.
  */
 function listOwnEvents(space, uid, from, to) {
+  return listTaggedEvents(space, TAG_PORTAL_UID, uid, from, to);
+}
+
+/** Réservations coworking d'une salle payées sur les crédits de cette entreprise (tous ses comptes). */
+function listCompanyEvents(space, companyId, from, to) {
+  return listTaggedEvents(space, TAG_COMPANY, companyId, from, to)
+    .filter(ev => ev.title.indexOf(COWORKING.titlePrefix) === 0);
+}
+
+/**
+ * Événements d'une salle dont le tag `tag` vaut `value` (même forme que listOwnEvents).
+ * Voie rapide avec le service avancé Calendar (filtre fait par Google), sinon CalendarApp.
+ */
+function listTaggedEvents(space, tag, value, from, to) {
   if (typeof Calendar !== 'undefined') {
     const out = [];
     let pageToken;
@@ -532,13 +576,13 @@ function listOwnEvents(space, uid, from, to) {
         timeMax: to.toISOString(),
         singleEvents: true,
         maxResults: 250,
-        privateExtendedProperty: TAG_PORTAL_UID + '=' + uid,
+        privateExtendedProperty: tag + '=' + value,
         pageToken: pageToken,
         fields: 'nextPageToken,items(iCalUID,summary,start,end,description,extendedProperties/private)'
       });
       (page.items || []).forEach(ev => {
         const tags = (ev.extendedProperties && ev.extendedProperties.private) || {};
-        if (tags[TAG_PORTAL_UID] !== uid) return;
+        if (tags[tag] !== value) return;
         out.push({
           id: ev.iCalUID,
           title: ev.summary || '',
@@ -546,7 +590,9 @@ function listOwnEvents(space, uid, from, to) {
           end: new Date(apiEventTime(ev.end)),
           description: ev.description || '',
           credits: tags[TAG_CREDITS],
-          meals: tags[TAG_MEALS]
+          meals: tags[TAG_MEALS],
+          portalUid: tags[TAG_PORTAL_UID] || '',
+          email: tags[TAG_EMAIL] || ''
         });
       });
       pageToken = page.nextPageToken;
@@ -557,16 +603,8 @@ function listOwnEvents(space, uid, from, to) {
   const cal = CalendarApp.getCalendarById(space.calendarId);
   if (!cal) return [];
   return cal.getEvents(from, to)
-    .filter(ev => ev.getTag(TAG_PORTAL_UID) === uid)
-    .map(ev => ({
-      id: ev.getId(),
-      title: ev.getTitle(),
-      start: ev.getStartTime(),
-      end: ev.getEndTime(),
-      description: ev.getDescription() || '',
-      credits: ev.getTag(TAG_CREDITS),
-      meals: ev.getTag(TAG_MEALS)
-    }));
+    .filter(ev => ev.getTag(tag) === value)
+    .map(ownEventFromCalendarEvent);
 }
 
 /** Créneau d'un événement, au format des demandes : { dateString, endDateString, startHour, endHour, isMultiDay }. */
@@ -584,10 +622,11 @@ function eventSlot(start, end) {
 }
 
 /**
- * Retrouve une réservation du compte connecté et vérifie qu'il peut encore y toucher.
- * Retourne { space, event } ou { error }.
+ * Retrouve une réservation du compte connecté ou de son entreprise et vérifie qu'il peut
+ * encore y toucher. Retourne { space, event, owner } ou { error } ; owner = compte qui a
+ * réservé { uid, email, firstName }.
  */
-function findOwnCoworkingEvent(user, raw) {
+function findCompanyCoworkingEvent(user, raw) {
   if (!raw || typeof raw !== 'object') return { error: 'Requête invalide.' };
   const space = findSpace(raw.spaceId);
   if (!space || !space.coworking) return { error: 'Salle introuvable.' };
@@ -599,15 +638,37 @@ function findOwnCoworkingEvent(user, raw) {
   if (!event || event.getTitle().indexOf(COWORKING.titlePrefix) !== 0) {
     return { error: 'Réservation introuvable : elle a peut-être déjà été annulée.' };
   }
-  // Chacun ne touche qu'à ses propres réservations
-  if (event.getTag(TAG_PORTAL_UID) !== user.uid) {
-    return { error: 'Cette réservation a été faite par un autre compte, vous ne pouvez pas la modifier.' };
+  // Ses propres réservations, et celles de son entreprise (payées sur les mêmes crédits)
+  const owner = {
+    uid: event.getTag(TAG_PORTAL_UID) || '',
+    email: String(event.getTag(TAG_EMAIL) || '').toLowerCase(),
+    firstName: event.getTag(TAG_FIRST_NAME) || ''
+  };
+  const sameCompany = !!user.companyId && event.getTag(TAG_COMPANY) === user.companyId;
+  if (owner.uid !== user.uid && !sameCompany) {
+    return { error: 'Cette réservation a été faite par une autre entreprise, vous ne pouvez pas la modifier.' };
   }
   if (event.getStartTime() <= new Date()) {
     return { error: 'Cette réservation a déjà commencé : elle ne peut plus être annulée ni modifiée. '
       + 'Contactez l\'équipe Hiptown si besoin.' };
   }
-  return { space: space, event: event };
+  return { space: space, event: event, owner: owner };
+}
+
+/**
+ * Prévient la personne qui avait réservé quand un collègue de son entreprise annule ou
+ * modifie sa réservation : même email que celui reçu par le collègue, avec son nom en tête.
+ */
+function notifyBookerOfColleague(owner, user, subject, paragraphs, attachments) {
+  if (!owner.email || owner.email === user.email) return;
+  const who = (user.firstName + ' ' + user.lastName).trim() || user.email;
+  try {
+    sendClientEmail(owner.email, owner.firstName, subject,
+      ['<b>' + escapeHtml(who) + '</b>, de votre entreprise, a fait ce changement depuis l\'espace client Hiptown.']
+        .concat(paragraphs), 'À très bientôt', attachments);
+  } catch (err) {
+    Logger.log('⚠️ Email au réservant non envoyé à ' + owner.email + ' : ' + err.message);
+  }
 }
 
 /** Annule une réservation : l'événement est supprimé de l'agenda, ses crédits sont donc rendus. */
@@ -627,7 +688,7 @@ function cancelCoworkingBooking(idToken, raw) {
   }
 
   try {
-    const found = findOwnCoworkingEvent(user, raw);
+    const found = findCompanyCoworkingEvent(user, raw);
     if (found.error) return { success: false, message: found.error };
     const event = found.event;
     const space = found.space;
@@ -641,23 +702,26 @@ function cancelCoworkingBooking(idToken, raw) {
     const eventId = event.getId();
     event.deleteEvent();
     invalidateAvailabilityCache(); // le créneau redevient libre
-    forgetCoworkingEvent(user.uid, eventId); // retirée de « Mes réservations »
+    forgetCoworkingEvent(found.owner.uid || user.uid, eventId); // retirée de « Mes réservations » de qui avait réservé
 
     if (hasServices(oldMeals)) {
       notifyTeamMeals('Annulation', user, space, title, null, start, end, null, oldMeals);
     }
+    const subject = 'Réservation annulée — ' + space.name + ' — Hiptown';
+    const paragraphs = [
+      'La réservation <b>"' + escapeHtml(title) + '"</b> (' + escapeHtml(space.name) + ', '
+        + frenchWhen(eventSlot(start, end), start, end) + ') est bien annulée. La salle est libérée.',
+      hasServices(oldMeals) && ('Les services commandés (' + escapeHtml(servicesLabel(oldMeals).toLowerCase())
+        + ') sont annulés également : leur devis n\'a plus cours.'),
+      refunded && ('Les <b>' + refunded + '</b> crédit(s) de cette réservation ont été rendus à votre entreprise.'),
+      'Besoin d\'une autre salle ? Vous pouvez réserver à tout moment depuis votre espace client Hiptown.'
+    ].filter(Boolean);
     try {
-      sendClientEmail(user.email, user.firstName, 'Réservation annulée — ' + space.name + ' — Hiptown', [
-        'Votre réservation <b>"' + escapeHtml(title) + '"</b> (' + escapeHtml(space.name) + ', '
-          + frenchWhen(eventSlot(start, end), start, end) + ') est bien annulée. La salle est libérée.',
-        hasServices(oldMeals) && ('Les services commandés (' + escapeHtml(servicesLabel(oldMeals).toLowerCase())
-          + ') sont annulés également : leur devis n\'a plus cours.'),
-        refunded && ('Les <b>' + refunded + '</b> crédit(s) de cette réservation ont été rendus à votre entreprise.'),
-        'Besoin d\'une autre salle ? Vous pouvez réserver à tout moment depuis votre espace client Hiptown.'
-      ].filter(Boolean), 'À très bientôt');
+      sendClientEmail(user.email, user.firstName, subject, paragraphs, 'À très bientôt');
     } catch (err) {
       Logger.log('⚠️ Email d\'annulation coworking non envoyé à ' + user.email + ' : ' + err.message);
     }
+    notifyBookerOfColleague(found.owner, user, subject, paragraphs);
 
     return {
       success: true,
@@ -719,25 +783,29 @@ function modifyCoworkingBooking(idToken, raw) {
   } else if (hasServices(done.oldMeals)) {
     notifyTeamMeals('Annulation', user, space, title, null, done.oldStart, done.oldEnd, null, done.oldMeals);
   }
-  rememberCoworkingEvent(user.uid, space, done.event); // nouveau créneau dans « Mes réservations »
+  rememberCoworkingEvent(done.owner.uid || user.uid, space, done.event); // nouveau créneau dans « Mes réservations » de qui avait réservé
 
+  const subject = 'Réservation modifiée — ' + space.name + ' — Hiptown';
+  const paragraphs = [
+    'La réservation <b>"' + escapeHtml(title) + '"</b> a bien été modifiée. Nouveau créneau : <b>'
+      + escapeHtml(space.name) + '</b>, ' + frenchWhen(booking, start, end) + ', pour '
+      + booking.numberOfPeople + ' personne(s).',
+    addToCalendarLink(title, space, start, end)
+      + ' (pensez à supprimer l\'ancien créneau de votre agenda si vous l\'y aviez ajouté)',
+    'Ancien créneau (libéré) : ' + frenchWhen(eventSlot(done.oldStart, done.oldEnd), done.oldStart, done.oldEnd) + '.',
+    mealsParagraph(booking, quote, true),
+    !hasServices(booking) && hasServices(done.oldMeals) && 'Les services commandés sont annulés : leur devis n\'a plus cours.',
+    done.credits && ('Crédits utilisés : <b>' + done.credits.cost + '</b> (au lieu de ' + done.credits.oldCost + '). Il reste <b>'
+      + done.credits.remaining + '</b> crédit(s) à votre entreprise pour ' + done.credits.monthLabel + '.'),
+    'Vous pouvez encore annuler ou modifier cette réservation jusqu\'à son début, depuis votre espace client.'
+  ].filter(Boolean);
+  const attachments = quote ? [quote.pdf] : [];
   try {
-    sendClientEmail(user.email, user.firstName, 'Réservation modifiée — ' + space.name + ' — Hiptown', [
-      'Votre réservation <b>"' + escapeHtml(title) + '"</b> a bien été modifiée. Nouveau créneau : <b>'
-        + escapeHtml(space.name) + '</b>, ' + frenchWhen(booking, start, end) + ', pour '
-        + booking.numberOfPeople + ' personne(s).',
-      addToCalendarLink(title, space, start, end)
-        + ' (pensez à supprimer l\'ancien créneau de votre agenda si vous l\'y aviez ajouté)',
-      'Ancien créneau (libéré) : ' + frenchWhen(eventSlot(done.oldStart, done.oldEnd), done.oldStart, done.oldEnd) + '.',
-      mealsParagraph(booking, quote, true),
-      !hasServices(booking) && hasServices(done.oldMeals) && 'Les services commandés sont annulés : leur devis n\'a plus cours.',
-      done.credits && ('Crédits utilisés : <b>' + done.credits.cost + '</b> (au lieu de ' + done.credits.oldCost + '). Il reste <b>'
-        + done.credits.remaining + '</b> crédit(s) à votre entreprise pour ' + done.credits.monthLabel + '.'),
-      'Vous pouvez encore annuler ou modifier cette réservation jusqu\'à son début, depuis votre espace client.'
-    ].filter(Boolean), 'À très bientôt', quote ? [quote.pdf] : []);
+    sendClientEmail(user.email, user.firstName, subject, paragraphs, 'À très bientôt', attachments);
   } catch (err) {
     Logger.log('⚠️ Email de modification coworking non envoyé à ' + user.email + ' : ' + err.message);
   }
+  notifyBookerOfColleague(done.owner, user, subject, paragraphs, attachments);
 
   return {
     success: true,
@@ -749,7 +817,7 @@ function modifyCoworkingBooking(idToken, raw) {
 
 /** Partie de la modification faite sous le verrou : vérifications puis mise à jour de l'événement. */
 function applyCoworkingChange(user, booking, raw, start, end) {
-  const found = findOwnCoworkingEvent(user, raw);
+  const found = findCompanyCoworkingEvent(user, raw);
   if (found.error) return { success: false, message: found.error };
   const event = found.event;
   const space = found.space;
@@ -806,6 +874,7 @@ function applyCoworkingChange(user, booking, raw, start, end) {
     oldStart: oldStart,
     oldEnd: oldEnd,
     oldMeals: oldMeals,
+    owner: found.owner,
     credits: balance && { cost: cost, oldCost: oldCost, remaining: balance.remaining - cost, monthLabel: balance.monthLabel }
   };
 }
