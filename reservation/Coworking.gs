@@ -564,42 +564,11 @@ function listCompanyEvents(space, companyId, from, to) {
 
 /**
  * Événements d'une salle dont le tag `tag` vaut `value` (même forme que listOwnEvents).
- * Voie rapide avec le service avancé Calendar (filtre fait par Google), sinon CalendarApp.
+ * Lus avec CalendarApp et getTag, comme le solde de crédits (getCreditBalance), qui retrouve
+ * bien ces tags ; le filtre « privateExtendedProperty » du service avancé Calendar, lui,
+ * n'avait pas retrouvé une réservation coworking pourtant taguée.
  */
 function listTaggedEvents(space, tag, value, from, to) {
-  if (typeof Calendar !== 'undefined') {
-    const out = [];
-    let pageToken;
-    do {
-      const page = Calendar.Events.list(space.calendarId, {
-        timeMin: from.toISOString(),
-        timeMax: to.toISOString(),
-        singleEvents: true,
-        maxResults: 250,
-        privateExtendedProperty: tag + '=' + value,
-        pageToken: pageToken,
-        fields: 'nextPageToken,items(iCalUID,summary,start,end,description,extendedProperties/private)'
-      });
-      (page.items || []).forEach(ev => {
-        const tags = (ev.extendedProperties && ev.extendedProperties.private) || {};
-        if (tags[tag] !== value) return;
-        out.push({
-          id: ev.iCalUID,
-          title: ev.summary || '',
-          start: new Date(apiEventTime(ev.start)),
-          end: new Date(apiEventTime(ev.end)),
-          description: ev.description || '',
-          credits: tags[TAG_CREDITS],
-          meals: tags[TAG_MEALS],
-          portalUid: tags[TAG_PORTAL_UID] || '',
-          email: tags[TAG_EMAIL] || ''
-        });
-      });
-      pageToken = page.nextPageToken;
-    } while (pageToken);
-    return out;
-  }
-
   const cal = CalendarApp.getCalendarById(space.calendarId);
   if (!cal) return [];
   return cal.getEvents(from, to)
