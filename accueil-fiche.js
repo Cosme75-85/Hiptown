@@ -2,10 +2,12 @@
 //  PORTAIL HIPTOWN — Case de l'entreprise sur l'accueil visiteurs
 //  (page publique https://cosme75-85.github.io/Hiptown-Accueil-1/)
 // ═══════════════════════════════════════════════════════
-//  - accueil/{id}              : nom, ville, site et logo, lisibles par tous
+//  - accueil/{id}              : nom, ville, site, logo, personnes ({id, name, role}) et code PIN
+//                                facultatif, lisibles par tous
 //                                (id = companyId pour une entreprise du portail ; « m-… » pour une case
 //                                ajoutée à la main par l'équipe d'une ville, voir accueil-gestion.js)
-//  - accueilEmails/{id}        : adresse qui reçoit les visites, jamais publique
+//  - accueilEmails/{id}        : adresse qui reçoit les visites (email) et celle de chaque personne
+//                                (people : {id de la personne: e-mail}), jamais publiques
 //                                (lue par Apps Script, reservation/Accueil.gs)
 //  La case est créée toute seule : à la connexion d'un salarié coworking, et quand
 //  l'équipe ouvre « Gestion des entreprises » ou valide un compte coworking.
@@ -58,31 +60,40 @@ export async function listAccueilCards(city) {
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "fr", { sensitivity: "base" }));
 }
 
-/** Adresse qui reçoit les visites d'une case ("" si aucune). */
-export async function getAccueilEmail(id) {
+/** Adresses qui reçoivent les visites d'une case : celle de l'entreprise ("" si aucune) et celles des personnes. */
+export async function getAccueilEmails(id) {
   const snap = await getDoc(doc(db, "accueilEmails", id));
-  return snap.exists() ? (snap.data().email || "") : "";
+  const data = snap.exists() ? snap.data() : {};
+  return { email: data.email || "", people: data.people || {} };
 }
 
-/** Enregistre l'adresse qui reçoit les visites (la case doit exister : les règles lisent sa ville). */
-export async function setAccueilEmail(id, email) {
-  await setDoc(doc(db, "accueilEmails", id), { email, updatedAt: serverTimestamp() });
+/**
+ * Enregistre les adresses qui reçoivent les visites (la case doit exister : les règles lisent sa ville).
+ * @param {Object<string, string>} people  e-mail de chaque personne de la case, par identifiant
+ */
+export async function setAccueilEmails(id, email, people = {}) {
+  await setDoc(doc(db, "accueilEmails", id), { email, people, updatedAt: serverTimestamp() });
 }
 
 /**
  * Crée ou modifie une case ajoutée à la main par l'équipe d'une ville.
  * @returns {Promise<string>} identifiant de la case
  */
-export async function saveManualAccueilCard(id, { name, city, siteId = null, logo = "" }) {
+export async function saveManualAccueilCard(id, { name, city, siteId = null, logo = "", people = [], pin = "" }) {
   const cardId = id || "m-" + slugOf(name) + "-" + Date.now().toString(36);
   await setDoc(doc(db, "accueil", cardId),
-    { name, city, siteId: siteId || null, logo, manual: true, updatedAt: serverTimestamp() }, { merge: true });
+    { name, city, siteId: siteId || null, logo, people, pin, manual: true, updatedAt: serverTimestamp() }, { merge: true });
   return cardId;
 }
 
-/** Change seulement le logo d'une case (entreprise du portail : son nom et son site suivent le portail). */
-export async function setAccueilLogo(id, logo) {
-  await setDoc(doc(db, "accueil", id), { logo, updatedAt: serverTimestamp() }, { merge: true });
+/** Change le logo, les personnes et le code d'une case (entreprise du portail : son nom et son site suivent le portail). */
+export async function setAccueilCardDetails(id, { logo, people = [], pin = "" }) {
+  await setDoc(doc(db, "accueil", id), { logo, people, pin, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/** Identifiant d'une nouvelle personne d'une case. */
+export function newPersonId() {
+  return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
 /** Retire une case ajoutée à la main (l'adresse d'abord : ses règles lisent la ville sur la case). */
@@ -224,7 +235,8 @@ export function initAccueilFiche(getContext) {
     try {
       await Promise.all([
         setDoc(doc(db, "accueil", companyId), { logo, updatedAt: serverTimestamp() }, { merge: true }),
-        setDoc(doc(db, "accueilEmails", companyId), { email, updatedAt: serverTimestamp() })
+        // merge : garde les adresses des personnes, renseignées par l'équipe Hiptown
+        setDoc(doc(db, "accueilEmails", companyId), { email, updatedAt: serverTimestamp() }, { merge: true })
       ]);
       showMessage("Case de l'accueil enregistrée ✓", false);
     } catch (err) {

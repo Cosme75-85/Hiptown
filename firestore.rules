@@ -159,12 +159,16 @@ service cloud.firestore {
             && data.logo.matches('^data:image/(jpeg|png);base64,[A-Za-z0-9+/=]+$'));
     }
 
+    // people : personnes de l'entreprise affichées sur la page ({id, name, role}, au plus 30) ;
+    // pin : code à 4 chiffres facultatif pour voir ces personnes
     function isValidAccueilCard(data) {
-      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'people', 'pin', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.city is string && data.city.size() > 0 && data.city.size() <= 40
         && isOptionalText(data, 'siteId', 40)
         && (!('manual' in data) || data.manual is bool)
+        && (!('people' in data) || (data.people is list && data.people.size() <= 30))
+        && (!('pin' in data) || data.pin == '' || (data.pin is string && data.pin.matches('^[0-9]{4}$')))
         && isValidLogo(data);
     }
 
@@ -197,7 +201,7 @@ service cloud.firestore {
       allow delete: if canManageAccueilCity(resource.data.get('city', null));
     }
 
-    // Adresse qui reçoit les visites : jamais publique, lue par Apps Script (Accueil.gs)
+    // Adresses qui reçoivent les visites (email : l'entreprise ; people : {id de la personne: e-mail}) : jamais publiques, lue par Apps Script (Accueil.gs)
     // avec le compte de service, au moment d'envoyer l'e-mail. La case doit exister (sa ville décide).
     function canManageAccueilEmail(id) {
       return isCompanyMember(id)
@@ -207,7 +211,9 @@ service cloud.firestore {
     match /accueilEmails/{id} {
       allow read, delete: if canManageAccueilEmail(id);
       allow create, update: if canManageAccueilEmail(id)
-        && request.resource.data.keys().hasOnly(['email', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['email', 'people', 'updatedAt'])
+        && (!('people' in request.resource.data)
+            || (request.resource.data.people is map && request.resource.data.people.size() <= 30))
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 120
         && (request.resource.data.email == ''

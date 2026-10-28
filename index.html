@@ -252,6 +252,7 @@
     </div>
     <p class="profile-help" id="accueil-gestion-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
     <button class="direct-btn" id="accueil-add" type="button" style="background:var(--navy);color:#fff;margin:0 0 16px;">+ Ajouter une entreprise</button>
+    <button class="direct-btn" id="accueil-import" type="button" hidden style="margin:0 0 16px;">📥 Importer les anciennes entreprises de la page</button>
 
     <div class="pin-box" id="accueil-form" hidden style="max-width:100%;text-align:left;margin-bottom:24px;">
       <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;" id="accueil-form-title">Nouvelle entreprise</h3>
@@ -269,6 +270,13 @@
       <label class="profile-label" for="accueil-form-email">E-mail qui reçoit les visites</label>
       <input type="email" id="accueil-form-email" class="profile-input" maxlength="120" placeholder="ex. accueil@entreprise.fr"/>
       <p class="profile-help">Jamais affiché sur la page. Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.</p>
+      <p class="profile-label">Personnes</p>
+      <p class="profile-help">Le visiteur choisit la personne qu'il vient voir. Sans e-mail, c'est l'adresse de l'entreprise qui reçoit le message.</p>
+      <div id="accueil-form-people"></div>
+      <button class="profile-link" id="accueil-form-person-add" type="button">+ Ajouter une personne</button>
+      <label class="profile-label" for="accueil-form-pin">Code PIN (facultatif)</label>
+      <input type="text" id="accueil-form-pin" class="profile-input" maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="4 chiffres" style="max-width:140px;"/>
+      <p class="profile-help">Avec un code, il faut le taper pour voir la liste des personnes.</p>
       <p class="profile-help" id="accueil-form-message" role="status" hidden></p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="direct-btn" id="accueil-form-save" type="button" style="background:var(--navy);color:#fff;width:auto;padding:8px 14px;">Enregistrer</button>

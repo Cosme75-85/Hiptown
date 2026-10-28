@@ -21,7 +21,7 @@ const ACCUEIL_TEAM_CONTACTS = {
 
 /**
  * Point d'entrée (doPost, action notifyVisitor), appelé sans connexion :
- * payload = { companyId, visitor, message } (entreprise du portail)
+ * payload = { companyId, personId?, visitor, message } (case du portail, personne facultative)
  *        ou { contactId, visitor, message } (contact de la case Hiptown)
  *        ou { companyName, contactName, city, visitor, message } (case écrite à la main dans config.js
  *           de la page, sans adresse : l'équipe Hiptown de la ville est prévenue).
@@ -49,13 +49,23 @@ function notifyVisitor(raw) {
     if (!token) return { success: false, message: 'Envoi indisponible pour le moment.' };
     const card = readAdminDoc(token, 'accueil/' + companyId);
     if (!card || !card.name) return { success: false, message: 'Entreprise inconnue.' };
-    const mail = readAdminDoc(token, 'accueilEmails/' + companyId);
-    const email = normalizeEmail(mail && mail.email);
+    const mail = readAdminDoc(token, 'accueilEmails/' + companyId) || {};
+    // Personne de la case : son adresse, sinon celle de l'entreprise
+    const personId = String(raw.personId || '');
+    if (personId && !/^[A-Za-z0-9_-]{1,40}$/.test(personId)) return { success: false, message: 'Contact inconnu.' };
+    const person = personId && Array.isArray(card.people)
+      ? card.people.filter(p => p && p.id === personId)[0] || null : null;
+    if (personId && !person) return { success: false, message: 'Contact inconnu.' };
+    const personEmail = person && mail.people && Object.prototype.hasOwnProperty.call(mail.people, personId)
+      ? normalizeEmail(mail.people[personId]) : '';
+    const email = personEmail || normalizeEmail(mail.email);
 
     cache.put(companyKey, String(companyCount + 1), ACCUEIL_WINDOW_SECONDS);
     cache.put('accueil:total', String(totalCount + 1), ACCUEIL_WINDOW_SECONDS);
 
     const company = cleanText(card.name, 100);
+    const personName = person ? cleanText(person.name, 80) : '';
+    const forWho = personName ? escapeHtml(personName) + ' (' + escapeHtml(company) + ')' : escapeHtml(company);
     const text = note
       ? visitor + ' vous attend à l\'accueil. Message : « ' + note + ' »'
       : visitor + ' vous attend à l\'accueil.';
@@ -63,8 +73,8 @@ function notifyVisitor(raw) {
       MailApp.sendEmail({
         to: email,
         subject: '🔔 ' + visitor + ' est arrivé(e) à l\'accueil Hiptown',
-        htmlBody: '<p>Bonjour,</p>'
-          + '<p>Un visiteur pour <b>' + escapeHtml(company) + '</b> vient de se présenter à l\'accueil Hiptown.</p>'
+        htmlBody: '<p>Bonjour' + (personEmail ? ' ' + escapeHtml(personName.split(' ')[0]) : '') + ',</p>'
+          + '<p>Un visiteur pour <b>' + forWho + '</b> vient de se présenter à l\'accueil Hiptown.</p>'
           + messageHtml(text)
           + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown. '
           + 'Pour changer l\'adresse qui reçoit ces messages : portail Hiptown > Mon profil > Ma case à l\'accueil visiteurs.</p>'
@@ -72,8 +82,8 @@ function notifyVisitor(raw) {
     } else {
       MailApp.sendEmail({
         to: teamRecipients({ city: /^[a-z-]{1,40}$/.test(card.city || '') ? card.city : ACCUEIL_CITY }),
-        subject: '🔔 Visiteur pour ' + company + ' à l\'accueil (pas d\'adresse renseignée)',
-        htmlBody: '<p>Un visiteur pour <b>' + escapeHtml(company) + '</b> vient de se présenter à l\'accueil.</p>'
+        subject: '🔔 Visiteur pour ' + (personName ? personName + ' (' + company + ')' : company) + ' à l\'accueil (pas d\'adresse renseignée)',
+        htmlBody: '<p>Un visiteur pour <b>' + forWho + '</b> vient de se présenter à l\'accueil.</p>'
           + messageHtml(text)
           + '<p style="color:#64748b;font-size:12px;">Cette entreprise n\'a pas encore indiqué d\'adresse pour recevoir '
           + 'ses visites (portail > Mon profil > Ma case à l\'accueil visiteurs) : merci de la prévenir.</p>'
