@@ -12,6 +12,7 @@ const ACCUEIL_CITY = 'bordeaux';            // ville par défaut d'une case sans
 const ACCUEIL_MAX_PER_COMPANY = 20;         // visites notifiées au plus par entreprise...
 const ACCUEIL_MAX_TOTAL = 150;              // ...et pour toute la page...
 const ACCUEIL_WINDOW_SECONDS = 60 * 60;     // ...sur une heure (protection contre l'envoi en rafale)
+const ACCUEIL_MAX_PIN_FAILURES = 10;        // codes d'accès faux par entreprise et par heure, ensuite bloqué
 
 // Contacts de la case Hiptown (identifiants : champ id des contacts dans config.js de Hiptown-Accueil-1)
 const ACCUEIL_TEAM_CONTACTS = {
@@ -21,16 +22,14 @@ const ACCUEIL_TEAM_CONTACTS = {
 
 /**
  * Point d'entrée (doPost, action notifyVisitor), appelé sans connexion :
- * payload = { companyId, personId?, visitor, message } (case du portail, personne facultative)
+ * payload = { companyId, personId?, pin?, visitor, message } (case du portail ; personId : personne d'une
+ *           case ajoutée à la main, ou uid d'un collaborateur affiché ; pin : code d'accès si la case en demande un)
  *        ou { contactId, visitor, message } (contact de la case Hiptown)
- *        ou { companyName, contactName, city, visitor, message } (case écrite à la main dans config.js
- *           de la page, sans adresse : l'équipe Hiptown de la ville est prévenue).
  */
 function notifyVisitor(raw) {
   try {
     raw = raw || {};
     if (raw.contactId) return notifyTeamContact(raw);
-    if (!raw.companyId && raw.companyName) return notifyPageCompany(raw);
     const companyId = String(raw.companyId || '');
     if (!/^[A-Za-z0-9_-]{1,120}$/.test(companyId)) return { success: false, message: 'Entreprise inconnue.' };
     const visitor = cleanText(raw.visitor, 80);
@@ -49,16 +48,15 @@ function notifyVisitor(raw) {
     if (!token) return { success: false, message: 'Envoi indisponible pour le moment.' };
     const card = readAdminDoc(token, 'accueil/' + companyId);
     // Entreprise du portail qui n'a pas choisi d'apparaître sur la page
-    if (!card || !card.name || (card.manual !== true && card.visible !== true)) return { success: false, message: 'Entreprise inconnue.' };
+    if (!isShownCard(card)) return { success: false, message: 'Entreprise inconnue.' };
     const mail = readAdminDoc(token, 'accueilEmails/' + companyId) || {};
+    if (!pinAccepted(companyId, card, mail, raw.pin)) return { success: false, message: 'Code d\'accès incorrect.' };
     // Personne de la case : son adresse, sinon celle de l'entreprise
     const personId = String(raw.personId || '');
     if (personId && !/^[A-Za-z0-9_-]{1,40}$/.test(personId)) return { success: false, message: 'Contact inconnu.' };
-    const person = personId && Array.isArray(card.people)
-      ? card.people.filter(p => p && p.id === personId)[0] || null : null;
+    const person = personId ? findCardPerson(token, companyId, card, mail, personId) : null;
     if (personId && !person) return { success: false, message: 'Contact inconnu.' };
-    const personEmail = person && mail.people && Object.prototype.hasOwnProperty.call(mail.people, personId)
-      ? normalizeEmail(mail.people[personId]) : '';
+    const personEmail = person ? person.email : '';
     const email = personEmail || normalizeEmail(mail.email);
 
     cache.put(companyKey, String(companyCount + 1), ACCUEIL_WINDOW_SECONDS);
@@ -97,6 +95,67 @@ function notifyVisitor(raw) {
   }
 }
 
+/** Case affichée sur la page : ajoutée par l'équipe, ou entreprise du portail qui a choisi d'apparaître. */
+function isShownCard(card) {
+  return !!(card && card.name && (card.manual === true || card.visible === true));
+}
+
+/**
+ * Code d'accès de la case : bon code, ou pas de code demandé. Au-delà de ACCUEIL_MAX_PIN_FAILURES
+ * codes faux dans l'heure, la case refuse tout code (protection contre l'essai de tous les codes).
+ */
+function pinAccepted(companyId, card, mail, pin) {
+  if (card.locked !== true) return true;
+  const cache = CacheService.getScriptCache();
+  const key = 'accueil:pinfail:' + companyId;
+  const failures = Number(cache.get(key)) || 0;
+  if (failures >= ACCUEIL_MAX_PIN_FAILURES) return false;
+  if (/^[0-9]{4}$/.test(String(mail.pin || '')) && String(pin || '') === mail.pin) return true;
+  cache.put(key, String(failures + 1), ACCUEIL_WINDOW_SECONDS);
+  return false;
+}
+
+/**
+ * Personne choisie par le visiteur : { name, email } ou null.
+ *  - case ajoutée à la main : personne de card.people, adresse dans accueilEmails (people) ;
+ *  - entreprise du portail : collaborateur affiché (accueilPeople/{uid}), adresse de son compte,
+ *    tant qu'il est encore salarié de cette entreprise.
+ */
+function findCardPerson(token, companyId, card, mail, personId) {
+  if (card.manual === true) {
+    const person = (Array.isArray(card.people) ? card.people : []).filter(p => p && p.id === personId)[0];
+    if (!person) return null;
+    const people = mail.people || {};
+    return {
+      name: cleanText(person.name, 80),
+      email: Object.prototype.hasOwnProperty.call(people, personId) ? normalizeEmail(people[personId]) : ''
+    };
+  }
+  const line = readAdminDoc(token, 'accueilPeople/' + personId);
+  if (!line || line.companyId !== companyId) return null;
+  const user = readAdminDoc(token, 'users/' + personId);
+  if (!user || user.companyId !== companyId || user.status !== 'approved') return null;
+  return { name: cleanText(line.name, 80), email: normalizeEmail(user.email) };
+}
+
+/** Point d'entrée (doPost, action checkAccueilPin) : le visiteur a tapé le code d'accès d'une case. */
+function checkAccueilPin(raw) {
+  try {
+    raw = raw || {};
+    const companyId = String(raw.companyId || '');
+    if (!/^[A-Za-z0-9_-]{1,120}$/.test(companyId)) return { success: false, message: 'Entreprise inconnue.' };
+    const token = serviceAccountToken();
+    if (!token) return { success: false, message: 'Vérification indisponible pour le moment.' };
+    const card = readAdminDoc(token, 'accueil/' + companyId);
+    if (!isShownCard(card)) return { success: false, message: 'Entreprise inconnue.' };
+    const mail = readAdminDoc(token, 'accueilEmails/' + companyId) || {};
+    return pinAccepted(companyId, card, mail, raw.pin) ? { success: true } : { success: false, message: 'Code d\'accès incorrect.' };
+  } catch (err) {
+    console.error('checkAccueilPin', err);
+    return { success: false, message: 'Vérification impossible pour le moment.' };
+  }
+}
+
 /** Visiteur pour un membre de l'équipe Hiptown (case Hiptown de la page). */
 function notifyTeamContact(raw) {
   const contactId = String(raw.contactId || '');
@@ -126,41 +185,6 @@ function notifyTeamContact(raw) {
       + '<p>Un visiteur vient de se présenter pour vous à l\'accueil Hiptown.</p>'
       + messageHtml(text)
       + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown.</p>'
-  });
-  return { success: true };
-}
-
-/** Visiteur pour une entreprise écrite à la main dans la page (pas encore sur le portail). */
-function notifyPageCompany(raw) {
-  const company = cleanText(raw.companyName, 100);
-  const contact = cleanText(raw.contactName, 80);
-  const city = /^[a-z-]{1,40}$/.test(raw.city || '') ? raw.city : ACCUEIL_CITY;
-  const visitor = cleanText(raw.visitor, 80);
-  if (!company) return { success: false, message: 'Entreprise inconnue.' };
-  if (!visitor) return { success: false, message: 'Merci d\'indiquer votre nom.' };
-  const note = cleanText(raw.message, 300);
-
-  const cache = CacheService.getScriptCache();
-  const companyKey = 'accueil:page:' + company.toLowerCase().slice(0, 100);
-  const companyCount = Number(cache.get(companyKey)) || 0;
-  const totalCount = Number(cache.get('accueil:total')) || 0;
-  if (companyCount >= ACCUEIL_MAX_PER_COMPANY || totalCount >= ACCUEIL_MAX_TOTAL) {
-    return { success: false, message: 'Trop de visites signalées, merci de patienter un moment.' };
-  }
-  cache.put(companyKey, String(companyCount + 1), ACCUEIL_WINDOW_SECONDS);
-  cache.put('accueil:total', String(totalCount + 1), ACCUEIL_WINDOW_SECONDS);
-
-  const forWho = contact ? escapeHtml(contact) + ' (' + escapeHtml(company) + ')' : escapeHtml(company);
-  const text = note
-    ? visitor + ' attend à l\'accueil. Message : « ' + note + ' »'
-    : visitor + ' attend à l\'accueil.';
-  MailApp.sendEmail({
-    to: teamRecipients({ city: city }),
-    subject: '🔔 Visiteur pour ' + (contact ? contact + ' (' + company + ')' : company) + ' à l\'accueil',
-    htmlBody: '<p>Un visiteur pour <b>' + forWho + '</b> vient de se présenter à l\'accueil.</p>'
-      + messageHtml(text)
-      + '<p style="color:#64748b;font-size:12px;">Cette entreprise n\'a pas encore sa case sur le portail : '
-      + 'merci de la prévenir.</p>'
   });
   return { success: true };
 }

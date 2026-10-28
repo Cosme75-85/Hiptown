@@ -2,12 +2,15 @@
 //  PORTAIL HIPTOWN — Case de l'entreprise sur l'accueil visiteurs
 //  (page publique https://cosme75-85.github.io/Hiptown-Accueil-1/)
 // ═══════════════════════════════════════════════════════
-//  - accueil/{id}              : nom, ville, site, logo, personnes ({id, name, role}) et code PIN
-//                                facultatif, lisibles par tous
+//  - accueil/{id}              : nom, ville, site, logo, visible (l'entreprise a choisi d'apparaître),
+//                                locked (code d'accès demandé), personnes d'une case ajoutée à la main
+//                                ({id, name, role}), lisibles par tous
 //                                (id = companyId pour une entreprise du portail ; « m-… » pour une case
 //                                ajoutée à la main par l'équipe d'une ville, voir accueil-gestion.js)
-//  - accueilEmails/{id}        : adresse qui reçoit les visites (email) et celle de chaque personne
-//                                (people : {id de la personne: e-mail}), jamais publiques
+//  - accueilEmails/{id}        : adresse qui reçoit les visites (email), celle de chaque personne
+//                                (people : {id de la personne: e-mail}) et code d'accès (pin), jamais publics
+//  - accueilPeople/{uid}       : collaborateur qui a choisi d'apparaître sous la case de son entreprise
+//                                (nom et poste publics ; l'e-mail est celui de son compte, lu par Apps Script)
 //                                (lue par Apps Script, reservation/Accueil.gs)
 //  La case est créée toute seule : à la connexion d'un salarié coworking, et quand
 //  l'équipe ouvre « Gestion des entreprises » ou valide un compte coworking. Elle reste
@@ -18,6 +21,7 @@ import { db } from "./firebase-config.js";
 import {
   collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { fullNameOf } from "./profile.js";
 
 const LOGO_MAX_WIDTH = 320;      // px : largeur maximale du logo sur la case
 const LOGO_MAX_HEIGHT = 160;     // px
@@ -25,6 +29,7 @@ const MAX_LOGO_LENGTH = 150000;  // caractères, même limite que firestore.rule
 const MAX_EMAIL_LENGTH = 120;
 const SAFE_LOGO = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PIN = /^[0-9]{4}$/;
 
 export function isSafeLogo(logo) {
   return typeof logo === "string" && logo.length <= MAX_LOGO_LENGTH && SAFE_LOGO.test(logo);
@@ -62,35 +67,47 @@ export async function listAccueilCards(city) {
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "fr", { sensitivity: "base" }));
 }
 
-/** Adresses qui reçoivent les visites d'une case : celle de l'entreprise ("" si aucune) et celles des personnes. */
-export async function getAccueilEmails(id) {
+/** Partie privée d'une case : adresse de l'entreprise ("" si aucune), celles des personnes, code d'accès. */
+export async function getAccueilPrivate(id) {
   const snap = await getDoc(doc(db, "accueilEmails", id));
   const data = snap.exists() ? snap.data() : {};
-  return { email: data.email || "", people: data.people || {} };
+  return { email: data.email || "", people: data.people || {}, pin: data.pin || "" };
 }
 
 /**
- * Enregistre les adresses qui reçoivent les visites (la case doit exister : les règles lisent sa ville).
- * @param {Object<string, string>} people  e-mail de chaque personne de la case, par identifiant
+ * Enregistre la partie privée d'une case (la case doit exister : les règles lisent sa ville).
+ * Seuls les champs donnés changent.
+ * @param {{email?: string, people?: Object<string, string>, pin?: string}} fields
  */
-export async function setAccueilEmails(id, email, people = {}) {
-  await setDoc(doc(db, "accueilEmails", id), { email, people, updatedAt: serverTimestamp() });
+export async function setAccueilPrivate(id, fields) {
+  await setDoc(doc(db, "accueilEmails", id), { ...fields, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/** Collaborateurs d'une ville qui ont choisi d'apparaître, par entreprise : {companyId: [{uid, name, role}]}. */
+export async function listAccueilPeople(city) {
+  const snap = await getDocs(query(collection(db, "accueilPeople"), where("city", "==", city)));
+  const byCompany = {};
+  snap.docs.forEach(d => {
+    const p = d.data();
+    (byCompany[p.companyId] = byCompany[p.companyId] || []).push({ uid: d.id, name: p.name, role: p.role || "" });
+  });
+  return byCompany;
 }
 
 /**
  * Crée ou modifie une case ajoutée à la main par l'équipe d'une ville.
  * @returns {Promise<string>} identifiant de la case
  */
-export async function saveManualAccueilCard(id, { name, city, siteId = null, logo = "", people = [], pin = "" }) {
+export async function saveManualAccueilCard(id, { name, city, siteId = null, logo = "", people = [], locked = false }) {
   const cardId = id || "m-" + slugOf(name) + "-" + Date.now().toString(36);
   await setDoc(doc(db, "accueil", cardId),
-    { name, city, siteId: siteId || null, logo, people, pin, manual: true, updatedAt: serverTimestamp() }, { merge: true });
+    { name, city, siteId: siteId || null, logo, people, locked, manual: true, updatedAt: serverTimestamp() }, { merge: true });
   return cardId;
 }
 
-/** Change le logo, les personnes et le code d'une case (entreprise du portail : son nom et son site suivent le portail). */
-export async function setAccueilCardDetails(id, { logo, people = [], pin = "" }) {
-  await setDoc(doc(db, "accueil", id), { logo, people, pin, updatedAt: serverTimestamp() }, { merge: true });
+/** Change seulement le logo d'une case (entreprise du portail : son nom et son site suivent le portail). */
+export async function setAccueilLogo(id, logo) {
+  await setDoc(doc(db, "accueil", id), { logo, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 /** Identifiant d'une nouvelle personne d'une case. */
@@ -111,6 +128,18 @@ function slugOf(name) {
 
 export function isValidEmail(email) {
   return EMAIL.test(email);
+}
+
+/** Ligne d'un collaborateur sous la case de son entreprise (accueilPeople/{uid}), d'après son profil. */
+function personLine(companyId, profile) {
+  return {
+    companyId, city: profile.site, name: (fullNameOf(profile) || profile.nickname || "").slice(0, 80),
+    role: String(profile.jobTitle || "").slice(0, 60)
+  };
+}
+
+export function isValidPin(pin) {
+  return PIN.test(pin);
 }
 
 /**
@@ -161,12 +190,24 @@ export function initAccueilFiche(getContext) {
   const removeBtn = $("accueil-logo-remove");
   const emailInput = $("accueil-email");
   const visibleInput = $("accueil-visible");
+  const lockedInput = $("accueil-locked");
+  const pinInput = $("accueil-pin");
+  const meInput = $("accueil-me");
   const message = $("accueil-message");
   const saveBtn = $("accueil-save");
   emailInput.maxLength = MAX_EMAIL_LENGTH;
 
   let logo = "";
   let companyId = null;
+  let me = null; // {uid, profile} du salarié connecté
+
+  function renderPin() {
+    pinInput.hidden = !lockedInput.checked;
+  }
+  lockedInput.addEventListener("change", () => {
+    renderPin();
+    if (lockedInput.checked) pinInput.focus();
+  });
 
   function showMessage(text, isError) {
     message.textContent = text;
@@ -189,25 +230,41 @@ export function initAccueilFiche(getContext) {
 
   /** Affiche le bloc pour un salarié coworking, pré-rempli depuis Firestore. */
   async function open() {
-    const { profile, space, company } = getContext();
+    const { uid, profile, space, company } = getContext();
     companyId = space === "coworking" && company ? company.id : null;
+    me = companyId ? { uid, profile } : null;
     box.hidden = !companyId;
     if (!companyId) return;
     showMessage("", false);
     logo = "";
     emailInput.value = "";
     visibleInput.checked = false;
+    lockedInput.checked = false;
+    pinInput.value = "";
+    meInput.checked = false;
     renderLogo();
+    renderPin();
     try {
       await ensureAccueilCard(companyId, { name: company.name || companyId, city: profile.site || null, siteId: profile.siteId || null });
-      const [card, mail] = await Promise.all([
+      const [card, mail, person] = await Promise.all([
         getDoc(doc(db, "accueil", companyId)),
-        getDoc(doc(db, "accueilEmails", companyId))
+        getDoc(doc(db, "accueilEmails", companyId)),
+        getDoc(doc(db, "accueilPeople", uid))
       ]);
       logo = isSafeLogo(card.data()?.logo) ? card.data().logo : "";
       emailInput.value = mail.exists() ? (mail.data().email || "") : "";
       visibleInput.checked = card.data()?.visible === true;
+      lockedInput.checked = card.data()?.locked === true;
+      pinInput.value = mail.exists() ? (mail.data().pin || "") : "";
+      meInput.checked = person.exists() && person.data().companyId === companyId;
+      // Nom ou poste changé depuis : la ligne de l'accueil suit le profil
+      const line = personLine(companyId, profile);
+      if (meInput.checked && line.name && (person.data().name !== line.name || (person.data().role || "") !== line.role)) {
+        setDoc(doc(db, "accueilPeople", uid), { ...line, updatedAt: serverTimestamp() })
+          .catch(err => console.error("Ligne de l'accueil non mise à jour", err));
+      }
       renderLogo();
+      renderPin();
     } catch (err) {
       console.error(err);
       showMessage("Impossible de charger la case de l'accueil.", true);
@@ -236,14 +293,22 @@ export function initAccueilFiche(getContext) {
     if (!companyId) return;
     const email = emailInput.value.trim().toLowerCase();
     if (email && !EMAIL.test(email)) return showMessage("L'adresse e-mail n'est pas valide.", true);
+    const locked = lockedInput.checked;
+    const pin = pinInput.value.trim();
+    if (locked && !PIN.test(pin)) return showMessage("Le code d'accès doit faire 4 chiffres.", true);
+    const line = personLine(companyId, me.profile);
+    if (meInput.checked && !line.name) return showMessage("Renseignez votre prénom et votre nom pour apparaître à l'accueil.", true);
     saveBtn.disabled = true;
     try {
+      const personRef = doc(db, "accueilPeople", me.uid);
       await Promise.all([
-        setDoc(doc(db, "accueil", companyId), { logo, visible: visibleInput.checked, updatedAt: serverTimestamp() }, { merge: true }),
-        // merge : garde les adresses des personnes, renseignées par l'équipe Hiptown
-        setDoc(doc(db, "accueilEmails", companyId), { email, updatedAt: serverTimestamp() }, { merge: true })
+        setDoc(doc(db, "accueil", companyId), { logo, visible: visibleInput.checked, locked, updatedAt: serverTimestamp() }, { merge: true }),
+        setAccueilPrivate(companyId, { email, pin: locked ? pin : "" }),
+        meInput.checked
+          ? setDoc(personRef, { ...line, updatedAt: serverTimestamp() })
+          : deleteDoc(personRef)
       ]);
-      showMessage(visibleInput.checked ? "Case de l'accueil enregistrée ✓" : "Enregistré ✓ Votre entreprise n'apparaît pas à l'accueil.", false);
+      showMessage(visibleInput.checked ? "Accueil visiteurs enregistré ✓" : "Enregistré ✓ Votre entreprise n'apparaît pas à l'accueil.", false);
     } catch (err) {
       console.error(err);
       showMessage("Enregistrement impossible. Réessayez.", true);
