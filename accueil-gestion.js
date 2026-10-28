@@ -3,12 +3,12 @@
 //  L'équipe d'une ville ajoute, modifie et retire les entreprises affichées sur la page
 //  publique d'accueil de sa ville (lien dans PORTAIL.accueilPages, config.js).
 //  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js) et
-//  décident elles-mêmes dans Mon profil : apparaître ou non, code d'accès, collaborateurs affichés.
+//  décident elles-mêmes dans Mon profil : apparaître ou non, code d'accès, personnes affichées.
 //  Ici, on voit leurs choix et on ne change que leur logo et leur e-mail.
 // ═══════════════════════════════════════════════════════
 
 import {
-  listAccueilCards, listAccueilPeople, getAccueilPrivate, setAccueilPrivate, saveManualAccueilCard,
+  listAccueilCards, getAccueilPrivate, setAccueilPrivate, saveManualAccueilCard,
   setAccueilLogo, deleteAccueilCard, resizeLogo, isSafeLogo, isValidEmail, isValidPin, newPersonId
 } from "./accueil-fiche.js";
 
@@ -22,7 +22,6 @@ let city = null;      // ville affichée
 let editing = null;   // case en cours de modification (null = nouvelle)
 let formLogo = "";
 let formPeople = [];  // [{id, name, role, email}]
-let members = {};     // collaborateurs affichés, par entreprise du portail
 
 function escapeHtml(text) {
   return String(text == null ? "" : text)
@@ -65,8 +64,7 @@ async function refresh() {
   }
   list.innerHTML = `<p style="color:#94a3b8;padding:12px;">Chargement…</p>`;
   try {
-    const [cards, people] = await Promise.all([listAccueilCards(city), listAccueilPeople(city)]);
-    members = people;
+    const cards = await listAccueilCards(city);
     const privates = await Promise.all(cards.map(c => getAccueilPrivate(c.id).catch(() => ({ email: "", people: {}, pin: "" }))));
     list.innerHTML = "";
     if (!cards.length) {
@@ -88,9 +86,9 @@ function renderLink() {
   $("accueil-link-copy").hidden = !url;
 }
 
-/** Personnes affichées sous une case : celles de l'équipe (case à la main) ou les collaborateurs qui l'ont choisi. */
+/** Personnes affichées sous une case (choisies par l'équipe ou, pour une entreprise du portail, par elle-même). */
 function peopleOf(c) {
-  return c.manual ? (Array.isArray(c.people) ? c.people : []) : (members[c.id] || []);
+  return Array.isArray(c.people) ? c.people : [];
 }
 
 function cardRow(c, priv) {
@@ -196,7 +194,7 @@ function openForm(card, priv) {
     $("accueil-form-portal-status").textContent = [
       card.visible === true ? "L'entreprise a choisi d'apparaître sur la page." : "L'entreprise a choisi de ne pas apparaître sur la page.",
       card.locked ? "Elle demande un code d'accès." : "",
-      people.length ? "Collaborateurs affichés : " + people.map(p => p.name).join(", ") + "." : "Aucun collaborateur affiché.",
+      people.length ? "Personnes affichées : " + people.map(p => p.name).join(", ") + "." : "Aucune personne affichée.",
       "Ces choix se font dans Mon profil, par l'entreprise."
     ].filter(Boolean).join(" ");
   }

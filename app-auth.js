@@ -272,7 +272,7 @@ const profilePage = initProfilePage({
     document.getElementById("step-dashboard").hidden = false;
   }
 });
-const accueilFiche = initAccueilFiche(() => ({ uid: session.uid, profile: session.profile, space: session.space, company: session.company }));
+const accueilFiche = initAccueilFiche(() => ({ profile: session.profile, space: session.space, company: session.company }));
 ["company-badge", "profile-link"].forEach(id => {
   document.getElementById(id)?.addEventListener("click", () => {
     if (!session) return;

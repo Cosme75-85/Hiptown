@@ -3,25 +3,23 @@
 //  (page publique https://cosme75-85.github.io/Hiptown-Accueil-1/)
 // ═══════════════════════════════════════════════════════
 //  - accueil/{id}              : nom, ville, site, logo, visible (l'entreprise a choisi d'apparaître),
-//                                locked (code d'accès demandé), personnes d'une case ajoutée à la main
-//                                ({id, name, role}), lisibles par tous
+//                                locked (code d'accès demandé), personnes ({id, name, firstName?,
+//                                lastName?, role?}), lisibles par tous
 //                                (id = companyId pour une entreprise du portail ; « m-… » pour une case
 //                                ajoutée à la main par l'équipe d'une ville, voir accueil-gestion.js)
 //  - accueilEmails/{id}        : adresse qui reçoit les visites (email), celle de chaque personne
 //                                (people : {id de la personne: e-mail}) et code d'accès (pin), jamais publics
-//  - accueilPeople/{uid}       : collaborateur qui a choisi d'apparaître sous la case de son entreprise
-//                                (nom et poste publics ; l'e-mail est celui de son compte, lu par Apps Script)
-//                                (lue par Apps Script, reservation/Accueil.gs)
+//                                (lus par Apps Script, reservation/Accueil.gs)
 //  La case est créée toute seule : à la connexion d'un salarié coworking, et quand
 //  l'équipe ouvre « Gestion des entreprises » ou valide un compte coworking. Elle reste
 //  masquée (visible: false) tant que l'entreprise n'a pas choisi de s'afficher (Mon profil).
-//  Une case ajoutée à la main par l'équipe (manual: true) est toujours affichée.
+//  Une fois affichée, l'entreprise choisit son logo, son e-mail, ses personnes et son code d'accès.
+//  Une case ajoutée à la main par l'équipe (manual: true) est toujours affichée ; l'équipe la règle.
 
 import { db } from "./firebase-config.js";
 import {
   collection, query, where, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { fullNameOf } from "./profile.js";
 
 const LOGO_MAX_WIDTH = 320;      // px : largeur maximale du logo sur la case
 const LOGO_MAX_HEIGHT = 160;     // px
@@ -30,6 +28,7 @@ const MAX_EMAIL_LENGTH = 120;
 const SAFE_LOGO = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PIN = /^[0-9]{4}$/;
+const MAX_PEOPLE = 30;           // même limite que firestore.rules
 
 export function isSafeLogo(logo) {
   return typeof logo === "string" && logo.length <= MAX_LOGO_LENGTH && SAFE_LOGO.test(logo);
@@ -80,18 +79,9 @@ export async function getAccueilPrivate(id) {
  * @param {{email?: string, people?: Object<string, string>, pin?: string}} fields
  */
 export async function setAccueilPrivate(id, fields) {
-  await setDoc(doc(db, "accueilEmails", id), { ...fields, updatedAt: serverTimestamp() }, { merge: true });
-}
-
-/** Collaborateurs d'une ville qui ont choisi d'apparaître, par entreprise : {companyId: [{uid, name, role}]}. */
-export async function listAccueilPeople(city) {
-  const snap = await getDocs(query(collection(db, "accueilPeople"), where("city", "==", city)));
-  const byCompany = {};
-  snap.docs.forEach(d => {
-    const p = d.data();
-    (byCompany[p.companyId] = byCompany[p.companyId] || []).push({ uid: d.id, name: p.name, role: p.role || "" });
-  });
-  return byCompany;
+  // mergeFields : chaque champ donné est remplacé en entier (une personne retirée perd aussi son adresse)
+  await setDoc(doc(db, "accueilEmails", id), { ...fields, updatedAt: serverTimestamp() },
+    { mergeFields: [...Object.keys(fields), "updatedAt"] });
 }
 
 /**
@@ -128,14 +118,6 @@ function slugOf(name) {
 
 export function isValidEmail(email) {
   return EMAIL.test(email);
-}
-
-/** Ligne d'un collaborateur sous la case de son entreprise (accueilPeople/{uid}), d'après son profil. */
-function personLine(companyId, profile) {
-  return {
-    companyId, city: profile.site, name: (fullNameOf(profile) || profile.nickname || "").slice(0, 80),
-    role: String(profile.jobTitle || "").slice(0, 60)
-  };
 }
 
 export function isValidPin(pin) {
@@ -178,13 +160,15 @@ export async function resizeLogo(file) {
 }
 
 /**
- * Branche le bloc « Ma case à l'accueil visiteurs » de la page « Mon profil ».
+ * Branche le bloc « Accueil visiteurs » de la page « Mon profil » (salarié coworking) :
+ * l'entreprise choisit d'apparaître, puis son logo, son e-mail, ses personnes et son code d'accès.
  * @param {() => {profile: Object, space: string, company: Object|null}} getContext
  */
 export function initAccueilFiche(getContext) {
   const $ = id => document.getElementById(id);
   const box = $("accueil-fiche");
   if (!box) return { open() {} };
+  const details = $("accueil-details");
   const preview = $("accueil-logo-preview");
   const logoInput = $("accueil-logo-input");
   const removeBtn = $("accueil-logo-remove");
@@ -192,22 +176,15 @@ export function initAccueilFiche(getContext) {
   const visibleInput = $("accueil-visible");
   const lockedInput = $("accueil-locked");
   const pinInput = $("accueil-pin");
-  const meInput = $("accueil-me");
+  const peopleBox = $("accueil-people");
+  const personAddBtn = $("accueil-person-add");
   const message = $("accueil-message");
   const saveBtn = $("accueil-save");
   emailInput.maxLength = MAX_EMAIL_LENGTH;
 
   let logo = "";
   let companyId = null;
-  let me = null; // {uid, profile} du salarié connecté
-
-  function renderPin() {
-    pinInput.hidden = !lockedInput.checked;
-  }
-  lockedInput.addEventListener("change", () => {
-    renderPin();
-    if (lockedInput.checked) pinInput.focus();
-  });
+  let people = []; // [{id, firstName, lastName, email}]
 
   function showMessage(text, isError) {
     message.textContent = text;
@@ -228,11 +205,49 @@ export function initAccueilFiche(getContext) {
     removeBtn.hidden = !logo;
   }
 
+  function renderDetails() {
+    details.hidden = !visibleInput.checked;
+    pinInput.hidden = !lockedInput.checked;
+  }
+
+  function renderPeople() {
+    peopleBox.innerHTML = "";
+    people.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "accueil-person";
+      row.innerHTML = `
+        <input type="text" class="profile-input" data-field="firstName" maxlength="40" placeholder="Prénom *" aria-label="Prénom"/>
+        <input type="text" class="profile-input" data-field="lastName" maxlength="40" placeholder="Nom" aria-label="Nom"/>
+        <input type="email" class="profile-input accueil-person-email" data-field="email" maxlength="120" placeholder="E-mail *" aria-label="E-mail"/>
+        <button class="profile-link" type="button">Retirer</button>`;
+      row.querySelectorAll("input").forEach(input => {
+        input.value = p[input.dataset.field] || "";
+        input.addEventListener("input", () => { p[input.dataset.field] = input.value; });
+      });
+      row.querySelector("button").addEventListener("click", () => {
+        people.splice(i, 1);
+        renderPeople();
+      });
+      peopleBox.appendChild(row);
+    });
+    personAddBtn.hidden = people.length >= MAX_PEOPLE;
+  }
+
+  visibleInput.addEventListener("change", renderDetails);
+  lockedInput.addEventListener("change", () => {
+    renderDetails();
+    if (lockedInput.checked) pinInput.focus();
+  });
+  personAddBtn.addEventListener("click", () => {
+    people.push({ id: null, firstName: "", lastName: "", email: "" });
+    renderPeople();
+    peopleBox.lastElementChild?.querySelector("input")?.focus();
+  });
+
   /** Affiche le bloc pour un salarié coworking, pré-rempli depuis Firestore. */
   async function open() {
-    const { uid, profile, space, company } = getContext();
+    const { profile, space, company } = getContext();
     companyId = space === "coworking" && company ? company.id : null;
-    me = companyId ? { uid, profile } : null;
     box.hidden = !companyId;
     if (!companyId) return;
     showMessage("", false);
@@ -241,33 +256,31 @@ export function initAccueilFiche(getContext) {
     visibleInput.checked = false;
     lockedInput.checked = false;
     pinInput.value = "";
-    meInput.checked = false;
+    people = [];
     renderLogo();
-    renderPin();
+    renderDetails();
+    renderPeople();
     try {
       await ensureAccueilCard(companyId, { name: company.name || companyId, city: profile.site || null, siteId: profile.siteId || null });
-      const [card, mail, person] = await Promise.all([
-        getDoc(doc(db, "accueil", companyId)),
-        getDoc(doc(db, "accueilEmails", companyId)),
-        getDoc(doc(db, "accueilPeople", uid))
-      ]);
-      logo = isSafeLogo(card.data()?.logo) ? card.data().logo : "";
-      emailInput.value = mail.exists() ? (mail.data().email || "") : "";
-      visibleInput.checked = card.data()?.visible === true;
-      lockedInput.checked = card.data()?.locked === true;
-      pinInput.value = mail.exists() ? (mail.data().pin || "") : "";
-      meInput.checked = person.exists() && person.data().companyId === companyId;
-      // Nom ou poste changé depuis : la ligne de l'accueil suit le profil
-      const line = personLine(companyId, profile);
-      if (meInput.checked && line.name && (person.data().name !== line.name || (person.data().role || "") !== line.role)) {
-        setDoc(doc(db, "accueilPeople", uid), { ...line, updatedAt: serverTimestamp() })
-          .catch(err => console.error("Ligne de l'accueil non mise à jour", err));
-      }
+      const [cardSnap, priv] = await Promise.all([getDoc(doc(db, "accueil", companyId)), getAccueilPrivate(companyId)]);
+      const card = cardSnap.data() || {};
+      logo = isSafeLogo(card.logo) ? card.logo : "";
+      emailInput.value = priv.email;
+      visibleInput.checked = card.visible === true;
+      lockedInput.checked = card.locked === true;
+      pinInput.value = priv.pin;
+      people = (Array.isArray(card.people) ? card.people : []).map(p => ({
+        id: p.id,
+        firstName: p.firstName != null ? p.firstName : (p.name || ""),
+        lastName: p.lastName || "",
+        email: priv.people[p.id] || ""
+      }));
       renderLogo();
-      renderPin();
+      renderDetails();
+      renderPeople();
     } catch (err) {
       console.error(err);
-      showMessage("Impossible de charger la case de l'accueil.", true);
+      showMessage("Impossible de charger l'accueil visiteurs.", true);
     }
   }
 
@@ -296,18 +309,28 @@ export function initAccueilFiche(getContext) {
     const locked = lockedInput.checked;
     const pin = pinInput.value.trim();
     if (locked && !PIN.test(pin)) return showMessage("Le code d'accès doit faire 4 chiffres.", true);
-    const line = personLine(companyId, me.profile);
-    if (meInput.checked && !line.name) return showMessage("Renseignez votre prénom et votre nom pour apparaître à l'accueil.", true);
+    const filled = people
+      .map(p => ({ ...p, firstName: p.firstName.trim(), lastName: p.lastName.trim(), email: p.email.trim().toLowerCase() }))
+      .filter(p => p.firstName || p.lastName || p.email);
+    const incomplete = filled.find(p => !p.firstName || !EMAIL.test(p.email));
+    if (incomplete) {
+      return showMessage(incomplete.firstName
+        ? `Il manque un e-mail valide pour ${incomplete.firstName}.` : "Chaque personne doit avoir un prénom.", true);
+    }
+    const cardPeople = filled.map(p => ({
+      id: p.id || newPersonId(), firstName: p.firstName, lastName: p.lastName,
+      name: (p.firstName + " " + p.lastName).trim().slice(0, 80)
+    }));
+    const peopleEmails = {};
+    filled.forEach((p, i) => { peopleEmails[cardPeople[i].id] = p.email; });
+
     saveBtn.disabled = true;
     try {
-      const personRef = doc(db, "accueilPeople", me.uid);
-      await Promise.all([
-        setDoc(doc(db, "accueil", companyId), { logo, visible: visibleInput.checked, locked, updatedAt: serverTimestamp() }, { merge: true }),
-        setAccueilPrivate(companyId, { email, pin: locked ? pin : "" }),
-        meInput.checked
-          ? setDoc(personRef, { ...line, updatedAt: serverTimestamp() })
-          : deleteDoc(personRef)
-      ]);
+      await setDoc(doc(db, "accueil", companyId),
+        { logo, visible: visibleInput.checked, locked, people: cardPeople, updatedAt: serverTimestamp() }, { merge: true });
+      await setAccueilPrivate(companyId, { email, people: peopleEmails, pin: locked ? pin : "" });
+      people = filled.map((p, i) => ({ ...p, id: cardPeople[i].id }));
+      renderPeople();
       showMessage(visibleInput.checked ? "Accueil visiteurs enregistré ✓" : "Enregistré ✓ Votre entreprise n'apparaît pas à l'accueil.", false);
     } catch (err) {
       console.error(err);

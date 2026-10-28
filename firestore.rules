@@ -159,8 +159,8 @@ service cloud.firestore {
             && data.logo.matches('^data:image/(jpeg|png);base64,[A-Za-z0-9+/=]+$'));
     }
 
-    // people : personnes d'une case ajoutée à la main ({id, name, role}, au plus 30) ; les collaborateurs
-    //   d'une entreprise du portail s'affichent eux-mêmes (accueilPeople) ;
+    // people : personnes affichées sous la case ({id, name, ...}, au plus 30), choisies par l'entreprise
+    //   (Mon profil) ou par l'équipe pour une case ajoutée à la main ;
     // locked : un code d'accès est demandé pour prévenir l'entreprise (le code est dans accueilEmails) ;
     // visible : l'entreprise du portail a choisi d'apparaître sur la page (les cases « manual » apparaissent toujours)
     function isValidAccueilCard(data) {
@@ -187,7 +187,7 @@ service cloud.firestore {
     // Case d'une entreprise : nom, ville, site et logo, lisibles par tous (page sans connexion).
     //  - entreprise du portail (id = companyId) : créée par l'équipe de sa ville, ou par un salarié
     //    avec le nom officiel, sa ville et son site, masquée ; ensuite, un salarié ne change que le logo,
-    //    le choix d'apparaître sur la page (visible) et le code d'accès (locked) ;
+    //    le choix d'apparaître sur la page (visible), les personnes et le code d'accès (locked) ;
     //  - case ajoutée à la main (id « m-… ») : l'équipe de la ville l'ajoute, la modifie, la retire.
     match /accueil/{id} {
       allow read: if true;
@@ -202,7 +202,7 @@ service cloud.firestore {
       allow update: if isValidAccueilCard(request.resource.data)
         && ((canManageAccueilCity(resource.data.get('city', null)) && canManageAccueilCity(request.resource.data.city))
             || (isCompanyMember(id)
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'visible', 'locked', 'updatedAt'])));
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'visible', 'locked', 'people', 'updatedAt'])));
       allow delete: if canManageAccueilCity(resource.data.get('city', null));
     }
 
@@ -227,23 +227,6 @@ service cloud.firestore {
                 && request.resource.data.email.size() <= 120
                 && (request.resource.data.email == ''
                     || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'))));
-    }
-
-    // Collaborateur d'une entreprise du portail qui a choisi d'apparaître sous la case de son entreprise
-    // (Mon profil) : nom et fonction publics ; l'e-mail est celui de son compte, lu par Apps Script.
-    function isValidAccueilPerson(uid, data) {
-      return data.keys().hasOnly(['companyId', 'city', 'name', 'role', 'updatedAt'])
-        && isCompanyMember(data.companyId)
-        && data.city == myProfile().get('site', null)
-        && data.name is string && data.name.size() > 0 && data.name.size() <= 80
-        && isOptionalText(data, 'role', 60);
-    }
-
-    match /accueilPeople/{uid} {
-      allow read: if true;
-      allow create, update: if isSignedIn() && request.auth.uid == uid && isValidAccueilPerson(uid, request.resource.data);
-      allow delete: if isSignedIn()
-        && (request.auth.uid == uid || canManageAccueilCity(resource.data.get('city', null)));
     }
 
     // Reservations de salles
