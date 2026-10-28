@@ -22,8 +22,8 @@ const ACCUEIL_TEAM_CONTACTS = {
 
 /**
  * Point d'entrée (doPost, action notifyVisitor), appelé sans connexion :
- * payload = { companyId, personId?, pin?, visitor, message } (case du portail ; personId : personne d'une
- *           case ajoutée à la main, ou uid d'un collaborateur affiché ; pin : code d'accès si la case en demande un)
+ * payload = { companyId, personId?, pin?, visitor, message } (case du portail ; personId : personne de la
+ *           case ; pin : code d'accès si la case en demande un)
  *        ou { contactId, visitor, message } (contact de la case Hiptown)
  */
 function notifyVisitor(raw) {
@@ -54,7 +54,7 @@ function notifyVisitor(raw) {
     // Personne de la case : son adresse, sinon celle de l'entreprise
     const personId = String(raw.personId || '');
     if (personId && !/^[A-Za-z0-9_-]{1,40}$/.test(personId)) return { success: false, message: 'Contact inconnu.' };
-    const person = personId ? findCardPerson(token, companyId, card, mail, personId) : null;
+    const person = personId ? findCardPerson(card, mail, personId) : null;
     if (personId && !person) return { success: false, message: 'Contact inconnu.' };
     const personEmail = person ? person.email : '';
     const email = personEmail || normalizeEmail(mail.email);
@@ -116,26 +116,17 @@ function pinAccepted(companyId, card, mail, pin) {
 }
 
 /**
- * Personne choisie par le visiteur : { name, email } ou null.
- *  - case ajoutée à la main : personne de card.people, adresse dans accueilEmails (people) ;
- *  - entreprise du portail : collaborateur affiché (accueilPeople/{uid}), adresse de son compte,
- *    tant qu'il est encore salarié de cette entreprise.
+ * Personne choisie par le visiteur : { name, email } ou null. Les personnes sont sur la case
+ * (card.people, choisies par l'entreprise ou par l'équipe) et leurs adresses dans accueilEmails (people).
  */
-function findCardPerson(token, companyId, card, mail, personId) {
-  if (card.manual === true) {
-    const person = (Array.isArray(card.people) ? card.people : []).filter(p => p && p.id === personId)[0];
-    if (!person) return null;
-    const people = mail.people || {};
-    return {
-      name: cleanText(person.name, 80),
-      email: Object.prototype.hasOwnProperty.call(people, personId) ? normalizeEmail(people[personId]) : ''
-    };
-  }
-  const line = readAdminDoc(token, 'accueilPeople/' + personId);
-  if (!line || line.companyId !== companyId) return null;
-  const user = readAdminDoc(token, 'users/' + personId);
-  if (!user || user.companyId !== companyId || user.status !== 'approved') return null;
-  return { name: cleanText(line.name, 80), email: normalizeEmail(user.email) };
+function findCardPerson(card, mail, personId) {
+  const person = (Array.isArray(card.people) ? card.people : []).filter(p => p && p.id === personId)[0];
+  if (!person) return null;
+  const people = mail.people || {};
+  return {
+    name: cleanText(person.name, 80),
+    email: Object.prototype.hasOwnProperty.call(people, personId) ? normalizeEmail(people[personId]) : ''
+  };
 }
 
 /** Point d'entrée (doPost, action checkAccueilPin) : le visiteur a tapé le code d'accès d'une case. */
