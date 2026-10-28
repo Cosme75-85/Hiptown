@@ -272,7 +272,7 @@ const profilePage = initProfilePage({
     document.getElementById("step-dashboard").hidden = false;
   }
 });
-const accueilFiche = initAccueilFiche(() => ({ profile: session.profile, space: session.space, company: session.company }));
+const accueilFiche = initAccueilFiche(() => ({ uid: session.uid, profile: session.profile, space: session.space, company: session.company }));
 ["company-badge", "profile-link"].forEach(id => {
   document.getElementById(id)?.addEventListener("click", () => {
     if (!session) return;
@@ -364,7 +364,16 @@ onGestionButton("open-gestion-services", stepGestionServices, renderServicesPane
 onGestionButton("open-gestion-devis", stepGestionDevis, renderManualQuotePanel);
 // Remise à zéro des compteurs : admin général seulement (règles Firestore et Stats.gs)
 // Accueil visiteurs : les cases de la page publique de sa ville (toutes les villes pour l'admin général)
-onGestionButton("open-gestion-accueil", stepGestionAccueil, () => renderAccueilPanel(visibleCities()));
+// Toutes les entreprises du portail de la ville ont leur case (masquée tant qu'elles ne choisissent pas d'apparaître)
+onGestionButton("open-gestion-accueil", stepGestionAccueil, async () => {
+  try {
+    const [companies, users] = await Promise.all([listCompanies(), listAllUsers(adminScope())]);
+    await syncAccueilCards(companies, users);
+  } catch (err) {
+    console.error("Cases de l'accueil visiteurs non synchronisées", err);
+  }
+  renderAccueilPanel(visibleCities());
+});
 onGestionButton("open-gestion-stats", stepGestionStats, () => renderStatsPanel(adminScope(), myAdminLevel() === "general"));
 document.getElementById("back-from-admin")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-salles")?.addEventListener("click", openGestionMenu);
@@ -1018,6 +1027,19 @@ function renderUnassignedTool() {
   });
 }
 
+/**
+ * Cases de l'accueil visiteurs : une par entreprise, au nom à jour, dans la ville et le site de ses
+ * salariés (parmi les comptes que l'admin voit : un admin de ville ne crée que les cases de sa ville).
+ */
+function syncAccueilCards(companies, users) {
+  return Promise.all(companies.map(c => {
+    const member = users.find(u => u.companyId === c.id && u.site);
+    if (!member) return null;
+    return ensureAccueilCard(c.id, { name: c.name || c.id, city: member.site, siteId: member.siteId || null }, { asAdmin: true })
+      .catch(err => console.error("Case de l'accueil visiteurs non synchronisée", c.id, err));
+  }));
+}
+
 // ── Gestion des entreprises coworking ──────────────────
 // Entreprises et nombre de comptes rattachés, gardés pour filtrer sans tout relire
 let companiesCache = [];
@@ -1030,12 +1052,7 @@ async function renderCompaniesPanel() {
   const users = await listAllUsers(adminScope());
   const members = {};
   users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
-  // Cases de l'accueil visiteurs : une par entreprise, au nom à jour, sur le site de ses salariés
-  companies.forEach(c => {
-    const member = users.find(u => u.companyId === c.id && u.site);
-    ensureAccueilCard(c.id, { name: c.name || c.id, city: member ? member.site : null, siteId: member ? member.siteId || null : null }, { asAdmin: true })
-      .catch(err => console.error("Case de l'accueil visiteurs non synchronisée", c.id, err));
-  });
+  syncAccueilCards(companies, users);
   companiesCache = companies;
   companyMembers = members;
   closeNewCompanyForm();

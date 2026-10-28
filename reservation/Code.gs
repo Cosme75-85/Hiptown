@@ -168,6 +168,9 @@ function doPost(e) {
     if (body.action === 'notifyVisitor') {
       return jsonResponse(notifyVisitor(body.payload));
     }
+    if (body.action === 'checkAccueilPin') {
+      return jsonResponse(checkAccueilPin(body.payload));
+    }
     // Statistiques de la phase de test : clics sur la réservation des salles (voir Stats.gs)
     if (body.action === 'trackBookingStat') {
       return jsonResponse(trackBookingStat(body.payload));
