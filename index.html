@@ -34,11 +34,12 @@
   <p id="header-tagline">Votre espace client</p>
 </header>
 
-<!-- BANNIÈRE ÉVÉNEMENTS -->
+<!-- BARRE DE COMMUNICATION — propre à chaque ville, modifiée par l'équipe Hiptown de la ville (communications.js) -->
 <div id="events-banner" hidden>
   <div class="events-header">
-    <span class="events-label">📅 Prochains événements</span>
+    <span class="events-label" id="events-label">📣 Communications</span>
     <div class="events-dots" id="events-dots"></div>
+    <button type="button" class="events-edit" id="events-edit" hidden>✏️ Modifier</button>
   </div>
   <div class="events-track" id="events-track"></div>
 </div>
@@ -277,6 +278,54 @@
     </div>
 
     <div id="accueil-list"></div>
+  </section>
+
+  <!-- ÉTAPE : COMMUNICATIONS (équipe Hiptown) — la barre du haut de sa ville (communications.js) -->
+  <section id="step-communications" hidden>
+    <button class="back-btn" id="back-from-communications">Accueil</button>
+    <h2 class="step-title" style="margin-bottom:4px;">📣 Communications</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:18px;">
+      Les communications défilent dans la barre en haut du portail, pour l'équipe et les clients
+      de <b id="comm-city-name"></b> seulement. Chaque ville a les siennes : jusqu'à 10.
+    </p>
+    <div id="comm-city-row" hidden>
+      <label class="profile-label" for="comm-city">Ville</label>
+      <select id="comm-city" class="profile-input"></select>
+    </div>
+    <p class="profile-help" id="comm-message" role="status" hidden style="font-size:13px;margin-bottom:12px;"></p>
+    <p style="font-size:12px;color:#64748b;margin:12px 0 6px;">Communications : <b id="comm-count">0 / 10</b></p>
+    <button class="direct-btn" id="comm-add" type="button" style="background:var(--navy);color:#fff;margin:0 0 16px;">+ Ajouter une communication</button>
+
+    <div class="pin-box" id="comm-form" hidden style="max-width:100%;text-align:left;margin-bottom:24px;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:6px;" id="comm-form-title">Nouvelle communication</h3>
+      <p class="profile-label">Image</p>
+      <p class="profile-help comm-format">Format conseillé : <b id="comm-format">1200 × 400 px</b> (paysage, 3 fois plus large que haute), JPG ou PNG.</p>
+      <div class="comm-image-preview" id="comm-form-image-preview"></div>
+      <p class="profile-help" id="comm-form-image-info" hidden></p>
+      <label class="direct-btn profile-photo-btn" for="comm-form-image-input">🖼️ Choisir l'image</label>
+      <input type="file" id="comm-form-image-input" accept="image/jpeg,image/png,image/*" hidden/>
+      <button class="profile-link" id="comm-form-image-remove" type="button" hidden>Retirer l'image</button>
+      <label class="profile-label" for="comm-form-name">Titre</label>
+      <input type="text" id="comm-form-name" class="profile-input" maxlength="80" placeholder="ex. Petit déjeuner networking"/>
+      <label class="profile-label" for="comm-form-date">Date ou étiquette (facultatif)</label>
+      <input type="text" id="comm-form-date" class="profile-input" maxlength="40" placeholder="ex. Jeudi 15 novembre · 9 h"/>
+      <label class="profile-label" for="comm-form-text">Texte (facultatif)</label>
+      <textarea id="comm-form-text" class="profile-input" maxlength="300" rows="3" placeholder="ex. Rejoignez-nous pour un moment de partage autour d'un café ☕"></textarea>
+      <p class="profile-label">Boutons (jusqu'à 3)</p>
+      <div id="comm-form-buttons"></div>
+      <button class="direct-btn" id="comm-form-btn-add" type="button" style="margin-top:4px;width:auto;padding:8px 14px;">+ Ajouter un bouton</button>
+      <p class="profile-label">Visible par</p>
+      <label class="comm-check"><input type="checkbox" class="comm-audience" value="hiptown" checked/> Équipe Hiptown de la ville</label>
+      <label class="comm-check"><input type="checkbox" class="comm-audience" value="coworking" checked/> Clients coworking</label>
+      <label class="comm-check"><input type="checkbox" class="comm-audience" value="salle" checked/> Clients salles de réunion</label>
+      <p class="profile-help" id="comm-form-message" role="status" hidden></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+        <button class="direct-btn" id="comm-form-save" type="button" style="background:var(--navy);color:#fff;width:auto;padding:8px 14px;">Enregistrer</button>
+        <button class="direct-btn" id="comm-form-cancel" type="button" style="width:auto;padding:8px 14px;">Annuler</button>
+      </div>
+    </div>
+
+    <div id="comm-list"></div>
   </section>
 
   <!-- ÉTAPE : STATISTIQUES DE CLICS (admin, phase de test) — statistiques.js et reservation/Stats.gs -->
@@ -1331,6 +1380,7 @@
 <script type="module" src="resa-salle.js"></script>
 <script type="module" src="agenda.js"></script>
 <script type="module" src="messagerie.js"></script>
+<script type="module" src="communications.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js"); });

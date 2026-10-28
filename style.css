@@ -47,7 +47,7 @@ header p {
   transition: opacity 0.3s;
 }
 
-/* ── ÉVÉNEMENTS ── */
+/* ── BARRE DE COMMUNICATION (communications.js) ── */
 #events-banner {
   width: 100%;
   background: var(--white);
@@ -87,53 +87,78 @@ header p {
 
 .events-dot.active { background: var(--yellow); }
 
+.events-edit {
+  margin-left: 10px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--navy);
+  border-radius: 20px;
+  background: var(--yellow);
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.events-edit[hidden] { display: none; }
+.events-header .events-dots { margin-left: auto; }
+button.events-dot { border: none; padding: 0; }
+
+/* Les communications défilent d'elles-mêmes ; on peut aussi les faire glisser du doigt */
 .events-track {
   max-width: 560px;
   margin: 0 auto;
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  min-height: 140px;
-}
-
-.event-card {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  display: block;
-  min-height: 140px;
-  transition: transform 0.4s ease;
-}
-
-.event-card img {
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  display: block;
-}
-
-.event-card-no-img {
-  width: 100%;
-  height: 140px;
-  background: var(--bg);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  align-items: flex-start;
+  scrollbar-width: none;
+  border-radius: var(--radius-lg);
+  transition: height 0.3s ease; /* hauteur de la communication affichée (communications.js) */
+}
+.events-track::-webkit-scrollbar { display: none; }
+
+.comm-card {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.event-info {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(transparent, rgba(30,24,71,0.85));
-  padding: 20px 14px 10px;
+/* Même proportion que le format conseillé aux admins : 1200 × 400 px */
+.comm-img { position: relative; aspect-ratio: 3 / 1; background: var(--bg); overflow: hidden; }
+.comm-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.comm-info { padding: 10px 14px 12px; }
+.comm-info-only { padding-top: 14px; }
+.comm-title { font-size: 14px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+.comm-text { font-size: 12px; color: var(--text-soft); margin-top: 2px; white-space: pre-line; overflow-wrap: anywhere; }
+.comm-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.comm-btn {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: var(--navy);
+  color: var(--yellow);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
 }
+.comm-btn:hover { background: var(--navy-dark); }
+.comm-empty { font-size: 13px; color: var(--text-soft); padding: 12px; background: var(--bg); border-radius: var(--radius-lg); width: 100%; }
+
+/* Page « Communications » (équipe) */
+.comm-image-preview { position: relative; aspect-ratio: 3 / 1; display: flex; align-items: center; justify-content: center; margin: 8px 0; border: 1.5px dashed var(--border); border-radius: 12px; color: #94a3b8; font-size: 13px; overflow: hidden; text-align: center; padding: 0 8px; }
+.comm-image-preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.comm-thumb { width: 72px; height: 24px; object-fit: cover; border-radius: 4px; flex: 0 0 auto; }
+.comm-thumb-empty { display: inline-flex; align-items: center; justify-content: center; background: var(--bg); font-size: 14px; }
+.comm-btn-row { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.comm-btn-row .profile-link { justify-self: start; }
+#comm-form-text { font-family: inherit; resize: vertical; }
+.comm-check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 6px 0; cursor: pointer; }
+.comm-check input { width: 18px; height: 18px; }
 
 .event-date {
   font-size: 11px;
@@ -144,18 +169,6 @@ header p {
   padding: 2px 8px;
   border-radius: 20px;
   margin-bottom: 4px;
-}
-
-.event-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--white);
-}
-
-.event-desc {
-  font-size: 11px;
-  color: rgba(255,255,255,0.8);
-  margin-top: 2px;
 }
 
 /* ── CONTAINER ── */

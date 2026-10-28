@@ -52,55 +52,6 @@
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
-  // ── Événements ────────────────────────────────────────
-  function buildEvents() {
-    if (!PORTAIL.events || PORTAIL.events.length === 0) return;
-    const banner = document.getElementById("events-banner");
-    const track  = document.getElementById("events-track");
-    const dotsEl = document.getElementById("events-dots");
-    let current = 0;
-
-    PORTAIL.events.forEach(function (ev, i) {
-      const card = document.createElement("div");
-      card.className = "event-card";
-      var imgHtml = ev.image
-        ? '<img src="' + ev.image + '" alt="' + ev.title + '" loading="lazy"/>'
-        : '<div class="event-card-no-img">\uD83D\uDCC5</div>';
-      card.innerHTML = imgHtml +
-        '<div class="event-info">' +
-        '<div class="event-date">' + ev.date + '</div>' +
-        '<div class="event-title">' + ev.title + '</div>' +
-        '<div class="event-desc">' + ev.desc + '</div>' +
-        '</div>';
-      track.appendChild(card);
-
-      var dot = document.createElement("div");
-      dot.className = "events-dot" + (i === 0 ? " active" : "");
-      dot.addEventListener("click", function() { goTo(i); });
-      dotsEl.appendChild(dot);
-    });
-
-    function goTo(idx) {
-      current = idx;
-      track.querySelectorAll(".event-card").forEach(function(c, i) {
-        c.style.transform = "translateX(" + ((i - idx) * 100) + "%)";
-      });
-      dotsEl.querySelectorAll(".events-dot").forEach(function(d, i) {
-        d.classList.toggle("active", i === idx);
-      });
-    }
-
-    track.querySelectorAll(".event-card").forEach(function(c, i) {
-      c.style.transform = "translateX(" + (i * 100) + "%)";
-    });
-
-    if (PORTAIL.events.length > 1) {
-      setInterval(function() { goTo((current + 1) % PORTAIL.events.length); }, 4000);
-    }
-  }
-
-  buildEvents();
-
   // ── Animation header ──────────────────────────────────
   const taglines = ["Votre espace client", "Vos services en un clic", "Bienvenue chez Hiptown"];
   let taglineIndex = 0;
@@ -325,9 +276,8 @@
     currentCity = client.city || null;
     renderIdentity(client);
     buildTiles(currentSpace, client.id);
+    // La barre de communication suit le tableau de bord (communications.js)
     hideAll(); stepDashboard.hidden = false;
-    // Pas de banderole des événements pour les clients « salles de réunion »
-    if (currentSpace !== "salle" && PORTAIL.events && PORTAIL.events.length > 0) eventsBanner.hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 

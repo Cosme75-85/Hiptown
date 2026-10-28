@@ -214,6 +214,48 @@ service cloud.firestore {
             || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'));
     }
 
+    // ── Barre de communication (communications.js) ─────────
+    // communications/{ville}-{0…9} : au plus 10 communications par ville.
+    // L'équipe et les clients d'une ville lisent celles de leur ville (l'admin général,
+    // toutes) ; tous les admins Hiptown de la ville les modifient (l'admin général, toutes).
+    function isValidCommButton(b) {
+      return b is map && b.keys().hasOnly(['label', 'url'])
+        && b.label is string && b.label.size() > 0 && b.label.size() <= 30
+        && b.url is string && b.url.size() <= 500
+        && b.url.matches('^(https?://|mailto:|tel:)[^\\s"<>]+$');
+    }
+
+    function isValidCommunication(id, data) {
+      return data.keys().hasOnly(['city', 'order', 'title', 'date', 'text', 'image', 'buttons', 'audience', 'updatedAt'])
+        && data.city is string && data.city.size() > 0 && data.city.size() <= 40
+        && id.matches(data.city + '-[0-9]')
+        && data.order is int && data.order >= 0 && data.order <= 99
+        && isShortText(data, 'title', 80)
+        && isShortText(data, 'date', 40)
+        && isShortText(data, 'text', 300)
+        && (!('image' in data) || data.image == ''
+            || (data.image is string
+                && data.image.size() <= 500000
+                && data.image.matches('^data:image/(jpeg|png);base64,[A-Za-z0-9+/=]+$')))
+        && data.buttons is list && data.buttons.size() <= 3
+        && (data.buttons.size() < 1 || isValidCommButton(data.buttons[0]))
+        && (data.buttons.size() < 2 || isValidCommButton(data.buttons[1]))
+        && (data.buttons.size() < 3 || isValidCommButton(data.buttons[2]))
+        && data.audience is list && data.audience.size() > 0
+        && data.audience.hasOnly(['hiptown', 'coworking', 'salle']);
+    }
+
+    match /communications/{id} {
+      allow read: if isSignedIn() && myProfile().status == 'approved'
+        && (isSuperAdmin() || resource.data.city == mySite());
+      allow create: if canManageAccueilCity(request.resource.data.city)
+        && isValidCommunication(id, request.resource.data);
+      allow update: if canManageAccueilCity(resource.data.city)
+        && canManageAccueilCity(request.resource.data.city)
+        && isValidCommunication(id, request.resource.data);
+      allow delete: if canManageAccueilCity(resource.data.city);
+    }
+
     // Reservations de salles
     match /bookings/{bookingId} {
       allow read: if isSignedIn();
