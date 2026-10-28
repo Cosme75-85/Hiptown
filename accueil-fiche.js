@@ -10,7 +10,9 @@
 //                                (people : {id de la personne: e-mail}), jamais publiques
 //                                (lue par Apps Script, reservation/Accueil.gs)
 //  La case est créée toute seule : à la connexion d'un salarié coworking, et quand
-//  l'équipe ouvre « Gestion des entreprises » ou valide un compte coworking.
+//  l'équipe ouvre « Gestion des entreprises » ou valide un compte coworking. Elle reste
+//  masquée (visible: false) tant que l'entreprise n'a pas choisi de s'afficher (Mon profil).
+//  Une case ajoutée à la main par l'équipe (manual: true) est toujours affichée.
 
 import { db } from "./firebase-config.js";
 import {
@@ -39,7 +41,7 @@ export async function ensureAccueilCard(companyId, { name, city = null, siteId =
   const ref = doc(db, "accueil", companyId);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    await setDoc(ref, { name, city, siteId: siteId || null, logo: "", manual: false, updatedAt: serverTimestamp() });
+    await setDoc(ref, { name, city, siteId: siteId || null, logo: "", manual: false, visible: false, updatedAt: serverTimestamp() });
     return;
   }
   const current = snap.data();
@@ -158,6 +160,7 @@ export function initAccueilFiche(getContext) {
   const logoInput = $("accueil-logo-input");
   const removeBtn = $("accueil-logo-remove");
   const emailInput = $("accueil-email");
+  const visibleInput = $("accueil-visible");
   const message = $("accueil-message");
   const saveBtn = $("accueil-save");
   emailInput.maxLength = MAX_EMAIL_LENGTH;
@@ -193,6 +196,7 @@ export function initAccueilFiche(getContext) {
     showMessage("", false);
     logo = "";
     emailInput.value = "";
+    visibleInput.checked = false;
     renderLogo();
     try {
       await ensureAccueilCard(companyId, { name: company.name || companyId, city: profile.site || null, siteId: profile.siteId || null });
@@ -202,6 +206,7 @@ export function initAccueilFiche(getContext) {
       ]);
       logo = isSafeLogo(card.data()?.logo) ? card.data().logo : "";
       emailInput.value = mail.exists() ? (mail.data().email || "") : "";
+      visibleInput.checked = card.data()?.visible === true;
       renderLogo();
     } catch (err) {
       console.error(err);
@@ -234,11 +239,11 @@ export function initAccueilFiche(getContext) {
     saveBtn.disabled = true;
     try {
       await Promise.all([
-        setDoc(doc(db, "accueil", companyId), { logo, updatedAt: serverTimestamp() }, { merge: true }),
+        setDoc(doc(db, "accueil", companyId), { logo, visible: visibleInput.checked, updatedAt: serverTimestamp() }, { merge: true }),
         // merge : garde les adresses des personnes, renseignées par l'équipe Hiptown
         setDoc(doc(db, "accueilEmails", companyId), { email, updatedAt: serverTimestamp() }, { merge: true })
       ]);
-      showMessage("Case de l'accueil enregistrée ✓", false);
+      showMessage(visibleInput.checked ? "Case de l'accueil enregistrée ✓" : "Enregistré ✓ Votre entreprise n'apparaît pas à l'accueil.", false);
     } catch (err) {
       console.error(err);
       showMessage("Enregistrement impossible. Réessayez.", true);

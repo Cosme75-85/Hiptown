@@ -48,7 +48,8 @@ function notifyVisitor(raw) {
     const token = serviceAccountToken();
     if (!token) return { success: false, message: 'Envoi indisponible pour le moment.' };
     const card = readAdminDoc(token, 'accueil/' + companyId);
-    if (!card || !card.name) return { success: false, message: 'Entreprise inconnue.' };
+    // Entreprise du portail qui n'a pas choisi d'apparaître sur la page
+    if (!card || !card.name || (card.manual !== true && card.visible !== true)) return { success: false, message: 'Entreprise inconnue.' };
     const mail = readAdminDoc(token, 'accueilEmails/' + companyId) || {};
     // Personne de la case : son adresse, sinon celle de l'entreprise
     const personId = String(raw.personId || '');

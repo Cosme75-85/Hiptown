@@ -2,7 +2,8 @@
 //  PORTAIL HIPTOWN — Gestion > Accueil visiteurs
 //  L'équipe d'une ville ajoute, modifie et retire les entreprises affichées sur la page
 //  publique d'accueil de sa ville (lien dans PORTAIL.accueilPages, config.js).
-//  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js) :
+//  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js),
+//  affichée seulement si l'entreprise l'a choisi dans Mon profil (visible) :
 //  ici, on ne change que leur logo, leurs e-mails, leurs personnes et leur code PIN.
 // ═══════════════════════════════════════════════════════
 
@@ -161,7 +162,7 @@ function cardRow(c, emails) {
     emails.email || "pas d'e-mail : l'équipe Hiptown est prévenue",
     people.length ? people.length + (people.length > 1 ? " personnes" : " personne") : "",
     c.pin ? "code PIN" : "",
-    c.manual ? "" : "compte portail"
+    c.manual ? "" : (c.visible === true ? "compte portail" : "compte portail · masquée (l'entreprise n'a pas choisi de s'afficher)")
   ].filter(Boolean).join(" · ");
   const logo = isSafeLogo(c.logo) ? `<img src="${escapeHtml(c.logo)}" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;"/>`
     : `<span class="company-badge" style="width:44px;height:44px;font-size:13px;">${escapeHtml((c.name || "?").slice(0, 2).toUpperCase())}</span>`;

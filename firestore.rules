@@ -160,9 +160,11 @@ service cloud.firestore {
     }
 
     // people : personnes de l'entreprise affichées sur la page ({id, name, role}, au plus 30) ;
-    // pin : code à 4 chiffres facultatif pour voir ces personnes
+    // pin : code à 4 chiffres facultatif pour voir ces personnes ;
+    // visible : l'entreprise du portail a choisi d'apparaître sur la page (les cases « manual » apparaissent toujours)
     function isValidAccueilCard(data) {
-      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'people', 'pin', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'people', 'pin', 'visible', 'updatedAt'])
+        && (!('visible' in data) || data.visible is bool)
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.city is string && data.city.size() > 0 && data.city.size() <= 40
         && isOptionalText(data, 'siteId', 40)
@@ -183,7 +185,8 @@ service cloud.firestore {
 
     // Case d'une entreprise : nom, ville, site et logo, lisibles par tous (page sans connexion).
     //  - entreprise du portail (id = companyId) : créée par l'équipe de sa ville, ou par un salarié
-    //    avec le nom officiel, sa ville et son site ; ensuite, un salarié ne change que le logo ;
+    //    avec le nom officiel, sa ville et son site ; ensuite, un salarié ne change que le logo
+    //    et le choix d'apparaître sur la page (visible) ;
     //  - case ajoutée à la main (id « m-… ») : l'équipe de la ville l'ajoute, la modifie, la retire.
     match /accueil/{id} {
       allow read: if true;
@@ -197,7 +200,7 @@ service cloud.firestore {
       allow update: if isValidAccueilCard(request.resource.data)
         && ((canManageAccueilCity(resource.data.get('city', null)) && canManageAccueilCity(request.resource.data.city))
             || (isCompanyMember(id)
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'updatedAt'])));
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'visible', 'updatedAt'])));
       allow delete: if canManageAccueilCity(resource.data.get('city', null));
     }
 
