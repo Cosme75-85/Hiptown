@@ -108,7 +108,7 @@ self.addEventListener("notificationclick", function (event) {
     const open = windows.find(function (w) { return w.url.indexOf(self.registration.scope) === 0; });
     if (open) {
       await open.focus();
-      open.postMessage({ hiptown: "open-messagerie" });
+      if (url.indexOf("#messagerie") !== -1) open.postMessage({ hiptown: "open-messagerie" });
       return;
     }
     await self.clients.openWindow(url);

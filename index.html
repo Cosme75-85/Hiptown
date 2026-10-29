@@ -45,6 +45,9 @@
 
 <main class="container">
 
+  <!-- Visiteurs qui attendent à l'accueil (clients coworking, voir accueil-visites.js) -->
+  <div id="accueil-visits" aria-live="assertive" hidden></div>
+
   <!-- ÉTAPE 0 : ACCUEIL — seulement « Connexion » et « Inscription » -->
   <section id="step-welcome">
     <div class="welcome-hero">
@@ -1367,6 +1370,7 @@
 <script type="module" src="resa-salle.js"></script>
 <script type="module" src="agenda.js"></script>
 <script type="module" src="messagerie.js"></script>
+<script type="module" src="accueil-visites.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js"); });

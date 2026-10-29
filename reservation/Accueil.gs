@@ -4,6 +4,8 @@
 // par email à l'adresse de accueilEmails/{companyId}. Cette adresse n'est jamais publique :
 // elle est lue ici avec le compte de service (FIREBASE_SERVICE_ACCOUNT, voir Messagerie.gs).
 // Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.
+// Pour une entreprise du portail, ses coworkers sont aussi prévenus dans le portail : bandeau sur
+// l'espace client (accueilVisits, accueil-visites.js) et notification sur les appareils qui l'acceptent.
 // La case Hiptown de la page (contacts de l'équipe) passe aussi par ici : la page envoie
 // seulement l'identifiant du contact, l'adresse est dans ACCUEIL_TEAM_CONTACTS.
 
@@ -12,10 +14,10 @@ const ACCUEIL_CITY = 'bordeaux';            // ville par défaut d'une case sans
 const ACCUEIL_MAX_PER_COMPANY = 20;         // visites notifiées au plus par entreprise...
 const ACCUEIL_MAX_TOTAL = 150;              // ...et pour toute la page...
 const ACCUEIL_WINDOW_SECONDS = 60 * 60;     // ...sur une heure (protection contre l'envoi en rafale)
-const ACCUEIL_MAX_PIN_FAILURES = 10;
+const ACCUEIL_MAX_PIN_FAILURES = 10;        // codes d'accès faux par entreprise et par heure, ensuite bloqué
 const ACCUEIL_SENDER_NAME = 'Hiptown Accueil'; // nom d'expéditeur des e-mails de visite
 // Logo de l'e-mail (hébergé avec la page d'accueil : les images intégrées sont bloquées par Gmail)
-const ACCUEIL_LOGO_URL = 'https://cosme75-85.github.io/Hiptown-Accueil-1/Logo%20Hiptown%20site.png';        // codes d'accès faux par entreprise et par heure, ensuite bloqué
+const ACCUEIL_LOGO_URL = 'https://cosme75-85.github.io/Hiptown-Accueil-1/Logo%20Hiptown%20site.png';
 
 // Contacts de la case Hiptown (identifiants : champ id des contacts dans config.js de Hiptown-Accueil-1)
 const ACCUEIL_TEAM_CONTACTS = {
@@ -93,11 +95,57 @@ function notifyVisitor(raw) {
         })
       });
     }
+    pushSafely(() => notifyPortalVisit(token, companyId, card, person, visitor, note));
     return { success: true };
   } catch (err) {
     console.error('notifyVisitor', err);
     return { success: false, message: 'Envoi impossible pour le moment.' };
   }
+}
+
+/**
+ * Visite annoncée dans le portail (entreprise du portail seulement) : la personne demandée si elle
+ * a un compte avec cette adresse, sinon tous les coworkers de l'entreprise.
+ */
+function notifyPortalVisit(token, companyId, card, person, visitor, note) {
+  if (card.manual === true) return;
+  const members = usersWhere(token, 'companyId', companyId).filter(u => u.role === 'coworking');
+  const asked = person && person.email ? members.filter(u => normalizeEmail(u.email) === person.email) : [];
+  const uids = (asked.length ? asked : members).map(u => u.uid).slice(0, 30);
+  if (!uids.length) return;
+  const forWho = person ? person.name : '';
+  const now = new Date();
+  const today = Utilities.formatDate(now, 'Europe/Paris', 'yyyy-MM-dd');
+  firestoreAdmin(token, 'post', firestoreAdminUrl('/accueilVisits'), { fields: {
+    uids: { arrayValue: { values: uids.map(uid => ({ stringValue: uid })) } },
+    companyId: { stringValue: companyId },
+    visitor: { stringValue: visitor },
+    forWho: { stringValue: forWho },
+    note: { stringValue: note },
+    day: { stringValue: today }, // le bandeau n'affiche que les visites du jour
+    createdAt: { timestampValue: now.toISOString() },
+    seenBy: { arrayValue: {} }
+  } });
+  pushToUsers(uids, {
+    title: '🔔 ' + visitor + ' vous attend à l\'accueil',
+    body: note || (forWho ? 'Visite pour ' + forWho + '.' : 'Merci de venir l\'accueillir.'),
+    tag: 'accueil-' + companyId,
+    url: './'
+  }, token);
+  pushSafely(() => deleteOldVisits(token, today));
+}
+
+/** Efface les visites des jours passés (le portail lit toutes les visites d'un compte). */
+function deleteOldVisits(token, today) {
+  const rows = firestoreAdmin(token, 'post', firestoreAdminUrl(':runQuery'), {
+    structuredQuery: {
+      from: [{ collectionId: 'accueilVisits' }],
+      where: { fieldFilter: { field: { fieldPath: 'day' }, op: 'LESS_THAN', value: { stringValue: today } } },
+      limit: 100
+    }
+  });
+  const names = rows.filter(r => r.document).map(r => r.document.name);
+  if (names.length) firestoreAdmin(token, 'post', firestoreAdminUrl(':commit'), { writes: names.map(n => ({ delete: n })) });
 }
 
 /** Case affichée sur la page : ajoutée par l'équipe, ou entreprise du portail qui a choisi d'apparaître. */
