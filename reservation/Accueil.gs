@@ -12,7 +12,10 @@ const ACCUEIL_CITY = 'bordeaux';            // ville par défaut d'une case sans
 const ACCUEIL_MAX_PER_COMPANY = 20;         // visites notifiées au plus par entreprise...
 const ACCUEIL_MAX_TOTAL = 150;              // ...et pour toute la page...
 const ACCUEIL_WINDOW_SECONDS = 60 * 60;     // ...sur une heure (protection contre l'envoi en rafale)
-const ACCUEIL_MAX_PIN_FAILURES = 10;        // codes d'accès faux par entreprise et par heure, ensuite bloqué
+const ACCUEIL_MAX_PIN_FAILURES = 10;
+const ACCUEIL_SENDER_NAME = 'Hiptown Accueil'; // nom d'expéditeur des e-mails de visite
+// Logo de l'e-mail (hébergé avec la page d'accueil : les images intégrées sont bloquées par Gmail)
+const ACCUEIL_LOGO_URL = 'https://cosme75-85.github.io/Hiptown-Accueil-1/Logo%20Hiptown%20site.png';        // codes d'accès faux par entreprise et par heure, ensuite bloqué
 
 // Contacts de la case Hiptown (identifiants : champ id des contacts dans config.js de Hiptown-Accueil-1)
 const ACCUEIL_TEAM_CONTACTS = {
@@ -64,28 +67,30 @@ function notifyVisitor(raw) {
 
     const company = cleanText(card.name, 100);
     const personName = person ? cleanText(person.name, 80) : '';
-    const forWho = personName ? escapeHtml(personName) + ' (' + escapeHtml(company) + ')' : escapeHtml(company);
-    const text = note
-      ? visitor + ' vous attend à l\'accueil. Message : « ' + note + ' »'
-      : visitor + ' vous attend à l\'accueil.';
+    const forWho = personName ? personName + ' · ' + company : company;
     if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       MailApp.sendEmail({
         to: email,
-        subject: '🔔 ' + visitor + ' est arrivé(e) à l\'accueil Hiptown',
-        htmlBody: '<p>Bonjour' + (personEmail ? ' ' + escapeHtml(personName.split(' ')[0]) : '') + ',</p>'
-          + '<p>Un visiteur pour <b>' + forWho + '</b> vient de se présenter à l\'accueil Hiptown.</p>'
-          + messageHtml(text)
-          + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown. '
-          + 'Pour changer l\'adresse qui reçoit ces messages : portail Hiptown > Mon profil > Ma case à l\'accueil visiteurs.</p>'
+        name: ACCUEIL_SENDER_NAME,
+        subject: '🔔 ' + visitor + ' vous attend à l\'accueil Hiptown',
+        htmlBody: accueilEmailHtml({
+          greeting: personEmail ? 'Bonjour ' + personName.split(' ')[0] + ',' : 'Bonjour,',
+          visitor: visitor, forWho: forWho, note: note,
+          footer: card.manual === true
+            ? 'Pour changer l\'adresse qui reçoit ces messages, contactez l\'équipe Hiptown.'
+            : 'Pour changer l\'adresse qui reçoit ces messages : portail Hiptown > Mon profil > Accueil visiteurs.'
+        })
       });
     } else {
       MailApp.sendEmail({
         to: teamRecipients({ city: /^[a-z-]{1,40}$/.test(card.city || '') ? card.city : ACCUEIL_CITY }),
-        subject: '🔔 Visiteur pour ' + (personName ? personName + ' (' + company + ')' : company) + ' à l\'accueil (pas d\'adresse renseignée)',
-        htmlBody: '<p>Un visiteur pour <b>' + forWho + '</b> vient de se présenter à l\'accueil.</p>'
-          + messageHtml(text)
-          + '<p style="color:#64748b;font-size:12px;">Cette entreprise n\'a pas encore indiqué d\'adresse pour recevoir '
-          + 'ses visites (portail > Mon profil > Ma case à l\'accueil visiteurs) : merci de la prévenir.</p>'
+        name: ACCUEIL_SENDER_NAME,
+        subject: '🔔 Visiteur pour ' + forWho + ' à l\'accueil (pas d\'adresse renseignée)',
+        htmlBody: accueilEmailHtml({
+          greeting: 'Bonjour l\'équipe,',
+          visitor: visitor, forWho: forWho, note: note,
+          footer: 'Cette entreprise n\'a pas encore indiqué d\'adresse pour recevoir ses visites : merci de la prévenir.'
+        })
       });
     }
     return { success: true };
@@ -166,18 +171,57 @@ function notifyTeamContact(raw) {
   cache.put(contactKey, String(contactCount + 1), ACCUEIL_WINDOW_SECONDS);
   cache.put('accueil:total', String(totalCount + 1), ACCUEIL_WINDOW_SECONDS);
 
-  const text = note
-    ? visitor + ' vous attend à l\'accueil. Message : « ' + note + ' »'
-    : visitor + ' vous attend à l\'accueil.';
   MailApp.sendEmail({
     to: contact.email,
-    subject: '🔔 ' + visitor + ' est arrivé(e) à l\'accueil Hiptown',
-    htmlBody: '<p>Bonjour ' + escapeHtml(contact.name.split(' ')[0]) + ',</p>'
-      + '<p>Un visiteur vient de se présenter pour vous à l\'accueil Hiptown.</p>'
-      + messageHtml(text)
-      + '<p style="color:#64748b;font-size:12px;">Envoyé depuis l\'accueil visiteurs Hiptown.</p>'
+    name: ACCUEIL_SENDER_NAME,
+    subject: '🔔 ' + visitor + ' vous attend à l\'accueil Hiptown',
+    htmlBody: accueilEmailHtml({
+      greeting: 'Bonjour ' + contact.name.split(' ')[0] + ',',
+      visitor: visitor, forWho: contact.name + ' · Hiptown', note: note, footer: ''
+    })
   });
   return { success: true };
+}
+
+/**
+ * E-mail de visite aux couleurs Hiptown (bleu nuit #1e1847, jaune #ffe700), en tableaux et
+ * styles en ligne pour s'afficher pareil dans Gmail, Outlook et sur téléphone. Textes échappés ici.
+ * @param {{greeting: string, visitor: string, forWho: string, note: string, footer: string}} o
+ */
+function accueilEmailHtml(o) {
+  const time = Utilities.formatDate(new Date(), 'Europe/Paris', "HH'h'mm");
+  const font = 'font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;';
+  const note = o.note
+    ? '<tr><td style="padding:0 32px 8px;">'
+      + '<div style="' + font + 'font-size:12px;font-weight:700;color:#1e1847;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Son message</div>'
+      + '<div style="' + font + 'border-left:4px solid #ffe700;background:#f5f4ff;padding:12px 16px;border-radius:0 8px 8px 0;font-size:15px;color:#1e1847;line-height:1.5;">'
+      + escapeHtml(o.note).replace(/\n/g, '<br>') + '</div></td></tr>'
+    : '';
+  const footer = o.footer
+    ? '<div style="margin-top:6px;">' + escapeHtml(o.footer) + '</div>' : '';
+  return '<!doctype html><html><body style="margin:0;padding:0;background:#f4f3fb;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f3fb;padding:24px 12px;"><tr><td align="center">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">'
+    // En-tête : logo sur bleu nuit, liseré jaune
+    + '<tr><td align="center" style="background:#1e1847;padding:22px 24px;">'
+    + '<img src="' + ACCUEIL_LOGO_URL + '" alt="Hiptown" width="150" style="display:block;width:150px;max-width:60%;height:auto;border:0;">'
+    + '</td></tr>'
+    + '<tr><td style="background:#ffe700;height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>'
+    // Annonce
+    + '<tr><td style="padding:28px 32px 8px;' + font + 'color:#1e1847;">'
+    + '<div style="font-size:15px;margin-bottom:18px;">' + escapeHtml(o.greeting) + '</div>'
+    + '<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b6890;">🔔 Un visiteur vous attend à l\'accueil</div>'
+    + '<div style="font-size:28px;font-weight:800;line-height:1.2;margin:8px 0 6px;">' + escapeHtml(o.visitor) + '</div>'
+    + '<div style="font-size:15px;color:#4b4870;">pour <b style="color:#1e1847;">' + escapeHtml(o.forWho) + '</b></div>'
+    + '<div style="display:inline-block;margin:16px 0 18px;background:#ffe700;color:#1e1847;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;">Arrivé(e) à ' + time + '</div>'
+    + '</td></tr>'
+    + note
+    + '<tr><td style="padding:12px 32px 28px;' + font + 'font-size:15px;color:#1e1847;line-height:1.5;">Merci de venir l\'accueillir dès que possible.</td></tr>'
+    // Pied
+    + '<tr><td style="background:#f5f4ff;padding:16px 32px;' + font + 'font-size:12px;color:#6b6890;line-height:1.5;">'
+    + 'Envoyé par l\'accueil visiteurs Hiptown.' + footer
+    + '</td></tr>'
+    + '</table></td></tr></table></body></html>';
 }
 
 /** Document Firestore lu avec le compte de service, ou null s'il n'existe pas. */
