@@ -4,8 +4,9 @@
 // par email à l'adresse de accueilEmails/{companyId}. Cette adresse n'est jamais publique :
 // elle est lue ici avec le compte de service (FIREBASE_SERVICE_ACCOUNT, voir Messagerie.gs).
 // Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.
-// Pour une entreprise du portail, ses coworkers sont aussi prévenus dans le portail : bandeau sur
-// l'espace client (accueilVisits, accueil-visites.js) et notification sur les appareils qui l'acceptent.
+// Pour une entreprise du portail, ses coworkers sont aussi prévenus dans le portail (et un contact de la
+// case Hiptown sur son compte de l'équipe) : bandeau en haut du portail (accueilVisits, accueil-visites.js)
+// et notification sur les appareils qui l'acceptent.
 // La case Hiptown de la page (contacts de l'équipe) passe aussi par ici : la page envoie
 // seulement l'identifiant du contact, l'adresse est dans ACCUEIL_TEAM_CONTACTS.
 
@@ -112,8 +113,12 @@ function notifyPortalVisit(token, companyId, card, person, visitor, note) {
   const members = usersWhere(token, 'companyId', companyId).filter(u => u.role === 'coworking');
   const asked = person && person.email ? members.filter(u => normalizeEmail(u.email) === person.email) : [];
   const uids = (asked.length ? asked : members).map(u => u.uid).slice(0, 30);
+  announceVisit(token, uids, companyId, person ? person.name : '', visitor, note);
+}
+
+/** Bandeau (accueilVisits) et notification sur les appareils des comptes uids. */
+function announceVisit(token, uids, companyId, forWho, visitor, note) {
   if (!uids.length) return;
-  const forWho = person ? person.name : '';
   const now = new Date();
   const today = Utilities.formatDate(now, 'Europe/Paris', 'yyyy-MM-dd');
   firestoreAdmin(token, 'post', firestoreAdminUrl('/accueilVisits'), { fields: {
@@ -227,6 +232,14 @@ function notifyTeamContact(raw) {
       greeting: 'Bonjour ' + contact.name.split(' ')[0] + ',',
       visitor: visitor, forWho: contact.name + ' · Hiptown', note: note, footer: ''
     })
+  });
+  // Bandeau sur le portail du contact, s'il a un compte de l'équipe avec cette adresse
+  pushSafely(() => {
+    const token = serviceAccountToken();
+    if (!token) return;
+    const uids = usersWhere(token, 'role', 'admin')
+      .filter(u => normalizeEmail(u.email) === contact.email).map(u => u.uid);
+    announceVisit(token, uids, 'hiptown', contact.name, visitor, note);
   });
   return { success: true };
 }
