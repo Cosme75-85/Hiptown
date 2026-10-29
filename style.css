@@ -136,6 +136,16 @@ button.events-dot { border: none; padding: 0; }
 .comm-main { flex: 1; min-width: 0; }
 .comm-side { flex: 0 1 auto; max-width: 55%; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .comm-side .event-date { margin-bottom: 0; text-align: right; }
+/* Ordinateur : texte, date et boutons à gauche de l'image, la barre ne fait que la hauteur de l'image */
+@media (min-width: 600px) {
+  .comm-card { flex-direction: row-reverse; align-items: stretch; }
+  .comm-img { flex: 0 0 62%; }
+  .comm-info { flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; padding: 10px 14px; }
+  .comm-main { flex: 0 0 auto; width: 100%; }
+  .comm-side { max-width: none; align-items: flex-start; }
+  .comm-side .event-date { text-align: left; }
+  .comm-btns { justify-content: flex-start; }
+}
 .comm-info-only { padding: 12px; }
 .comm-title { font-size: 14px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
 .comm-text { font-size: 12px; color: var(--text-soft); margin-top: 2px; white-space: pre-line; overflow-wrap: anywhere; }
