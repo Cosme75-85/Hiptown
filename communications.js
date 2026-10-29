@@ -93,10 +93,14 @@ function cardHtml(c) {
     <div class="comm-card">
       ${img ? `<div class="comm-img">${img}</div>` : ""}
       ${hasText || buttons ? `<div class="comm-info${img ? "" : " comm-info-only"}">
-        ${c.date ? `<div class="event-date">${escapeHtml(c.date)}</div>` : ""}
-        ${c.title ? `<div class="comm-title">${escapeHtml(c.title)}</div>` : ""}
-        ${c.text ? `<div class="comm-text">${escapeHtml(c.text)}</div>` : ""}
-        ${buttons ? `<div class="comm-btns">${buttons}</div>` : ""}
+        <div class="comm-main">
+          ${c.title ? `<div class="comm-title">${escapeHtml(c.title)}</div>` : ""}
+          ${c.text ? `<div class="comm-text">${escapeHtml(c.text)}</div>` : ""}
+        </div>
+        ${c.date || buttons ? `<div class="comm-side">
+          ${c.date ? `<div class="event-date">${escapeHtml(c.date)}</div>` : ""}
+          ${buttons ? `<div class="comm-btns">${buttons}</div>` : ""}
+        </div>` : ""}
       </div>` : ""}
     </div>`;
 }
