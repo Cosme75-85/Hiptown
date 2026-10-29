@@ -146,9 +146,14 @@ service cloud.firestore {
       allow delete: if canWriteUser(resource.data);
     }
 
-    // Entreprises (coworking)
+    // Entreprises (coworking) : fiches avec raison sociale, SIRET, adresse de facturation,
+    // représentant légal et contrat. Un salarié validé ne lit QUE la fiche de son entreprise ;
+    // seule l'équipe Hiptown peut lister toutes les entreprises.
     match /companies/{companyId} {
-      allow read: if isSignedIn();
+      allow get: if isAdmin()
+        || (isSignedIn() && myProfile().status == 'approved'
+            && myProfile().get('companyId', null) == companyId);
+      allow list: if isAdmin();
       allow write: if isAdmin();
     }
 
@@ -289,12 +294,10 @@ service cloud.firestore {
       allow delete: if canManageAccueilCity(resource.data.city);
     }
 
-    // Reservations de salles
+    // Ancienne collection des réservations : plus utilisée (les réservations sont dans
+    // Google Agenda, via l'outil de réservation). Fermée pour qu'on ne puisse rien y lire ni écrire.
     match /bookings/{bookingId} {
-      allow read: if isSignedIn();
-      allow create: if isApprovedRole('salle') || isApprovedRole('coworking') || isAdmin();
-      allow update, delete: if isAdmin()
-        || (isSignedIn() && resource.data.createdBy == request.auth.uid);
+      allow read, write: if false;
     }
 
     // ── Messagerie (messagerie.js) ─────────────────────────
@@ -461,7 +464,18 @@ service cloud.firestore {
     // Commandes petit-dejeuner
     match /breakfastOrders/{orderId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      // Seul un compte validé commande, à son nom, avec les champs de breakfast.js
+      allow create: if (isClientAccount() || isAdmin())
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'companyName', 'date',
+                                                 'people', 'price', 'seen', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.seen == false
+        && request.resource.data.people is int
+        && request.resource.data.people >= 1 && request.resource.data.people <= 100
+        && request.resource.data.date is string && request.resource.data.date.size() <= 10
+        && isShortText(request.resource.data, 'email', 120)
+        && isShortText(request.resource.data, 'name', 120)
+        && isOptionalText(request.resource.data, 'companyName', 120);
       allow update, delete: if isAdmin();
     }
   }

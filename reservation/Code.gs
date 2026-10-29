@@ -523,6 +523,22 @@ function validateSlot(b) {
   return '';
 }
 
+const BOOKING_MAX_PER_EMAIL = 5;          // demandes au plus par adresse email...
+const BOOKING_MAX_TOTAL = 40;             // ...et pour toute la page...
+const BOOKING_WINDOW_SECONDS = 60 * 60;   // ...sur une heure
+
+/** Compte une demande publique ; false si la limite de l'heure est atteinte (rien n'est compté). */
+function acceptBookingRequestRate(email) {
+  const cache = CacheService.getScriptCache();
+  const emailKey = 'bookrate:' + Utilities.base64EncodeWebSafe(String(email || '')).slice(0, 200);
+  const emailCount = Number(cache.get(emailKey)) || 0;
+  const totalCount = Number(cache.get('bookrate:total')) || 0;
+  if (emailCount >= BOOKING_MAX_PER_EMAIL || totalCount >= BOOKING_MAX_TOTAL) return false;
+  cache.put(emailKey, String(emailCount + 1), BOOKING_WINDOW_SECONDS);
+  cache.put('bookrate:total', String(totalCount + 1), BOOKING_WINDOW_SECONDS);
+  return true;
+}
+
 /**
  * Demande de réservation d'un client salle de réunion. Faite par l'équipe Hiptown (staff, depuis
  * la page de réservation du portail, voir bookForClient dans Coworking.gs), elle vaut validation :
@@ -532,6 +548,10 @@ function bookRoom(rawBooking, staff) {
   // Validation AVANT de prendre le verrou : une demande invalide ne bloque personne
   const booking = validateBooking(rawBooking, staff ? 'admin' : 'salle');
   if (booking.error) return { success: false, message: booking.error };
+  // Page publique, sans connexion : on limite les demandes en rafale (créneaux bloqués, emails au gérant)
+  if (!staff && !acceptBookingRequestRate(booking.requesterEmail)) {
+    return { success: false, message: 'Trop de demandes envoyées, merci de réessayer dans une heure ou d\'appeler l\'équipe Hiptown.' };
+  }
 
   const lock = LockService.getScriptLock();
   try {
