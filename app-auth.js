@@ -34,6 +34,7 @@ const stepGestionDevis = document.getElementById("step-gestion-devis");
 const stepGestionStats = document.getElementById("step-gestion-stats");
 const stepGestionAccueil = document.getElementById("step-gestion-accueil");
 const stepSettings = document.getElementById("step-settings");
+const stepCommunications = document.getElementById("step-communications");
 const authError   = document.getElementById("auth-error");
 
 
@@ -42,7 +43,7 @@ const authError   = document.getElementById("auth-error");
 // masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepGestionAccueil, stepSettings].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepGestionAccueil, stepSettings, stepCommunications].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
