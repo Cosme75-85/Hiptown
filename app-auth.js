@@ -12,7 +12,7 @@ import { initAccueilFiche, ensureAccueilCard } from "./accueil-fiche.js";
 import { renderAccueilPanel } from "./accueil-gestion.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
-  updateUser, deleteUserDoc, adminCreateAccount, listCompanies,
+  updateUser, deleteUserDoc, adminCreateAccount, listCompanies, getCompany,
   listUnseenBreakfastOrders, markBreakfastOrderSeen, createCompany, updateCompany
 } from "./admin.js";
 import { renderDiscountsPanel } from "./reductions.js";
@@ -197,8 +197,7 @@ watchAuthState(async (user, profile) => {
   if (!SPACE_STYLES[space]) return; // rôle inconnu : on ne route nulle part
   let company = null;
   if (space === "coworking") {
-    const companies = await listCompanies();
-    company = companies.find(c => c.id === profile.companyId) || null;
+    company = profile.companyId ? await getCompany(profile.companyId).catch(() => null) : null;
   }
   session = { uid: user.uid, profile, space, company };
   applyUserSettings(user.uid, profile);

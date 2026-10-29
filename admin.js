@@ -4,7 +4,7 @@
 
 import { app, db } from "./firebase-config.js";
 import {
-  collection, query, where, getDocs, doc, updateDoc, deleteDoc, setDoc, serverTimestamp
+  collection, query, where, getDocs, getDoc, doc, updateDoc, deleteDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   initializeApp, deleteApp
@@ -138,6 +138,12 @@ export async function markBreakfastOrderSeen(orderId) {
 export async function listCompanies() {
   const snap = await getDocs(collection(db, "companies"));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/** Fiche d'une seule entreprise (un salarié ne peut lire que la sienne). null si elle n'existe pas. */
+export async function getCompany(id) {
+  const snap = await getDoc(doc(db, "companies", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
 export async function createCompany(id, data) {
