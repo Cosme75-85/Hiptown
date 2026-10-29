@@ -229,6 +229,17 @@ service cloud.firestore {
                     || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'))));
     }
 
+    // Visites annoncées dans le portail (bandeau de accueil-visites.js), écrites par l'outil de
+    // réservation avec le compte de service (reservation/Accueil.gs). Chaque coworker prévenu
+    // les lit et marque « C'est noté » en s'ajoutant à seenBy.
+    match /accueilVisits/{id} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.uids;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.uids
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenBy'])
+        && request.resource.data.seenBy is list
+        && request.resource.data.seenBy.size() <= 30;
+    }
+
     // Reservations de salles
     match /bookings/{bookingId} {
       allow read: if isSignedIn();

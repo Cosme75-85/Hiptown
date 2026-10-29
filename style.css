@@ -1425,3 +1425,28 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
 .stats-table .stats-total td { font-weight: 700; background: #f8fafc; }
 .stats-sub { font-size: 11px; color: var(--text-pale); font-weight: 400; }
 .stats-h4 { font-size: 13px; font-weight: 700; margin: 14px 0 8px; }
+
+/* ── Visiteurs qui attendent à l'accueil (accueil-visites.js) ── */
+#accueil-visits { display: flex; flex-direction: column; gap: 10px; margin: 0 0 16px; }
+.accueil-visit {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--navy); color: #fff;
+  border-left: 6px solid var(--yellow); border-radius: 14px;
+  padding: 14px 16px; box-shadow: 0 6px 20px rgba(30, 24, 71, .25);
+  animation: accueil-visit-in .35s ease-out;
+}
+.accueil-visit-text { flex: 1; min-width: 0; }
+.accueil-visit-title { font-size: 16px; line-height: 1.3; }
+.accueil-visit-title b { color: var(--yellow); }
+.accueil-visit-meta { font-size: 13px; opacity: .8; margin-top: 2px; }
+.accueil-visit-note { font-size: 14px; margin-top: 6px; font-style: italic; overflow-wrap: anywhere; }
+.accueil-visit-ok {
+  flex-shrink: 0; background: var(--yellow); color: var(--navy);
+  border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 700; cursor: pointer;
+}
+.accueil-visit-ok:disabled { opacity: .6; cursor: default; }
+@keyframes accueil-visit-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 480px) {
+  .accueil-visit { flex-direction: column; align-items: stretch; }
+  .accueil-visit-ok { align-self: flex-end; }
+}
