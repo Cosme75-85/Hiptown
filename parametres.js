@@ -105,6 +105,9 @@ export function initSettingsPage({ getContext, save, onClose }) {
     $(SETTINGS[key].listId).querySelectorAll(".fond-choice").forEach(btn => {
       btn.setAttribute("aria-pressed", btn.dataset.choice === id ? "true" : "false");
     });
+    // Choix actuel affiché sur la ligne de la rubrique, même repliée
+    const choice = SETTINGS[key].choices.find(c => c.id === id);
+    $(SETTINGS[key].listId + "-current").textContent = choice ? (choice.icon ? choice.icon + " " : "") + choice.label : "";
   }
 
   for (const [key, setting] of Object.entries(SETTINGS)) {
@@ -144,6 +147,8 @@ export function initSettingsPage({ getContext, save, onClose }) {
       const values = settingsOf(uid, profile);
       for (const key of Object.keys(SETTINGS)) markSelected(key, values[key]);
       showMessage("", false);
+      // Rubriques repliées à chaque ouverture de la page
+      $("step-settings").querySelectorAll("details").forEach(d => { d.open = false; });
       window.hideAllAuth();
       $("step-settings").hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
