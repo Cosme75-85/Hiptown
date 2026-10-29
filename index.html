@@ -812,17 +812,30 @@
     <button class="back-btn" id="back-from-settings">Accueil</button>
     <h2 class="step-title">⚙️ Paramètres</h2>
     <div class="pin-box" style="text-align:left;max-width:none;">
-      <p class="profile-label" style="margin-top:0;font-size:15px;">Fond du portail</p>
-      <p class="profile-help" style="margin-bottom:14px;">Vos réglages sont retenus sur votre compte, sur tous vos appareils.</p>
-      <div class="fond-grid" id="settings-backgrounds"></div>
+      <p class="profile-help" style="margin:0 0 14px;">Vos réglages sont retenus sur votre compte, sur tous vos appareils. Touchez une rubrique pour l'ouvrir.</p>
 
-      <p class="profile-label" style="margin-top:22px;font-size:15px;">Couleur des cases</p>
-      <p class="profile-help" style="margin-bottom:14px;">Le fond des tuiles et de la case profil de votre tableau de bord.</p>
-      <div class="fond-grid" id="settings-cases"></div>
+      <!-- Rubriques repliables : chaque liste de choix ne s'affiche qu'au clic -->
+      <details class="settings-group">
+        <summary class="settings-group-title">🎨 Apparence</summary>
+        <details class="settings-item">
+          <summary class="settings-item-title">Fond du portail <span class="settings-current" id="settings-backgrounds-current"></span></summary>
+          <div class="fond-grid" id="settings-backgrounds"></div>
+        </details>
+        <details class="settings-item">
+          <summary class="settings-item-title">Couleur des cases <span class="settings-current" id="settings-cases-current"></span></summary>
+          <p class="profile-help" style="margin:0 0 12px;">Le fond des tuiles et de la case profil de votre tableau de bord.</p>
+          <div class="fond-grid" id="settings-cases"></div>
+        </details>
+      </details>
 
-      <p class="profile-label" style="margin-top:22px;font-size:15px;">Son des notifications</p>
-      <p class="profile-help" style="margin-bottom:14px;">Joué quand le portail est ouvert : visiteur à l'accueil, nouveau message. Touchez un son pour l'écouter.</p>
-      <div class="fond-grid" id="settings-sounds"></div>
+      <details class="settings-group">
+        <summary class="settings-group-title">🔔 Notifications</summary>
+        <details class="settings-item">
+          <summary class="settings-item-title">Son <span class="settings-current" id="settings-sounds-current"></span></summary>
+          <p class="profile-help" style="margin:0 0 12px;">Joué quand le portail est ouvert : visiteur à l'accueil, nouveau message. Touchez un son pour l'écouter.</p>
+          <div class="fond-grid" id="settings-sounds"></div>
+        </details>
+      </details>
       <p id="settings-message" class="profile-help" role="status" hidden></p>
     </div>
   </section>
