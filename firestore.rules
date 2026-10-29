@@ -101,6 +101,10 @@ service cloud.firestore {
             || data.background in ['lavande', 'blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe', 'nuit', 'coworking'])
         && (!('cases' in data)
             || data.cases in ['blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe'])
+        // Son des notifications (même liste que notif-sound.js)
+        && (!('sound' in data)
+            || data.sound in ['carillon', 'ding', 'pop', 'trio', 'oiseau', 'chat', 'chien', 'canard',
+                           'grenouille', 'vache', 'aucun'])
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
@@ -133,7 +137,7 @@ service cloud.firestore {
         || canMoveClientToCity(resource.data, request.resource.data)
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases'])
+                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases', 'sound'])
             && isValidProfile(request.resource.data));
 
       allow delete: if canWriteUser(resource.data);
@@ -159,12 +163,19 @@ service cloud.firestore {
             && data.logo.matches('^data:image/(jpeg|png);base64,[A-Za-z0-9+/=]+$'));
     }
 
+    // people : personnes affichées sous la case ({id, name, ...}, au plus 30), choisies par l'entreprise
+    //   (Mon profil) ou par l'équipe pour une case ajoutée à la main ;
+    // locked : un code d'accès est demandé pour prévenir l'entreprise (le code est dans accueilEmails) ;
+    // visible : l'entreprise du portail a choisi d'apparaître sur la page (les cases « manual » apparaissent toujours)
     function isValidAccueilCard(data) {
-      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'people', 'locked', 'visible', 'updatedAt'])
+        && (!('visible' in data) || data.visible is bool)
+        && (!('locked' in data) || data.locked is bool)
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.city is string && data.city.size() > 0 && data.city.size() <= 40
         && isOptionalText(data, 'siteId', 40)
         && (!('manual' in data) || data.manual is bool)
+        && (!('people' in data) || (data.people is list && data.people.size() <= 30))
         && isValidLogo(data);
     }
 
@@ -179,7 +190,8 @@ service cloud.firestore {
 
     // Case d'une entreprise : nom, ville, site et logo, lisibles par tous (page sans connexion).
     //  - entreprise du portail (id = companyId) : créée par l'équipe de sa ville, ou par un salarié
-    //    avec le nom officiel, sa ville et son site ; ensuite, un salarié ne change que le logo ;
+    //    avec le nom officiel, sa ville et son site, masquée ; ensuite, un salarié ne change que le logo,
+    //    le choix d'apparaître sur la page (visible), les personnes et le code d'accès (locked) ;
     //  - case ajoutée à la main (id « m-… ») : l'équipe de la ville l'ajoute, la modifie, la retire.
     match /accueil/{id} {
       allow read: if true;
@@ -187,17 +199,19 @@ service cloud.firestore {
         && (canManageAccueilCity(request.resource.data.city)
             || (isCompanyMember(id)
                 && request.resource.data.get('manual', false) == false
+                && request.resource.data.get('visible', false) == false
                 && request.resource.data.name == get(/databases/$(database)/documents/companies/$(id)).data.name
                 && request.resource.data.city == myProfile().get('site', null)
                 && request.resource.data.get('siteId', null) == myProfile().get('siteId', null)));
       allow update: if isValidAccueilCard(request.resource.data)
         && ((canManageAccueilCity(resource.data.get('city', null)) && canManageAccueilCity(request.resource.data.city))
             || (isCompanyMember(id)
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'updatedAt'])));
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'visible', 'locked', 'people', 'updatedAt'])));
       allow delete: if canManageAccueilCity(resource.data.get('city', null));
     }
 
-    // Adresse qui reçoit les visites : jamais publique, lue par Apps Script (Accueil.gs)
+    // Adresses qui reçoivent les visites (email : l'entreprise ; people : {id de la personne: e-mail}) et
+    // code d'accès (pin, 4 chiffres ou '') : jamais publics, lus par Apps Script (Accueil.gs)
     // avec le compte de service, au moment d'envoyer l'e-mail. La case doit exister (sa ville décide).
     function canManageAccueilEmail(id) {
       return isCompanyMember(id)
@@ -207,11 +221,27 @@ service cloud.firestore {
     match /accueilEmails/{id} {
       allow read, delete: if canManageAccueilEmail(id);
       allow create, update: if canManageAccueilEmail(id)
-        && request.resource.data.keys().hasOnly(['email', 'updatedAt'])
-        && request.resource.data.email is string
-        && request.resource.data.email.size() <= 120
-        && (request.resource.data.email == ''
-            || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'));
+        && request.resource.data.keys().hasOnly(['email', 'people', 'pin', 'updatedAt'])
+        && (!('people' in request.resource.data)
+            || (request.resource.data.people is map && request.resource.data.people.size() <= 30))
+        && (!('pin' in request.resource.data) || request.resource.data.pin == ''
+            || (request.resource.data.pin is string && request.resource.data.pin.matches('^[0-9]{4}$')))
+        && (!('email' in request.resource.data)
+            || (request.resource.data.email is string
+                && request.resource.data.email.size() <= 120
+                && (request.resource.data.email == ''
+                    || request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$'))));
+    }
+
+    // Visites annoncées dans le portail (bandeau de accueil-visites.js), écrites par l'outil de
+    // réservation avec le compte de service (reservation/Accueil.gs). Chaque coworker prévenu
+    // les lit et marque « C'est noté » en s'ajoutant à seenBy.
+    match /accueilVisits/{id} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.uids;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.uids
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenBy'])
+        && request.resource.data.seenBy is list
+        && request.resource.data.seenBy.size() <= 30;
     }
 
     // ── Barre de communication (communications.js) ─────────

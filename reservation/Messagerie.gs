@@ -287,7 +287,7 @@ function pushToUsers(uids, note, token) {
     muteHttpExceptions: true,
     payload: JSON.stringify({ message: {
       token: t.token,
-      data: { title: String(note.title || 'Hiptown'), body: body, tag: String(note.tag || 'messagerie'), url: './#messagerie' },
+      data: { title: String(note.title || 'Hiptown'), body: body, tag: String(note.tag || 'messagerie'), url: String(note.url || './#messagerie') },
       webpush: { headers: { Urgency: 'high', TTL: '86400' } }
     } })
   })));

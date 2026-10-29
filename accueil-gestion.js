@@ -2,14 +2,18 @@
 //  PORTAIL HIPTOWN — Gestion > Accueil visiteurs
 //  L'équipe d'une ville ajoute, modifie et retire les entreprises affichées sur la page
 //  publique d'accueil de sa ville (lien dans PORTAIL.accueilPages, config.js).
-//  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js) :
-//  ici, on ne change que leur logo et leur e-mail.
+//  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js) et
+//  décident elles-mêmes dans Mon profil : apparaître ou non, code d'accès, personnes affichées.
+//  Ici, on voit leurs choix et on ne change que leur logo et leur e-mail.
 // ═══════════════════════════════════════════════════════
 
 import {
-  listAccueilCards, getAccueilEmail, setAccueilEmail, saveManualAccueilCard,
-  setAccueilLogo, deleteAccueilCard, resizeLogo, isSafeLogo, isValidEmail
+  listAccueilCards, getAccueilPrivate, setAccueilPrivate, saveManualAccueilCard,
+  setAccueilLogo, deleteAccueilCard, resizeLogo, isSafeLogo, isValidEmail, isValidPin, newPersonId
 } from "./accueil-fiche.js";
+
+const MAX_PEOPLE = 30; // même limite que firestore.rules
+
 
 const $ = id => document.getElementById(id);
 
@@ -17,6 +21,7 @@ let cities = [];      // villes que l'admin connecté gère
 let city = null;      // ville affichée
 let editing = null;   // case en cours de modification (null = nouvelle)
 let formLogo = "";
+let formPeople = [];  // [{id, name, role, email}]
 
 function escapeHtml(text) {
   return String(text == null ? "" : text)
@@ -60,13 +65,13 @@ async function refresh() {
   list.innerHTML = `<p style="color:#94a3b8;padding:12px;">Chargement…</p>`;
   try {
     const cards = await listAccueilCards(city);
-    const emails = await Promise.all(cards.map(c => getAccueilEmail(c.id).catch(() => "")));
+    const privates = await Promise.all(cards.map(c => getAccueilPrivate(c.id).catch(() => ({ email: "", people: {}, pin: "" }))));
     list.innerHTML = "";
     if (!cards.length) {
       list.innerHTML = `<p style="color:#94a3b8;padding:12px;">Aucune entreprise sur la page de ${escapeHtml(cityName(city))} pour le moment.</p>`;
       return;
     }
-    cards.forEach((c, i) => list.appendChild(cardRow(c, emails[i])));
+    cards.forEach((c, i) => list.appendChild(cardRow(c, privates[i])));
   } catch (err) {
     console.error(err);
     list.innerHTML = `<p style="color:#dc2626;padding:12px;">Impossible de charger les entreprises.</p>`;
@@ -81,12 +86,20 @@ function renderLink() {
   $("accueil-link-copy").hidden = !url;
 }
 
-function cardRow(c, email) {
+/** Personnes affichées sous une case (choisies par l'équipe ou, pour une entreprise du portail, par elle-même). */
+function peopleOf(c) {
+  return Array.isArray(c.people) ? c.people : [];
+}
+
+function cardRow(c, priv) {
   const sites = sitesOf(city);
+  const people = peopleOf(c);
   const details = [
+    c.manual ? "" : (c.visible === true ? "compte portail · affichée" : "compte portail · masquée par l'entreprise"),
     c.siteId ? (sites[c.siteId] || c.siteId) : "",
-    email || "pas d'e-mail : l'équipe Hiptown est prévenue",
-    c.manual ? "" : "compte portail"
+    priv.email || "pas d'e-mail : l'équipe Hiptown est prévenue",
+    people.length ? people.length + (people.length > 1 ? " personnes" : " personne") : "",
+    c.locked ? "code d'accès" : ""
   ].filter(Boolean).join(" · ");
   const logo = isSafeLogo(c.logo) ? `<img src="${escapeHtml(c.logo)}" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;"/>`
     : `<span class="company-badge" style="width:44px;height:44px;font-size:13px;">${escapeHtml((c.name || "?").slice(0, 2).toUpperCase())}</span>`;
@@ -102,7 +115,7 @@ function cardRow(c, email) {
       <button class="direct-btn" type="button" data-act="edit" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
       ${c.manual ? `<button class="direct-btn" type="button" data-act="delete" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;color:#dc2626;">Retirer</button>` : ""}
     </div>`;
-  row.querySelector('[data-act="edit"]').addEventListener("click", () => openForm(c, email));
+  row.querySelector('[data-act="edit"]').addEventListener("click", () => openForm(c, priv));
   row.querySelector('[data-act="delete"]')?.addEventListener("click", async () => {
     if (!confirm(`Retirer « ${c.name} » de la page d'accueil ?`)) return;
     try {
@@ -131,7 +144,32 @@ function renderFormLogo() {
   $("accueil-form-logo-remove").hidden = !formLogo;
 }
 
-function openForm(card, email) {
+function renderFormPeople() {
+  const box = $("accueil-form-people");
+  box.innerHTML = "";
+  formPeople.forEach((p, i) => {
+    const row = document.createElement("div");
+    row.className = "accueil-person";
+    row.innerHTML = `
+      <input type="text" class="profile-input" data-field="name" maxlength="80" placeholder="Nom *" aria-label="Nom"/>
+      <input type="text" class="profile-input" data-field="role" maxlength="60" placeholder="Fonction" aria-label="Fonction"/>
+      <input type="email" class="profile-input accueil-person-email" data-field="email" maxlength="120" placeholder="E-mail (facultatif)" aria-label="E-mail"/>
+      <button class="profile-link" type="button">Retirer</button>`;
+    row.querySelectorAll("input").forEach(input => {
+      input.value = p[input.dataset.field] || "";
+      input.addEventListener("input", () => { p[input.dataset.field] = input.value; });
+    });
+    row.querySelector("button").addEventListener("click", () => {
+      formPeople.splice(i, 1);
+      renderFormPeople();
+    });
+    box.appendChild(row);
+  });
+  $("accueil-form-person-add").hidden = formPeople.length >= MAX_PEOPLE;
+}
+
+function openForm(card, priv) {
+  priv = priv || { email: "", people: {}, pin: "" };
   editing = card || null;
   const portalCard = !!(card && !card.manual);
   $("accueil-form-title").textContent = card ? `Modifier « ${card.name} »` : "Nouvelle entreprise";
@@ -148,7 +186,23 @@ function openForm(card, email) {
 
   formLogo = card && isSafeLogo(card.logo) ? card.logo : "";
   renderFormLogo();
-  $("accueil-form-email").value = email || "";
+  $("accueil-form-email").value = priv.email || "";
+  $("accueil-form-manual").hidden = portalCard;
+  $("accueil-form-portal").hidden = !portalCard;
+  if (portalCard) {
+    const people = peopleOf(card);
+    $("accueil-form-portal-status").textContent = [
+      card.visible === true ? "L'entreprise a choisi d'apparaître sur la page." : "L'entreprise a choisi de ne pas apparaître sur la page.",
+      card.locked ? "Elle demande un code d'accès." : "",
+      people.length ? "Personnes affichées : " + people.map(p => p.name).join(", ") + "." : "Aucune personne affichée.",
+      "Ces choix se font dans Mon profil, par l'entreprise."
+    ].filter(Boolean).join(" ");
+  }
+  formPeople = (card && card.manual && Array.isArray(card.people) ? card.people : []).map(p => ({
+    id: p.id, name: p.name || "", role: p.role || "", email: priv.people[p.id] || ""
+  }));
+  renderFormPeople();
+  $("accueil-form-pin").value = card && card.manual && card.locked ? priv.pin : "";
   showMessage("accueil-form-message", "");
   $("accueil-form").hidden = false;
   $("accueil-add").hidden = true;
@@ -166,6 +220,16 @@ async function saveForm() {
   const email = $("accueil-form-email").value.trim().toLowerCase();
   if (!name) return showMessage("accueil-form-message", "Le nom de l'entreprise est obligatoire.", true);
   if (email && !isValidEmail(email)) return showMessage("accueil-form-message", "L'adresse e-mail n'est pas valide.", true);
+  const pin = $("accueil-form-pin").value.trim();
+  if (pin && !isValidPin(pin)) return showMessage("accueil-form-message", "Le code d'accès doit faire 4 chiffres.", true);
+  const filled = formPeople.map(p => ({ ...p, name: p.name.trim(), role: p.role.trim(), email: p.email.trim().toLowerCase() }))
+    .filter(p => p.name || p.role || p.email);
+  if (filled.some(p => !p.name)) return showMessage("accueil-form-message", "Chaque personne doit avoir un nom.", true);
+  const wrong = filled.find(p => p.email && !isValidEmail(p.email));
+  if (wrong) return showMessage("accueil-form-message", `L'e-mail de ${wrong.name} n'est pas valide.`, true);
+  const people = filled.map(p => ({ id: p.id || newPersonId(), name: p.name, role: p.role }));
+  const peopleEmails = {};
+  filled.forEach((p, i) => { if (p.email) peopleEmails[people[i].id] = p.email; });
 
   const btn = $("accueil-form-save");
   btn.disabled = true;
@@ -174,11 +238,12 @@ async function saveForm() {
     if (editing && !editing.manual) {
       id = editing.id;
       await setAccueilLogo(id, formLogo);
+      await setAccueilPrivate(id, { email }); // le code et les collaborateurs restent ceux de l'entreprise
     } else {
       id = await saveManualAccueilCard(editing ? editing.id : null,
-        { name, city, siteId: $("accueil-form-site").value || null, logo: formLogo });
+        { name, city, siteId: $("accueil-form-site").value || null, logo: formLogo, people, locked: !!pin });
+      await setAccueilPrivate(id, { email, people: peopleEmails, pin }); // après la case : les règles lisent sa ville
     }
-    await setAccueilEmail(id, email); // après la case : les règles lisent sa ville
     showMessage("accueil-gestion-message", `« ${name} » est enregistrée.`, false);
     closeForm();
     await refresh();
@@ -195,7 +260,12 @@ $("accueil-city")?.addEventListener("change", async e => {
   closeForm();
   await refresh();
 });
-$("accueil-add")?.addEventListener("click", () => openForm(null, ""));
+$("accueil-add")?.addEventListener("click", () => openForm(null, null));
+$("accueil-form-person-add")?.addEventListener("click", () => {
+  formPeople.push({ id: null, name: "", role: "", email: "" });
+  renderFormPeople();
+  $("accueil-form-people").lastElementChild?.querySelector("input")?.focus();
+});
 $("accueil-form-cancel")?.addEventListener("click", closeForm);
 $("accueil-form-save")?.addEventListener("click", saveForm);
 $("accueil-form-logo-input")?.addEventListener("change", async e => {
