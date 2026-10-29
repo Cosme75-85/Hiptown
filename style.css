@@ -1332,6 +1332,7 @@ button.agenda-item:hover { background: #fff4a2; }
   border: 1px solid var(--border); background-size: cover; background-position: center;
 }
 .fond-label { font-size: 13px; font-weight: 600; }
+.son-swatch { display: flex; align-items: center; justify-content: center; font-size: 26px; background: var(--white); aspect-ratio: 16 / 7; }
 .fond-choice[aria-pressed="true"] .fond-label::after { content: " ✓"; }
 
 /* Fonds choisis (attribut posé sur <body>) */

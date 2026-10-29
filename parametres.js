@@ -1,6 +1,8 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Paramètres : fond du portail et couleur des cases
+//  PORTAIL HIPTOWN — Paramètres : fond du portail, couleur des cases et son des notifications
 // ═══════════════════════════════════════════════════════
+
+import { SOUNDS, DEFAULT_SOUND, setNotificationSound, playNotificationSound } from "./notif-sound.js";
 
 // Couleurs de la charte Hiptown (v5, couleurs 2023) éclaircies à 20 %, comme le « gris chaud light » de la charte :
 // vert d'eau #67DFCB, menthe #68DEA4, citron #FFE700, lavande #A781D7, gris chaud #D9D4CD.
@@ -30,9 +32,11 @@ export const CASES = [
 ];
 
 // Un réglage = une liste de choix, un champ du profil, un attribut posé sur <body> (lu par style.css)
+// (le son n'a pas d'attribut : il est passé à notif-sound.js)
 const SETTINGS = {
   background: { choices: BACKGROUNDS, fallback: "lavande", attr: "fond",     listId: "settings-backgrounds", saved: "Fond enregistré ✓" },
-  cases:      { choices: CASES,       fallback: "blanc",   attr: "cases",    listId: "settings-cases",       saved: "Couleur des cases enregistrée ✓" }
+  cases:      { choices: CASES,       fallback: "blanc",   attr: "cases",    listId: "settings-cases",       saved: "Couleur des cases enregistrée ✓" },
+  sound:      { choices: SOUNDS,      fallback: DEFAULT_SOUND, attr: null,   listId: "settings-sounds",      saved: "Son des notifications enregistré ✓" }
 };
 
 const STORAGE_PREFIX = "hiptown-reglages:";
@@ -45,6 +49,7 @@ function valid(key, id) {
 function applySetting(key, id) {
   const { attr, fallback, choices } = SETTINGS[key];
   id = valid(key, id);
+  if (key === "sound") { setNotificationSound(id); return; }
   if (id === fallback) delete document.body.dataset[attr];
   else document.body.dataset[attr] = id;
   if (key === "background") {
@@ -106,7 +111,8 @@ export function initSettingsPage({ getContext, save, onClose }) {
     const list = $(setting.listId);
     list.innerHTML = setting.choices.map(c => `
       <button type="button" class="fond-choice" data-choice="${c.id}" aria-pressed="false">
-        <span class="fond-swatch fond-swatch-${key}-${c.id}" style="background:${c.swatch};"></span>
+        ${c.icon ? `<span class="fond-swatch son-swatch" aria-hidden="true">${c.icon}</span>`
+                 : `<span class="fond-swatch fond-swatch-${key}-${c.id}" style="background:${c.swatch};"></span>`}
         <span class="fond-label">${c.label}</span>
       </button>`).join("");
 
@@ -116,6 +122,7 @@ export function initSettingsPage({ getContext, save, onClose }) {
       const id = btn.dataset.choice;
       const { uid } = getContext();
       applySetting(key, id);
+      if (key === "sound") playNotificationSound(id); // écoute du son choisi
       markSelected(key, id);
       remember(uid, { ...remembered(uid), [key]: id });
       showMessage("", false);

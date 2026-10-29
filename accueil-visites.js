@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { auth, db } from "./firebase-config.js";
+import { playNotificationSound } from "./notif-sound.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection, doc, query, where, onSnapshot, updateDoc, arrayUnion
@@ -14,6 +15,7 @@ import {
 
 const box = document.getElementById("accueil-visits");
 let stop = null;
+let known = null; // visites déjà affichées (null : premier chargement, sans son)
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -34,6 +36,10 @@ function render(visits, uid) {
   const open = visits.filter(v => v.day === today && !(v.seenBy || []).includes(uid))
     .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
   box.hidden = !open.length;
+  // Son pour une visite qui vient d'arriver ; nombre d'attentes pour la pastille de l'icône (messagerie.js)
+  if (known && open.some(v => !known.has(v.id))) playNotificationSound();
+  known = new Set(open.map(v => v.id));
+  document.dispatchEvent(new CustomEvent("hiptown-visits", { detail: { count: open.length } }));
   box.innerHTML = open.map(v => `
     <div class="accueil-visit" role="alert">
       <div class="accueil-visit-text">
@@ -49,6 +55,8 @@ function watch(uid) {
   if (stop) { stop(); stop = null; }
   if (!box) return;
   box.hidden = true;
+  known = null;
+  document.dispatchEvent(new CustomEvent("hiptown-visits", { detail: { count: 0 } }));
   if (!uid) return;
   // Un seul filtre (pas d'index composé à créer) : Accueil.gs efface les visites des jours passés
   const q = query(collection(db, "accueilVisits"), where("uids", "array-contains", uid));
