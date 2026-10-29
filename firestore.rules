@@ -105,6 +105,9 @@ service cloud.firestore {
         && (!('sound' in data)
             || data.sound in ['carillon', 'ding', 'pop', 'trio', 'oiseau', 'chat', 'chien', 'canard',
                            'grenouille', 'vache', 'aucun'])
+        // Couleur des notifications (même liste que parametres.js)
+        && (!('notifColor' in data)
+            || data.notifColor in ['rouge', 'navy', 'lavande', 'corail', 'vert-eau', 'menthe'])
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
@@ -132,12 +135,12 @@ service cloud.firestore {
             && !request.resource.data.keys().hasAny(['adminLevel', 'siteIds']));
 
       // Un admin modifie les comptes de son périmètre, sans pouvoir les en sortir.
-      // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste, sa ville, son fond et la couleur de ses cases
+      // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste, sa ville, et ses réglages (fond, cases, son et couleur des notifications)
       allow update: if (canWriteUser(resource.data) && canWriteUser(request.resource.data))
         || canMoveClientToCity(resource.data, request.resource.data)
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases', 'sound'])
+                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases', 'sound', 'notifColor'])
             && isValidProfile(request.resource.data));
 
       allow delete: if canWriteUser(resource.data);

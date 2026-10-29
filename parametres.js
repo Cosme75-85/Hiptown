@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Paramètres : fond du portail, couleur des cases et son des notifications
+//  PORTAIL HIPTOWN — Paramètres : fond du portail, couleur des cases, son et couleur des notifications
 // ═══════════════════════════════════════════════════════
 
 import { SOUNDS, DEFAULT_SOUND, setNotificationSound, playNotificationSound } from "./notif-sound.js";
@@ -31,12 +31,25 @@ export const CASES = [
   { id: "menthe",   label: "Menthe",     swatch: "#e1f8ed" }
 ];
 
+// Couleur des notifications : pastilles (messages non lus, tuiles) et bandeau d'un visiteur à l'accueil.
+// Rouge par défaut, puis les couleurs foncées de la charte Hiptown (pleine intensité).
+// « texte » : couleur du texte posé dessus, lisible sur chaque fond.
+export const NOTIF_COLORS = [
+  { id: "rouge",    label: "Rouge",            swatch: "#dc2626" },
+  { id: "navy",     label: "Bleu anthracite",  swatch: "#1e1847" },
+  { id: "lavande",  label: "Lavande",          swatch: "#a781d7" },
+  { id: "corail",   label: "Corail",           swatch: "#f47a5b" },
+  { id: "vert-eau", label: "Vert d'eau",       swatch: "#67dfcb" },
+  { id: "menthe",   label: "Menthe",           swatch: "#68dea4" }
+];
+
 // Un réglage = une liste de choix, un champ du profil, un attribut posé sur <body> (lu par style.css)
 // (le son n'a pas d'attribut : il est passé à notif-sound.js)
 const SETTINGS = {
   background: { choices: BACKGROUNDS, fallback: "lavande", attr: "fond",     listId: "settings-backgrounds", saved: "Fond enregistré ✓" },
   cases:      { choices: CASES,       fallback: "blanc",   attr: "cases",    listId: "settings-cases",       saved: "Couleur des cases enregistrée ✓" },
-  sound:      { choices: SOUNDS,      fallback: DEFAULT_SOUND, attr: null,   listId: "settings-sounds",      saved: "Son des notifications enregistré ✓" }
+  sound:      { choices: SOUNDS,      fallback: DEFAULT_SOUND, attr: null,   listId: "settings-sounds",      saved: "Son des notifications enregistré ✓" },
+  notifColor: { choices: NOTIF_COLORS, fallback: "rouge",  attr: "notif",    listId: "settings-notif-colors", saved: "Couleur des notifications enregistrée ✓" }
 };
 
 const STORAGE_PREFIX = "hiptown-reglages:";
