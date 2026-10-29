@@ -101,6 +101,9 @@ service cloud.firestore {
             || data.background in ['lavande', 'blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe', 'nuit', 'coworking'])
         && (!('cases' in data)
             || data.cases in ['blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe'])
+        // Son des notifications (même liste que notif-sound.js)
+        && (!('sound' in data)
+            || data.sound in ['carillon', 'ding', 'pop', 'trio', 'aucun'])
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
@@ -133,7 +136,7 @@ service cloud.firestore {
         || canMoveClientToCity(resource.data, request.resource.data)
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases'])
+                 .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases', 'sound'])
             && isValidProfile(request.resource.data));
 
       allow delete: if canWriteUser(resource.data);

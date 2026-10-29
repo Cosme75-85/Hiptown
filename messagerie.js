@@ -26,6 +26,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { app, auth, db } from "./firebase-config.js";
+import { playNotificationSound } from "./notif-sound.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection, doc, query, where, orderBy, limitToLast, onSnapshot, writeBatch, updateDoc, serverTimestamp,
@@ -168,9 +169,19 @@ async function setAppBadge(n) {
   } catch (err) { /* navigation privée */ }
 }
 
+// Visiteurs en attente à l'accueil (accueil-visites.js) : comptés dans la pastille de l'icône
+let waitingVisits = 0;
+document.addEventListener("hiptown-visits", e => { waitingVisits = e.detail?.count || 0; if (me) setAppBadge(unreadCount() + waitingVisits); });
+
+// Son quand un message arrive, portail ouvert (pas pendant le chargement des discussions)
+let lastUnread = 0;
+let soundFrom = 0;
+
 function applyBadge() {
   const n = unreadCount();
-  if (me) setAppBadge(n);
+  if (me) setAppBadge(n + waitingVisits);
+  if (me && n > lastUnread && Date.now() > soundFrom) playNotificationSound();
+  lastUnread = n;
   const tile = document.querySelector('#tiles-grid .tile[data-id="messages"], #tiles-grid .tile[data-id="msgteam"]');
   if (!tile) return;
   let badge = tile.querySelector(".tile-badge");
@@ -597,6 +608,8 @@ document.addEventListener("hiptown-dashboard", e => {
     scope: d.scope || null
   };
   channels = groupChannels();
+  lastUnread = 0;
+  soundFrom = Date.now() + 4000;
   if (isTeam()) watchInbox();
   else watchOwnConversation();
   watchChannels();
