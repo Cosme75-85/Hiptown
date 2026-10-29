@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  PORTAIL HIPTOWN — Visites à l'accueil (clients coworking)
+//  PORTAIL HIPTOWN — Visites à l'accueil (clients coworking et contacts de l'équipe)
 //  Quand un visiteur se présente sur la page d'accueil visiteurs pour l'entreprise du client,
 //  l'outil de réservation (reservation/Accueil.gs) écrit accueilVisits/{id} : un bandeau
 //  s'affiche en haut du portail, en temps réel, jusqu'à ce que le client clique « C'est noté ».
@@ -72,7 +72,7 @@ box?.addEventListener("click", async e => {
 
 document.addEventListener("hiptown-dashboard", e => {
   const d = e.detail || {};
-  watch(d.space === "coworking" ? d.uid : null);
+  watch(d.space === "coworking" || d.space === "hiptown" ? d.uid : null);
 });
 
 onAuthStateChanged(auth, user => { if (!user) watch(null); });
