@@ -103,7 +103,8 @@ service cloud.firestore {
             || data.cases in ['blanc', 'gris', 'mauve', 'citron', 'vert-eau', 'menthe'])
         // Son des notifications (même liste que notif-sound.js)
         && (!('sound' in data)
-            || data.sound in ['carillon', 'ding', 'pop', 'trio', 'aucun'])
+            || data.sound in ['carillon', 'ding', 'pop', 'trio', 'oiseau', 'chat', 'chien', 'canard',
+                           'grenouille', 'vache', 'aucun'])
         && (!('photo' in data) || data.photo == ''
             || (data.photo is string
                 && data.photo.size() <= 150000
