@@ -1,49 +1,60 @@
 # Factures reçues par mail → Google Drive
 
 Petit script Google Apps Script, **séparé** de l'outil de réservation (dossier `reservation/`).
-Toutes les heures, il enregistre dans Drive **tous les PDF reçus** dans Gmail, que le mail parle de facture ou non :
+Toutes les heures, il regarde les PDF reçus dans Gmail, **lit leur contenu** et ne range dans Drive
+que les vraies factures :
 
 ```
 Factures reçues/
   2026/
     2026-11/
       2026-11-03 - Orange - facture_123.pdf
+PDF écartés (pas des factures)/
+  2026-11-03 - ACME - devis_45.pdf
 ```
 
-Ce qui vient de Hiptown est ignoré : mails envoyés, mails d'une adresse @hiptown.com, mails dont l'expéditeur
-s'appelle « Hiptown » (factures clients envoyées par un logiciel de facturation), et PDF dont le nom contient
-« devis » ou « NABO06 » (tes devis).
+**Comment il reconnaît une facture.** Il lit le PDF (même scanné) et regarde le premier mot-clé qui apparaît,
+en pratique le titre du document : « Facture », « Invoice », « Avoir n° », « Note d'honoraires », « Receipt »…
+→ facture. « Devis », « Proposition commerciale », « Bon de commande », « Pro forma », « Contrat de »… → écarté.
+Une facture qui cite un devis en référence reste donc bien une facture.
 
-Chaque mail rangé reçoit le libellé Gmail **Factures/Dans Drive**. Rien d'autre n'est modifié dans Gmail,
-et un PDF n'est jamais copié deux fois.
+Ce qui n'est pas une facture part dans **PDF écartés (pas des factures)**, pour que tu puisses vérifier :
+rien n'est perdu. Tu peux vider ce dossier quand tu veux.
 
-## Installation (5 minutes, une seule fois)
+Ce qui vient de Hiptown est ignoré : mails envoyés, adresses @hiptown.com, expéditeurs nommés « Hiptown »
+(logiciel de facturation qui envoie en ton nom), et tout PDF portant le SIRET de Hiptown (tes devis et factures clients).
 
-À faire **connecté avec le compte Gmail qui reçoit les factures** (cc@hiptown.com).
+## Installation ou mise à jour
 
-1. Va sur [script.google.com](https://script.google.com) > **Nouveau projet**. Renomme-le « Factures vers Drive ».
-2. Remplace tout le contenu de `Code.gs` par celui de [`Factures.gs`](Factures.gs) (bouton « Copy raw file » sur GitHub), puis 💾 **Enregistrer**.
-3. En haut, choisis la fonction **`installer`** puis **Exécuter**. Google demande les autorisations
-   (Gmail, Drive, déclencheurs) : **Autoriser**. Le journal affiche l'adresse du dossier Drive créé.
-4. Choisis la fonction **`rattraperAnciennesFactures`** puis **Exécuter** : les factures de la dernière année
-   sont rangées. S'il y en a beaucoup, relance-la jusqu'à ce que le journal indique « 0 facture(s) enregistrée(s) ».
+À faire **connecté avec le compte Gmail qui reçoit les factures**.
 
-C'est tout : ensuite le script tourne seul toutes les heures, même ordinateur éteint.
+1. Sur [script.google.com](https://script.google.com), ouvre le projet « Factures vers Drive »
+   (ou crée-le : **Nouveau projet**).
+2. Remplace tout le contenu de `Code.gs` par celui de [`Factures.gs`](Factures.gs) (« Copy raw file » sur GitHub), puis 💾 **Enregistrer**.
+3. **Nouveau :** dans la colonne de gauche, **Services** > **+** > **Drive API** > version **v3** > **Ajouter**.
+   C'est ce qui permet au script de lire le contenu des PDF.
+4. Choisis la fonction **`installer`** > **Exécuter** et accepte les autorisations (Google en demande une de plus pour lire les PDF).
+5. **Si le dossier contient déjà des PDF qui ne sont pas des factures :** lance **`trierDossierFactures`**.
+   Elle relit chaque PDF du dossier et déplace les devis, propositions, etc. dans « PDF écartés ».
+   Relance-la tant que le journal affiche « Pas fini ».
+6. Première installation seulement : lance **`rattraperAnciennesFactures`** pour l'année écoulée
+   (relance-la tant que le journal affiche « Pas fini »).
+
+Ensuite le script tourne seul toutes les heures, même ordinateur éteint.
 
 ## Régler
 
-Tout se règle en haut de `Factures.gs`, dans `FACTURES` :
+Tout se règle en haut de `Factures.gs` :
 
 | Réglage | Rôle |
 |---|---|
 | `dossierId` | Pour ranger dans un dossier Drive existant : colle son identifiant (la fin de son adresse, après `folders/`). |
-| `recherche` | Quels mails sont pris (syntaxe de la recherche Gmail). Par défaut : tout mail reçu avec un PDF joint, sauf ceux de Hiptown. |
 | `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (ex. `'newsletter@exemple.fr'`, `'exemple.fr'`). |
-| `nomsExpediteurIgnores` | Mots du nom d'expéditeur à ignorer (par défaut `hiptown`). |
-| `fichiersIgnores` | Mots du nom de fichier à ignorer (par défaut `devis`, `NABO06`). Ajoute le début de la numérotation de tes factures clients. |
+| `fichiersIgnores` | Mots du nom de fichier écartés sans lecture (par défaut `devis`, `proposition`, `NABO06`). |
+| `MOTS_FACTURE` / `MOTS_AUTRE` | Les mots-clés qui décident. Une facture écartée à tort ? Ajoute le mot de son titre à `MOTS_FACTURE`. |
 
-Un PDF qui n'est pas une facture arrive dans Drive (contrat, plaquette…) ? Ajoute son expéditeur à `expediteursIgnores`.
+Une facture partie par erreur dans « PDF écartés » : déplace-la à la main dans le bon mois, le script ne la touchera plus.
 
 ## Arrêter
 
-Lance la fonction **`desinstaller`**. Le dossier et les factures déjà rangées restent dans Drive.
+Lance la fonction **`desinstaller`**. Les dossiers et les factures déjà rangées restent dans Drive.
