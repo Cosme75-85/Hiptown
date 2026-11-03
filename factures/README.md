@@ -37,10 +37,12 @@ Tout se règle en haut de `Factures.gs`, dans `FACTURES` :
 | Réglage | Rôle |
 |---|---|
 | `dossierId` | Pour ranger dans un dossier Drive existant : colle son identifiant (la fin de son adresse, après `folders/`). |
-| `recherche` | Quels mails sont pris (syntaxe de la recherche Gmail). Par défaut : PDF joint + « facture », ou « invoice ». |
-| `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (par défaut : tes propres envois de devis). |
+| `recherche` | Quels mails sont pris (syntaxe de la recherche Gmail). Par défaut : tout mail reçu avec un PDF joint, sauf ceux de Hiptown. |
+| `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (ex. `'newsletter@exemple.fr'`, `'exemple.fr'`). |
+| `nomsExpediteurIgnores` | Mots du nom d'expéditeur à ignorer (par défaut `hiptown`). |
+| `fichiersIgnores` | Mots du nom de fichier à ignorer (par défaut `devis`, `NABO06`). Ajoute le début de la numérotation de tes factures clients. |
 
-Une facture oubliée ? Ajoute son mot-clé à `recherche` (ex. `OR "reçu"`) puis relance `rattraperAnciennesFactures`.
+Un PDF qui n'est pas une facture arrive dans Drive (contrat, plaquette…) ? Ajoute son expéditeur à `expediteursIgnores`.
 
 ## Arrêter
 
