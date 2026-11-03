@@ -4,7 +4,8 @@
  * Toutes les heures, ce script regarde les PDF reçus dans Gmail, LIT LEUR CONTENU
  * et n'enregistre dans Drive que les vraies factures :
  *
- *   Factures reçues / 2026 / 2026-11 / 2026-11-03 - Orange - facture_123.pdf
+ *   Drive partagé Hiptown Team V2 / 5. Exploitation / 8. Bordeaux /
+ *     Factures reçues / 2026 / 2026-11 / 2026-11-03 - Orange - facture_123.pdf
  *
  * - Devis, propositions commerciales, bons de commande, factures pro forma, plaquettes… :
  *   écartés dans un dossier à part « PDF écartés (pas des factures) », pour vérification.
@@ -18,11 +19,12 @@
 
 // ===== Réglages =====
 const FACTURES = {
-  // Nom du dossier Drive principal, créé automatiquement au premier passage.
-  // Pour utiliser un dossier existant, colle son identifiant (la fin de son adresse Drive) dans dossierId.
+  // Dossier Drive où tout est rangé : Drive partagé « Hiptown Team V2 » > 5. Exploitation > 8. Bordeaux.
+  // (identifiant = la fin de l'adresse du dossier, après « folders/ »). Vide = « Mon Drive ».
+  dossierParentId: '1SUQaSIWtXFuftI7ZxUm7bwvkL82L45Qt',
+  // Sous-dossiers créés automatiquement dans ce dossier au premier passage.
   dossierNom: 'Factures reçues',
-  dossierId: '',
-  // Dossier où partent les PDF qui ne sont pas des factures (à vérifier ou supprimer quand tu veux).
+  // Ceux qui ne sont pas des factures (à vérifier ou supprimer quand tu veux).
   dossierEcartesNom: 'PDF écartés (pas des factures)',
 
   // Recherche Gmail : tous les mails REÇUS avec un PDF, sauf ceux de Hiptown.
@@ -261,7 +263,6 @@ function nettoyer_(nom) {
 }
 
 function dossierPrincipal_() {
-  if (FACTURES.dossierId) return DriveApp.getFolderById(FACTURES.dossierId);
   return dossierMemorise_('FACTURES_DOSSIER_ID', FACTURES.dossierNom);
 }
 
@@ -269,7 +270,10 @@ function dossierEcartes_() {
   return dossierMemorise_('FACTURES_ECARTES_ID', FACTURES.dossierEcartesNom);
 }
 
+/** Sous-dossier « nom » du dossier parent, retrouvé par son identifiant mémorisé ou créé. */
 function dossierMemorise_(cle, nom) {
+  const parentId = FACTURES.dossierParentId;
+  cle += '_' + (parentId || 'mon-drive');   // changer de dossier parent = nouveaux sous-dossiers
   const props = PropertiesService.getScriptProperties();
   const id = props.getProperty(cle);
   if (id) {
@@ -278,7 +282,9 @@ function dossierMemorise_(cle, nom) {
       if (!d.isTrashed()) return d;
     } catch (err) { /* supprimé : on le recrée */ }
   }
-  const dossier = DriveApp.createFolder(nom);
+  const parent = parentId ? DriveApp.getFolderById(parentId) : DriveApp.getRootFolder();
+  const existants = parent.getFoldersByName(nom);
+  const dossier = existants.hasNext() ? existants.next() : parent.createFolder(nom);
   props.setProperty(cle, dossier.getId());
   return dossier;
 }

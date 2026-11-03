@@ -4,6 +4,8 @@ Petit script Google Apps Script, **séparé** de l'outil de réservation (dossie
 Toutes les heures, il regarde les PDF reçus dans Gmail, **lit leur contenu** et ne range dans Drive
 que les vraies factures :
 
+Tout est rangé dans le Drive partagé **Hiptown Team V2 > 5. Exploitation > 8. Bordeaux** :
+
 ```
 Factures reçues/
   2026/
@@ -34,11 +36,13 @@ Ce qui vient de Hiptown est ignoré : mails envoyés, adresses @hiptown.com, exp
 3. **Nouveau :** dans la colonne de gauche, **Services** > **+** > **Drive API** > version **v3** > **Ajouter**.
    C'est ce qui permet au script de lire le contenu des PDF.
 4. Choisis la fonction **`installer`** > **Exécuter** et accepte les autorisations (Google en demande une de plus pour lire les PDF).
-5. **Si le dossier contient déjà des PDF qui ne sont pas des factures :** lance **`trierDossierFactures`**.
-   Elle relit chaque PDF du dossier et déplace les devis, propositions, etc. dans « PDF écartés ».
-   Relance-la tant que le journal affiche « Pas fini ».
-6. Première installation seulement : lance **`rattraperAnciennesFactures`** pour l'année écoulée
+5. Lance **`rattraperAnciennesFactures`** pour ranger les factures de l'année écoulée
    (relance-la tant que le journal affiche « Pas fini »).
+6. L'ancien dossier « Factures reçues » de **Mon Drive** (créé par la première version) n'est plus utilisé :
+   tu peux le supprimer.
+
+`trierDossierFactures` relit les PDF déjà rangés et sort ce qui n'est pas une facture : utile si tu ajoutes
+des PDF à la main dans « Factures reçues ».
 
 Ensuite le script tourne seul toutes les heures, même ordinateur éteint.
 
@@ -48,7 +52,7 @@ Tout se règle en haut de `Factures.gs` :
 
 | Réglage | Rôle |
 |---|---|
-| `dossierId` | Pour ranger dans un dossier Drive existant : colle son identifiant (la fin de son adresse, après `folders/`). |
+| `dossierParentId` | Dossier où sont créés « Factures reçues » et « PDF écartés » (par défaut : 8. Bordeaux). Colle l'identifiant d'un autre dossier (la fin de son adresse, après `folders/`) pour changer. |
 | `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (ex. `'newsletter@exemple.fr'`, `'exemple.fr'`). |
 | `fichiersIgnores` | Mots du nom de fichier écartés sans lecture (par défaut `devis`, `proposition`, `NABO06`). |
 | `MOTS_FACTURE` / `MOTS_AUTRE` | Les mots-clés qui décident. Une facture écartée à tort ? Ajoute le mot de son titre à `MOTS_FACTURE`. |
