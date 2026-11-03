@@ -21,12 +21,17 @@ PDF écartés (pas des factures)/
 **Comment il reconnaît une facture.**
 
 1. **Par le nom du fichier**, d'abord. S'il contient *devis*, *AO*, *appel d'offre(s)*, *plaquette(s)*,
-   *offre commerciale*, *offre(s)* ou *proposition* → écarté d'office. Sinon, s'il contient *facture*, *invoice*,
-   *fact* ou un numéro du type *F-1234* → rangé d'office. (Si un nom contient les deux, par ex. « Facture offre fibre », il est écarté.)
+   *offre commerciale*, *offre(s)*, *proposition*, *CGV*, *CGU*, *RIB*, *IBAN*, *KBIS*, *extrait de compte*,
+   *grand livre*, *relevé*, *attestation*, *mandat*, *SEPA*, *contrat*, *présentation*, *rapport*, *plan(s)*
+   ou *constat* → écarté d'office. Sinon, s'il contient *facture*, *invoice*,
+   *fact* ou un numéro de facture (*F-1234*, *F202603333*, *FV2026-025387*, *FAC26-04-2556*, *FS27771*…)
+   → rangé d'office. (Si un nom contient les deux, par ex. « Facture offre fibre », il est écarté.)
 2. **Par le contenu**, si le nom ne dit rien (« scan001.pdf »…) : il lit le PDF (même scanné) et regarde le premier mot-clé qui apparaît,
 en pratique le titre du document : « Facture », « Invoice », « Avoir n° », « Note d'honoraires », « Receipt »…
 → facture. « Devis », « Proposition commerciale », « Bon de commande », « Pro forma », « Contrat de »… → écarté.
 Une facture qui cite un devis en référence reste donc bien une facture.
+
+Un même PDF reçu dans plusieurs mails (relance, transfert) n'est rangé qu'une fois.
 
 Ce qui n'est pas une facture part dans **PDF écartés (pas des factures)**, pour que tu puisses vérifier :
 rien n'est perdu. Tu peux vider ce dossier quand tu veux.
@@ -48,6 +53,10 @@ Ce qui vient de Hiptown est ignoré : mails envoyés, adresses @hiptown.com, exp
    (relance-la tant que le journal affiche « Pas fini »).
 6. L'ancien dossier « Factures reçues » de **Mon Drive** (créé par la première version) n'est plus utilisé :
    tu peux le supprimer.
+
+**Après une mise à jour des règles**, lance **`retrierTout`** : elle re-trie les deux dossiers avec les règles
+actuelles (les factures écartées à tort reviennent, les CGV et autres sortent, les doublons partent dans
+« PDF écartés »). Relance-la tant que le journal affiche « Pas fini ».
 
 `trierDossierFactures` relit les PDF déjà rangés et sort ce qui n'est pas une facture : utile si tu ajoutes
 des PDF à la main dans « Factures reçues ».

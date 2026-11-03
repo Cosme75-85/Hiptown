@@ -41,14 +41,14 @@ const FACTURES = {
   // 1) Un de ces mots dans le nom → écarté d'office (prioritaire).
   nomsFichierEcartes: ['devis', 'AO', 'appel d\'offre', 'appel d\'offres', 'appel offre', 'appels d\'offres',
     'plaquette', 'plaquettes', 'offre commerciale', 'offres commerciales', 'offre', 'offres',
-    'proposition', 'NABO06'],
+    'proposition', 'NABO06',
+    'CGV', 'CGU', 'conditions générales', 'conditions generales', 'RIB', 'IBAN', 'KBIS', 'extrait de compte',
+    'grand livre', 'relevé', 'releve', 'attestation', 'mandat', 'SEPA', 'contrat', 'présentation',
+    'presentation', 'rapport', 'plan', 'plans', 'constat'],
   // 2) Sinon, un de ces mots dans le nom → rangé d'office comme facture.
   nomsFichierFactures: ['facture', 'factures', 'invoice', 'invoices', 'fact'],
-  // … ainsi qu'un numéro de facture du type « F-1234 » ou « F_1234 » dans le nom.
+  // … ainsi qu'un numéro de facture dans le nom : F-1234, F202603333, FV2026-025387, FAC26-04-2556, FS27771…
   // 3) Sinon, le contenu du PDF est lu pour décider.
-
-  // Un document où figure ce SIRET (sans espaces) est un document émis par Hiptown : écarté.
-  siretHiptown: '85395373500018',
 
   // Fenêtre regardée à chaque passage horaire, et pour la première récupération (rattrapage).
   joursParPassage: 3,
@@ -65,9 +65,11 @@ const MOTS_FACTURE = ['facture', 'factures', 'invoice', 'avoir n°', 'facture d\
   'reçu de paiement', 'receipt', 'quittance'];
 const MOTS_AUTRE = ['devis', 'proposition commerciale', 'proposition tarifaire', 'proposition', 'offre de prix',
   'offre commerciale', 'bon de commande', 'estimation', 'quotation', 'quote', 'pro forma', 'proforma',
-  'pro-forma', 'bon de livraison', 'contrat de', 'conditions générales', 'plaquette', 'brochure',
+  'pro-forma', 'bon de livraison', 'contrat de', 'conditions générales', 'conditions generales', 'cgv', 'relevé de compte', 'extrait de compte', 'plaquette', 'brochure',
   'appel d\'offres', 'appel d\'offre', 'offre commerciale'];
-const ETIQUETTE_VERIFIEE = 'Facture vérifiée';
+const ETIQUETTE_VERIFIEE = 'Facture vérifiée (v2)';
+const ETIQUETTE_ECARTE = 'Pas une facture (v2)';
+const ETIQUETTE_DOUBLON = 'Doublon';
 
 /** Passage automatique (déclenché toutes les heures par `installer`). */
 function rangerFactures() {
@@ -110,6 +112,61 @@ function trierDossierFactures() {
     + FACTURES.dossierEcartesNom + ' ».' + (fini ? ' Terminé.' : ' Pas fini : relance la fonction.'));
 }
 
+/**
+ * À lancer à la main après une mise à jour des règles : RE-TRIE LES DEUX DOSSIERS avec les règles actuelles.
+ * - une facture qui était dans « PDF écartés » revient dans « Factures reçues / année / mois » ;
+ * - ce qui n'est pas une facture (CGV, RIB, devis…) part dans « PDF écartés » ;
+ * - un même PDF présent deux fois : le second part dans « PDF écartés », décrit « Doublon ».
+ * Relance-la tant que le journal affiche « Pas fini ».
+ */
+function retrierTout() {
+  const verrou = LockService.getScriptLock();
+  if (!verrou.tryLock(1000)) { Logger.log('Un autre passage est en cours : réessaie dans quelques minutes.'); return; }
+  try {
+    const debut = Date.now();
+    const racine = dossierPrincipal_();
+    const ecartes = dossierEcartes_();
+    let revenues = 0, sorties = 0, doublons = 0, inchanges = 0, fini = true;
+    const traiter = function (f, dansEcartes) {
+      const desc = f.getDescription() || '';
+      if (/\(v2\)$/.test(desc) || desc === ETIQUETTE_DOUBLON) return;
+      const blob = f.getBlob();
+      const empreinte = empreinte_(blob);
+      const deja = PropertiesService.getScriptProperties().getProperty('h_' + empreinte);
+      if (deja && deja !== f.getId() && existe_(deja)) {
+        if (!dansEcartes) f.moveTo(ecartes);
+        f.setDescription(ETIQUETTE_DOUBLON);
+        doublons++;
+        return;
+      }
+      memoriser_(empreinte, f.getId());
+      const nomOrigine = f.getName().replace(/^\d{4}-\d{2}-\d{2} - .*? - /, '');
+      if (estFacture_(blob, nomOrigine, '')) {
+        if (dansEcartes) { f.moveTo(dossierDuMois_(racine, f)); revenues++; } else inchanges++;
+        f.setDescription(ETIQUETTE_VERIFIEE);
+      } else {
+        if (!dansEcartes) { f.moveTo(ecartes); sorties++; } else inchanges++;
+        f.setDescription(ETIQUETTE_ECARTE);
+      }
+    };
+    const parcourir = function (dossier, dansEcartes) {
+      const fichiers = dossier.getFiles();
+      while (fini && fichiers.hasNext()) {
+        if (Date.now() - debut > FACTURES.dureeMaxMs) { fini = false; return; }
+        traiter(fichiers.next(), dansEcartes);
+      }
+      const sous = dossier.getFolders();
+      while (fini && sous.hasNext()) parcourir(sous.next(), dansEcartes);
+    };
+    parcourir(racine, false);
+    if (fini) parcourir(ecartes, true);
+    Logger.log(revenues + ' facture(s) revenue(s) des écartés, ' + sorties + ' PDF sorti(s) des factures, '
+      + doublons + ' doublon(s), ' + inchanges + ' inchangé(s).' + (fini ? ' Terminé.' : ' Pas fini : relance la fonction.'));
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
 /** À lancer une fois à la main : crée les dossiers, le libellé et le déclencheur horaire. */
 function installer() {
   desinstaller();
@@ -130,6 +187,12 @@ function desinstaller() {
 // ===== Fonctionnement =====
 
 function rangerDepuis_(jours) {
+  const verrou = LockService.getScriptLock();
+  if (!verrou.tryLock(1000)) { Logger.log('Un autre passage est déjà en cours : rien à faire.'); return null; }
+  try { return rangerDepuisSansVerrou_(jours); } finally { verrou.releaseLock(); }
+}
+
+function rangerDepuisSansVerrou_(jours) {
   const debutExec = Date.now();
   const requete = FACTURES.recherche + ' newer_than:' + jours + 'd';
   const libelle = libelle_();
@@ -163,14 +226,19 @@ function rangerDepuis_(jours) {
           if (ecartes.getFilesByName(nom).hasNext()) { dejaVus++; continue; }
           if (Date.now() - debutExec > FACTURES.dureeMaxMs) { fini = false; break boucle; }
           const blob = pdfs[k].copyBlob().setName(nom);
+          // Même PDF déjà reçu dans un autre mail (relance, transfert…) : pas de doublon.
+          const empreinte = empreinte_(blob);
+          if (dejaRange_(empreinte)) { dejaVus++; continue; }
+          let fichier;
           if (estFacture_(blob, pdfs[k].getName(), mail.getSubject())) {
-            dossier.createFile(blob).setDescription(ETIQUETTE_VERIFIEE);
+            fichier = dossier.createFile(blob).setDescription(ETIQUETTE_VERIFIEE);
             enregistrees++;
             filAvecFacture = true;
           } else {
-            ecartes.createFile(blob);
+            fichier = ecartes.createFile(blob).setDescription(ETIQUETTE_ECARTE);
             ecartees++;
           }
+          memoriser_(empreinte, fichier.getId());
         }
       }
       if (filAvecFacture) fil.addLabel(libelle);
@@ -200,20 +268,19 @@ function classerNom_(nomFichier) {
     .replace(/[’`]/g, '\'').replace(/[_\-.+()\[\]]+/g, ' ') + ' ';
   if (premierePosition_(n, FACTURES.nomsFichierEcartes.map(minuscule_)) !== -1) return 'autre';
   if (premierePosition_(n, FACTURES.nomsFichierFactures.map(minuscule_)) !== -1) return 'facture';
-  if (/(^|[^a-z0-9])f[-_]\d+/i.test(String(nomFichier || ''))) return 'facture';
+  if (/(^|[^a-z0-9])(f|fa|fac|fact|fv|fs)[-_]?\d{2,}/i.test(String(nomFichier || ''))) return 'facture';
   return null;
 }
 
 function minuscule_(x) { return String(x).toLowerCase(); }
 
 /**
- * Renvoie 'facture', 'autre' ou 'hiptown'.
+ * Renvoie 'facture' ou 'autre'.
  * Règle : le premier mot-clé trouvé dans le document (son titre, en pratique) décide.
  * Si le PDF n'a pas pu être lu, on regarde le nom du fichier puis l'objet du mail.
  */
 function classer_(texte, nomFichier, objet) {
   const t = String(texte || '').toLowerCase();
-  if (t.replace(/\D/g, '').indexOf(FACTURES.siretHiptown) !== -1) return 'hiptown';
   const sources = [t, String(nomFichier || '').toLowerCase().replace(/[_\-.]+/g, ' '), String(objet || '').toLowerCase()];
   for (let i = 0; i < sources.length; i++) {
     const posFacture = premierePosition_(sources[i], MOTS_FACTURE);
@@ -320,6 +387,33 @@ function sousDossier_(racine, annee, mois) {
 function enfant_(parent, nom) {
   const it = parent.getFoldersByName(nom);
   return it.hasNext() ? it.next() : parent.createFolder(nom);
+}
+
+/** Empreinte du contenu du PDF : deux fichiers identiques ont la même. */
+function empreinte_(blob) {
+  return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, blob.getBytes()));
+}
+
+function dejaRange_(empreinte) {
+  const id = PropertiesService.getScriptProperties().getProperty('h_' + empreinte);
+  return !!id && existe_(id);
+}
+
+function memoriser_(empreinte, id) {
+  PropertiesService.getScriptProperties().setProperty('h_' + empreinte, id);
+}
+
+/** Le fichier existe encore (pas supprimé à la main) ? */
+function existe_(id) {
+  try { return !DriveApp.getFileById(id).isTrashed(); } catch (err) { return false; }
+}
+
+/** Dossier « année / mois » d'un fichier, d'après la date au début de son nom (ou sa date de création). */
+function dossierDuMois_(racine, f) {
+  const m = f.getName().match(/^(\d{4})-(\d{2})-\d{2} - /);
+  const annee = m ? m[1] : Utilities.formatDate(f.getDateCreated(), Session.getScriptTimeZone(), 'yyyy');
+  const mois = m ? m[1] + '-' + m[2] : Utilities.formatDate(f.getDateCreated(), Session.getScriptTimeZone(), 'yyyy-MM');
+  return sousDossier_(racine, annee, mois);
 }
 
 function libelle_() {
