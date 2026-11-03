@@ -1,8 +1,9 @@
 /**
  * FACTURES REÇUES PAR MAIL → GOOGLE DRIVE
  *
- * Toutes les heures, ce script regarde les PDF reçus dans Gmail, LIT LEUR CONTENU
- * et n'enregistre dans Drive que les vraies factures :
+ * Toutes les heures, ce script regarde les mails reçus qui parlent de facture (ou invoice).
+ * Pour chaque PDF joint : nom en « facture / invoice / fact / F-1234 » → rangé ; nom en « devis, AO,
+ * offre… » → écarté ; sinon il LIT le PDF pour décider. Seules les vraies factures vont dans :
  *
  *   Drive partagé Hiptown Team V2 / 5. Exploitation / 8. Bordeaux /
  *     Factures reçues / 2026 / 2026-11 / 2026-11-03 - Orange - facture_123.pdf
@@ -27,8 +28,10 @@ const FACTURES = {
   // Ceux qui ne sont pas des factures (à vérifier ou supprimer quand tu veux).
   dossierEcartesNom: 'PDF écartés (pas des factures)',
 
-  // Recherche Gmail : tous les mails REÇUS avec un PDF, sauf ceux de Hiptown.
-  recherche: 'has:attachment filename:pdf -in:sent -in:chats -from:me -from:hiptown.com',
+  // Recherche Gmail : seuls les mails REÇUS avec un PDF ET qui parlent de facture (objet, texte ou nom
+  // de la pièce jointe) sont regardés, sauf ceux de Hiptown. Les autres mails ne sont pas ouverts.
+  recherche: 'has:attachment filename:pdf -in:sent -in:chats -from:me -from:hiptown.com '
+    + '(facture OR factures OR invoice OR invoices)',
 
   // Expéditeurs à ignorer : adresses complètes ou domaines entiers.
   expediteursIgnores: ['hiptown.com'],
@@ -40,7 +43,8 @@ const FACTURES = {
     'plaquette', 'plaquettes', 'offre commerciale', 'offres commerciales', 'offre', 'offres',
     'proposition', 'NABO06'],
   // 2) Sinon, un de ces mots dans le nom → rangé d'office comme facture.
-  nomsFichierFactures: ['facture', 'factures', 'invoice', 'invoices'],
+  nomsFichierFactures: ['facture', 'factures', 'invoice', 'invoices', 'fact'],
+  // … ainsi qu'un numéro de facture du type « F-1234 » ou « F_1234 » dans le nom.
   // 3) Sinon, le contenu du PDF est lu pour décider.
 
   // Un document où figure ce SIRET (sans espaces) est un document émis par Hiptown : écarté.
@@ -196,6 +200,7 @@ function classerNom_(nomFichier) {
     .replace(/[’`]/g, '\'').replace(/[_\-.+()\[\]]+/g, ' ') + ' ';
   if (premierePosition_(n, FACTURES.nomsFichierEcartes.map(minuscule_)) !== -1) return 'autre';
   if (premierePosition_(n, FACTURES.nomsFichierFactures.map(minuscule_)) !== -1) return 'facture';
+  if (/(^|[^a-z0-9])f[-_]\d+/i.test(String(nomFichier || ''))) return 'facture';
   return null;
 }
 
