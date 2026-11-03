@@ -15,7 +15,12 @@ PDF écartés (pas des factures)/
   2026-11-03 - ACME - devis_45.pdf
 ```
 
-**Comment il reconnaît une facture.** Il lit le PDF (même scanné) et regarde le premier mot-clé qui apparaît,
+**Comment il reconnaît une facture.**
+
+1. **Par le nom du fichier**, d'abord. S'il contient *devis*, *AO*, *appel d'offre(s)*, *plaquette(s)*,
+   *offre commerciale*, *offre(s)* ou *proposition* → écarté d'office. Sinon, s'il contient *facture* ou
+   *invoice* → rangé d'office. (Si un nom contient les deux, par ex. « Facture offre fibre », il est écarté.)
+2. **Par le contenu**, si le nom ne dit rien (« scan001.pdf »…) : il lit le PDF (même scanné) et regarde le premier mot-clé qui apparaît,
 en pratique le titre du document : « Facture », « Invoice », « Avoir n° », « Note d'honoraires », « Receipt »…
 → facture. « Devis », « Proposition commerciale », « Bon de commande », « Pro forma », « Contrat de »… → écarté.
 Une facture qui cite un devis en référence reste donc bien une facture.
@@ -54,7 +59,8 @@ Tout se règle en haut de `Factures.gs` :
 |---|---|
 | `dossierParentId` | Dossier où sont créés « Factures reçues » et « PDF écartés » (par défaut : 8. Bordeaux). Colle l'identifiant d'un autre dossier (la fin de son adresse, après `folders/`) pour changer. |
 | `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (ex. `'newsletter@exemple.fr'`, `'exemple.fr'`). |
-| `fichiersIgnores` | Mots du nom de fichier écartés sans lecture (par défaut `devis`, `proposition`, `NABO06`). |
+| `nomsFichierEcartes` | Mots du nom de fichier qui écartent d'office le PDF (devis, AO, offre…). |
+| `nomsFichierFactures` | Mots du nom de fichier qui le rangent d'office comme facture (facture, invoice). |
 | `MOTS_FACTURE` / `MOTS_AUTRE` | Les mots-clés qui décident. Une facture écartée à tort ? Ajoute le mot de son titre à `MOTS_FACTURE`. |
 
 Une facture partie par erreur dans « PDF écartés » : déplace-la à la main dans le bon mois, le script ne la touchera plus.
