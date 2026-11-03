@@ -1,13 +1,14 @@
 /**
  * FACTURES REÇUES PAR MAIL → GOOGLE DRIVE
  *
- * Toutes les heures, ce script cherche dans Gmail les mails qui contiennent une
- * facture en PDF et enregistre chaque PDF dans Drive :
+ * Toutes les heures, ce script cherche dans Gmail les mails REÇUS qui contiennent un
+ * PDF (facture ou non dans le texte) et enregistre chaque PDF dans Drive :
  *
  *   Factures reçues / 2026 / 2026-11 / 2026-11-03 - Orange - facture_123.pdf
  *
  * - Un PDF déjà enregistré n'est jamais copié deux fois (même nom = déjà fait).
  * - Le mail reçoit le libellé Gmail « Factures/Dans Drive » pour voir d'un coup d'œil ce qui est rangé.
+ * - Tout ce qui vient de Hiptown (envois, devis, factures clients) est ignoré.
  * - Rien n'est supprimé ni modifié dans Gmail, à part ce libellé.
  *
  * Installation : voir README.md (lancer une fois `installer`).
@@ -21,11 +22,22 @@ const FACTURES = {
   dossierId: '',
 
   // Recherche Gmail (même syntaxe que la barre de recherche Gmail).
-  // Un mail est pris s'il a un PDF joint ET le mot facture/invoice dans l'objet, le texte ou le nom du fichier.
-  recherche: 'has:attachment filename:pdf (facture OR factures OR invoice OR "votre facture")',
+  // Tout mail REÇU avec un PDF joint est pris, qu'il parle de facture ou non.
+  // Sont exclus : les mails envoyés (-in:sent), ceux écrits depuis ce compte (-from:me)
+  // et tous ceux d'une adresse Hiptown (-from:hiptown.com).
+  recherche: 'has:attachment filename:pdf -in:sent -in:chats -from:me -from:hiptown.com',
 
-  // Expéditeurs à ignorer (ex. tes propres envois de devis) : adresses ou domaines.
-  expediteursIgnores: ['cc@hiptown.com'],
+  // Expéditeurs à ignorer : adresses complètes ou domaines entiers (ex. un outil de facturation
+  // qui t'envoie une copie des factures adressées à tes clients).
+  expediteursIgnores: ['hiptown.com'],
+
+  // Un mail dont le NOM d'expéditeur contient un de ces mots est ignoré : c'est le cas des factures
+  // que tu envoies à tes clients via un logiciel (« Hiptown via Pennylane », etc.).
+  nomsExpediteurIgnores: ['hiptown'],
+
+  // PDF ignorés selon leur nom de fichier : tes devis et tes factures clients
+  // (ajoute ici le début de la numérotation de tes factures, ex. 'FA-').
+  fichiersIgnores: ['devis', 'NABO06'],
 
   // Fenêtre regardée à chaque passage horaire, et pour la première récupération (rattrapage).
   joursParPassage: 3,
@@ -82,7 +94,8 @@ function rangerDepuis_(jours) {
       fil.getMessages().forEach(function (mail) {
         if (estIgnore_(mail.getFrom())) return;
         const pdfs = mail.getAttachments({ includeInlineImages: false }).filter(function (pj) {
-          return pj.getContentType() === 'application/pdf' || /\.pdf$/i.test(pj.getName());
+          return (pj.getContentType() === 'application/pdf' || /\.pdf$/i.test(pj.getName()))
+            && !fichierIgnore_(pj.getName());
         });
         if (!pdfs.length) return;
         const date = mail.getDate();
@@ -107,12 +120,23 @@ function rangerDepuis_(jours) {
   return { enregistrees: enregistrees, dejaLa: dejaLa };
 }
 
+/** Mail envoyé par Hiptown (ou en son nom) : ce n'est pas une facture pour nous. */
 function estIgnore_(from) {
-  const adresse = (String(from).match(/<([^>]+)>/) || [null, from])[1].toLowerCase().trim();
+  const s = String(from);
+  const adresse = (s.match(/<([^>]+)>/) || [null, s])[1].toLowerCase().trim();
+  const nom = s.replace(/<[^>]*>/, '').toLowerCase();
+  const domaine = adresse.split('@')[1] || '';
   return FACTURES.expediteursIgnores.some(function (x) {
-    x = x.toLowerCase();
-    return adresse === x || adresse.endsWith('@' + x.replace(/^@/, ''));
+    x = x.toLowerCase().replace(/^@/, '');
+    return adresse === x || domaine === x || domaine.endsWith('.' + x);
+  }) || FACTURES.nomsExpediteurIgnores.some(function (x) {
+    return nom.indexOf(x.toLowerCase()) !== -1;
   });
+}
+
+function fichierIgnore_(nomFichier) {
+  const n = String(nomFichier).toLowerCase();
+  return FACTURES.fichiersIgnores.some(function (x) { return n.indexOf(x.toLowerCase()) !== -1; });
 }
 
 /** « Orange <facture@orange.fr> » → « Orange » ; « facture@orange.fr » → « orange.fr ». */

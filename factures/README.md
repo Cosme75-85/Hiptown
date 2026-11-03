@@ -1,7 +1,7 @@
 # Factures reçues par mail → Google Drive
 
 Petit script Google Apps Script, **séparé** de l'outil de réservation (dossier `reservation/`).
-Toutes les heures, il enregistre dans Drive les factures PDF reçues dans Gmail :
+Toutes les heures, il enregistre dans Drive **tous les PDF reçus** dans Gmail, que le mail parle de facture ou non :
 
 ```
 Factures reçues/
@@ -9,6 +9,10 @@ Factures reçues/
     2026-11/
       2026-11-03 - Orange - facture_123.pdf
 ```
+
+Ce qui vient de Hiptown est ignoré : mails envoyés, mails d'une adresse @hiptown.com, mails dont l'expéditeur
+s'appelle « Hiptown » (factures clients envoyées par un logiciel de facturation), et PDF dont le nom contient
+« devis » ou « NABO06 » (tes devis).
 
 Chaque mail rangé reçoit le libellé Gmail **Factures/Dans Drive**. Rien d'autre n'est modifié dans Gmail,
 et un PDF n'est jamais copié deux fois.
