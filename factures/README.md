@@ -1,7 +1,7 @@
 # Factures reçues par mail → Google Drive
 
 Petit script Google Apps Script, **séparé** de l'outil de réservation (dossier `reservation/`).
-Toutes les heures, il enregistre dans Drive les factures PDF reçues dans Gmail :
+Toutes les heures, il enregistre dans Drive **tous les PDF reçus** dans Gmail, que le mail parle de facture ou non :
 
 ```
 Factures reçues/
@@ -9,6 +9,10 @@ Factures reçues/
     2026-11/
       2026-11-03 - Orange - facture_123.pdf
 ```
+
+Ce qui vient de Hiptown est ignoré : mails envoyés, mails d'une adresse @hiptown.com, mails dont l'expéditeur
+s'appelle « Hiptown » (factures clients envoyées par un logiciel de facturation), et PDF dont le nom contient
+« devis » ou « NABO06 » (tes devis).
 
 Chaque mail rangé reçoit le libellé Gmail **Factures/Dans Drive**. Rien d'autre n'est modifié dans Gmail,
 et un PDF n'est jamais copié deux fois.
@@ -33,10 +37,12 @@ Tout se règle en haut de `Factures.gs`, dans `FACTURES` :
 | Réglage | Rôle |
 |---|---|
 | `dossierId` | Pour ranger dans un dossier Drive existant : colle son identifiant (la fin de son adresse, après `folders/`). |
-| `recherche` | Quels mails sont pris (syntaxe de la recherche Gmail). Par défaut : PDF joint + « facture », ou « invoice ». |
-| `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (par défaut : tes propres envois de devis). |
+| `recherche` | Quels mails sont pris (syntaxe de la recherche Gmail). Par défaut : tout mail reçu avec un PDF joint, sauf ceux de Hiptown. |
+| `expediteursIgnores` | Adresses ou domaines à ne jamais ranger (ex. `'newsletter@exemple.fr'`, `'exemple.fr'`). |
+| `nomsExpediteurIgnores` | Mots du nom d'expéditeur à ignorer (par défaut `hiptown`). |
+| `fichiersIgnores` | Mots du nom de fichier à ignorer (par défaut `devis`, `NABO06`). Ajoute le début de la numérotation de tes factures clients. |
 
-Une facture oubliée ? Ajoute son mot-clé à `recherche` (ex. `OR "reçu"`) puis relance `rattraperAnciennesFactures`.
+Un PDF qui n'est pas une facture arrive dans Drive (contrat, plaquette…) ? Ajoute son expéditeur à `expediteursIgnores`.
 
 ## Arrêter
 
