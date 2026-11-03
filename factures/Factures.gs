@@ -34,8 +34,14 @@ const FACTURES = {
   expediteursIgnores: ['hiptown.com'],
   // Mails dont le NOM d'expéditeur contient un de ces mots : ignorés (« Hiptown via Pennylane »…).
   nomsExpediteurIgnores: ['hiptown'],
-  // PDF ignorés d'office selon leur nom de fichier (sans même les lire).
-  fichiersIgnores: ['devis', 'proposition', 'NABO06'],
+  // Tri par NOM DE FICHIER, avant toute lecture du PDF (mots entiers, majuscules et _ - . sans importance).
+  // 1) Un de ces mots dans le nom → écarté d'office (prioritaire).
+  nomsFichierEcartes: ['devis', 'AO', 'appel d\'offre', 'appel d\'offres', 'appel offre', 'appels d\'offres',
+    'plaquette', 'plaquettes', 'offre commerciale', 'offres commerciales', 'offre', 'offres',
+    'proposition', 'NABO06'],
+  // 2) Sinon, un de ces mots dans le nom → rangé d'office comme facture.
+  nomsFichierFactures: ['facture', 'factures', 'invoice', 'invoices'],
+  // 3) Sinon, le contenu du PDF est lu pour décider.
 
   // Un document où figure ce SIRET (sans espaces) est un document émis par Hiptown : écarté.
   siretHiptown: '85395373500018',
@@ -55,7 +61,8 @@ const MOTS_FACTURE = ['facture', 'factures', 'invoice', 'avoir n°', 'facture d\
   'reçu de paiement', 'receipt', 'quittance'];
 const MOTS_AUTRE = ['devis', 'proposition commerciale', 'proposition tarifaire', 'proposition', 'offre de prix',
   'offre commerciale', 'bon de commande', 'estimation', 'quotation', 'quote', 'pro forma', 'proforma',
-  'pro-forma', 'bon de livraison', 'contrat de', 'conditions générales', 'plaquette', 'brochure'];
+  'pro-forma', 'bon de livraison', 'contrat de', 'conditions générales', 'plaquette', 'brochure',
+  'appel d\'offres', 'appel d\'offre', 'offre commerciale'];
 const ETIQUETTE_VERIFIEE = 'Facture vérifiée';
 
 /** Passage automatique (déclenché toutes les heures par `installer`). */
@@ -82,7 +89,8 @@ function trierDossierFactures() {
       if (Date.now() - debut > FACTURES.dureeMaxMs) { fini = false; return; }
       const f = fichiers.next();
       if (f.getDescription() === ETIQUETTE_VERIFIEE) continue;
-      if (estFacture_(f.getBlob(), f.getName(), '')) {
+      const nomOrigine = f.getName().replace(/^\d{4}-\d{2}-\d{2} - .*? - /, '');
+      if (estFacture_(f.getBlob(), nomOrigine, '')) {
         f.setDescription(ETIQUETTE_VERIFIEE);
         gardees++;
       } else {
@@ -138,8 +146,7 @@ function rangerDepuis_(jours) {
         const mail = mails[j];
         if (estIgnore_(mail.getFrom())) continue;
         const pdfs = mail.getAttachments({ includeInlineImages: false }).filter(function (pj) {
-          return (pj.getContentType() === 'application/pdf' || /\.pdf$/i.test(pj.getName()))
-            && !fichierIgnore_(pj.getName());
+          return pj.getContentType() === 'application/pdf' || /\.pdf$/i.test(pj.getName());
         });
         if (!pdfs.length) continue;
         const date = mail.getDate();
@@ -173,10 +180,26 @@ function rangerDepuis_(jours) {
   return { enregistrees: enregistrees, ecartees: ecartees, dejaVus: dejaVus, fini: fini };
 }
 
-/** Lit le PDF et dit si c'est une facture reçue (et non un devis, une proposition, un document Hiptown…). */
+/**
+ * Dit si le PDF est une facture reçue. D'abord son nom (devis, AO, offre… → non ; facture, invoice → oui),
+ * sinon son contenu (et non un devis, une proposition, un document Hiptown…).
+ */
 function estFacture_(blob, nomFichier, objet) {
+  const parNom = classerNom_(nomFichier);
+  if (parNom) return parNom === 'facture';
   return classer_(lireTextePdf_(blob), nomFichier, objet) === 'facture';
 }
+
+/** 'autre', 'facture' ou null (le nom ne suffit pas) selon les mots du nom de fichier. */
+function classerNom_(nomFichier) {
+  const n = ' ' + String(nomFichier || '').toLowerCase().replace(/\.pdf$/, '')
+    .replace(/[’`]/g, '\'').replace(/[_\-.+()\[\]]+/g, ' ') + ' ';
+  if (premierePosition_(n, FACTURES.nomsFichierEcartes.map(minuscule_)) !== -1) return 'autre';
+  if (premierePosition_(n, FACTURES.nomsFichierFactures.map(minuscule_)) !== -1) return 'facture';
+  return null;
+}
+
+function minuscule_(x) { return String(x).toLowerCase(); }
 
 /**
  * Renvoie 'facture', 'autre' ou 'hiptown'.
@@ -244,10 +267,6 @@ function estIgnore_(from) {
   });
 }
 
-function fichierIgnore_(nomFichier) {
-  const n = String(nomFichier).toLowerCase();
-  return FACTURES.fichiersIgnores.some(function (x) { return n.indexOf(x.toLowerCase()) !== -1; });
-}
 
 /** « Orange <facture@orange.fr> » → « Orange » ; « facture@orange.fr » → « orange.fr ». */
 function nomExpediteur_(from) {
