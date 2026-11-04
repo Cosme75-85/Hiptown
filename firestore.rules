@@ -174,10 +174,15 @@ service cloud.firestore {
     // people : personnes affichées sous la case ({id, name, ...}, au plus 30), choisies par l'entreprise
     //   (Mon profil) ou par l'équipe pour une case ajoutée à la main ;
     // locked : un code d'accès est demandé pour prévenir l'entreprise (le code est dans accueilEmails) ;
+    // general : la case montre d'abord « Contacter <entreprise> » (e-mail de l'entreprise) ;
+    // generalPhone, people[].hasPhone : un numéro existe (le numéro est dans accueilEmails, donné
+    //   par Apps Script seulement avec le code d'accès) ;
     // visible : l'entreprise du portail a choisi d'apparaître sur la page (les cases « manual » apparaissent toujours)
     function isValidAccueilCard(data) {
-      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'people', 'locked', 'visible', 'updatedAt'])
+      return data.keys().hasOnly(['name', 'city', 'siteId', 'logo', 'manual', 'people', 'locked', 'visible', 'general', 'generalPhone', 'updatedAt'])
         && (!('visible' in data) || data.visible is bool)
+        && (!('general' in data) || data.general is bool)
+        && (!('generalPhone' in data) || data.generalPhone is bool)
         && (!('locked' in data) || data.locked is bool)
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.city is string && data.city.size() > 0 && data.city.size() <= 40
@@ -214,13 +219,18 @@ service cloud.firestore {
       allow update: if isValidAccueilCard(request.resource.data)
         && ((canManageAccueilCity(resource.data.get('city', null)) && canManageAccueilCity(request.resource.data.city))
             || (isCompanyMember(id)
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'visible', 'locked', 'people', 'updatedAt'])));
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo', 'visible', 'locked', 'people', 'general', 'generalPhone', 'updatedAt'])));
       allow delete: if canManageAccueilCity(resource.data.get('city', null));
     }
 
     // Adresses qui reçoivent les visites (email : l'entreprise ; people : {id de la personne: e-mail}) et
+    // numéros (phone : l'entreprise ; phones : {id de la personne: numéro}, chiffres avec + éventuel) et
     // code d'accès (pin, 4 chiffres ou '') : jamais publics, lus par Apps Script (Accueil.gs)
     // avec le compte de service, au moment d'envoyer l'e-mail. La case doit exister (sa ville décide).
+    function isValidAccueilPhone(phone) {
+      return phone is string && (phone == '' || phone.matches('^[+]?[0-9]{6,15}$'));
+    }
+
     function canManageAccueilEmail(id) {
       return isCompanyMember(id)
         || (exists(/databases/$(database)/documents/accueil/$(id)) && canManageAccueilCity(accueilCityOf(id)));
@@ -229,9 +239,12 @@ service cloud.firestore {
     match /accueilEmails/{id} {
       allow read, delete: if canManageAccueilEmail(id);
       allow create, update: if canManageAccueilEmail(id)
-        && request.resource.data.keys().hasOnly(['email', 'people', 'pin', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['email', 'people', 'pin', 'phone', 'phones', 'updatedAt'])
         && (!('people' in request.resource.data)
             || (request.resource.data.people is map && request.resource.data.people.size() <= 30))
+        && (!('phone' in request.resource.data) || isValidAccueilPhone(request.resource.data.phone))
+        && (!('phones' in request.resource.data)
+            || (request.resource.data.phones is map && request.resource.data.phones.size() <= 30))
         && (!('pin' in request.resource.data) || request.resource.data.pin == ''
             || (request.resource.data.pin is string && request.resource.data.pin.matches('^[0-9]{4}$')))
         && (!('email' in request.resource.data)

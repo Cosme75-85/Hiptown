@@ -165,6 +165,14 @@ function isShownCard(card) {
  */
 function pinAccepted(companyId, card, mail, pin) {
   if (card.locked !== true) return true;
+  return pinMatches(companyId, mail, pin);
+}
+
+/**
+ * Bon code d'accès, que la case le demande ou non pour les messages (les téléphones le demandent
+ * toujours). Sans code enregistré, rien n'est accepté. Même compteur d'essais que pinAccepted.
+ */
+function pinMatches(companyId, mail, pin) {
   const cache = CacheService.getScriptCache();
   const key = 'accueil:pinfail:' + companyId;
   const failures = Number(cache.get(key)) || 0;
@@ -203,6 +211,41 @@ function checkAccueilPin(raw) {
   } catch (err) {
     console.error('checkAccueilPin', err);
     return { success: false, message: 'Vérification impossible pour le moment.' };
+  }
+}
+
+/**
+ * Point d'entrée (doPost, action revealAccueilPhone) : le visiteur veut appeler l'entreprise
+ * (sans personId, case « Contacter <entreprise> ») ou une personne de la case. Le numéro n'est
+ * jamais sur la page : il n'est donné qu'avec le bon code d'accès de l'entreprise.
+ */
+function revealAccueilPhone(raw) {
+  try {
+    raw = raw || {};
+    const companyId = String(raw.companyId || '');
+    if (!/^[A-Za-z0-9_-]{1,120}$/.test(companyId)) return { success: false, message: 'Entreprise inconnue.' };
+    const personId = String(raw.personId || '');
+    if (personId && !/^[A-Za-z0-9_-]{1,40}$/.test(personId)) return { success: false, message: 'Contact inconnu.' };
+    const token = serviceAccountToken();
+    if (!token) return { success: false, message: 'Appel indisponible pour le moment.' };
+    const card = readAdminDoc(token, 'accueil/' + companyId);
+    if (!isShownCard(card)) return { success: false, message: 'Entreprise inconnue.' };
+    const mail = readAdminDoc(token, 'accueilEmails/' + companyId) || {};
+    if (!pinMatches(companyId, mail, raw.pin)) return { success: false, message: 'Code d\'accès incorrect.' };
+    let phone = '';
+    if (personId) {
+      const person = (Array.isArray(card.people) ? card.people : []).filter(p => p && p.id === personId)[0];
+      if (!person) return { success: false, message: 'Contact inconnu.' };
+      const phones = mail.phones || {};
+      phone = Object.prototype.hasOwnProperty.call(phones, personId) ? String(phones[personId] || '') : '';
+    } else if (card.general === true) {
+      phone = String(mail.phone || '');
+    }
+    if (!/^\+?[0-9]{6,15}$/.test(phone)) return { success: false, message: 'Pas de numéro pour ce contact.' };
+    return { success: true, phone: phone };
+  } catch (err) {
+    console.error('revealAccueilPhone', err);
+    return { success: false, message: 'Appel impossible pour le moment.' };
   }
 }
 
