@@ -89,8 +89,10 @@ function cardHtml(c) {
   const buttons = (c.buttons || []).filter(b => b && b.label && isSafeUrl(b.url))
     .map(b => `<a class="comm-btn" href="${escapeHtml(b.url)}" target="_blank" rel="noopener">${escapeHtml(b.label)}</a>`).join("");
   const hasText = c.title || c.date || c.text;
+  // Sans titre ni texte, l'image prend toute la largeur de la barre (pas de colonne vide à côté)
+  const full = img && !c.title && !c.text;
   return `
-    <div class="comm-card">
+    <div class="comm-card${full ? " comm-card-full" : ""}">
       ${img ? `<div class="comm-img">${img}</div>` : ""}
       ${hasText || buttons ? `<div class="comm-info${img ? "" : " comm-info-only"}">
         <div class="comm-main">

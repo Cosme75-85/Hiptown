@@ -149,6 +149,12 @@ button.events-dot { border: none; padding: 0; }
   .comm-side { max-width: none; align-items: flex-start; }
   .comm-side .event-date { text-align: left; }
   .comm-btns { justify-content: flex-start; }
+  /* Sans titre ni texte : l'image occupe toute la largeur, date et boutons éventuels passent dessous */
+  .comm-card-full { flex-direction: column; }
+  .comm-card-full .comm-img { flex: 0 0 auto; }
+  .comm-card-full .comm-main { display: none; }
+  .comm-card-full .comm-info { flex-direction: row; align-items: center; justify-content: flex-end; padding: 8px 12px; }
+  .comm-card-full .comm-side { flex-direction: row; align-items: center; gap: 10px; }
 }
 .comm-info-only { padding: 12px; }
 .comm-title { font-size: 14px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
