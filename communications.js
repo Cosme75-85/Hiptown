@@ -93,7 +93,7 @@ function cardHtml(c) {
   const full = img && !c.title && !c.text;
   return `
     <div class="comm-card${full ? " comm-card-full" : ""}">
-      ${img ? `<div class="comm-img">${img}</div>` : ""}
+      ${img ? `<div class="comm-img">${full ? `<img class="comm-img-bg" src="${c.image}" alt="" aria-hidden="true" loading="lazy"/>` : ""}${img}</div>` : ""}
       ${hasText || buttons ? `<div class="comm-info${img ? "" : " comm-info-only"}">
         <div class="comm-main">
           ${c.title ? `<div class="comm-title">${escapeHtml(c.title)}</div>` : ""}
