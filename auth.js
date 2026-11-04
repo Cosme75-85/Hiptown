@@ -75,6 +75,13 @@ export async function logIn(email, password) {
 }
 
 export async function logOut() {
+  // Retire cet appareil des notifications du compte (messagerie.js), 3 secondes au plus
+  if (typeof window.hiptownBeforeLogout === "function") {
+    await Promise.race([
+      window.hiptownBeforeLogout().catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, 3000))
+    ]);
+  }
   await signOut(auth);
 }
 

@@ -33,7 +33,7 @@ import {
   getDoc, setDoc, increment, getCountFromServer, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-  getMessaging, getToken, deleteToken, isSupported
+  getMessaging, getToken, isSupported
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const MAX_LENGTH = 2000;          // caractères par message (même limite dans firestore.rules)
@@ -525,6 +525,7 @@ async function notifyRecipients(payload) {
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 let messaging = null;
+let pushToken = null; // jeton de cet appareil, enregistré sur le compte connecté (me.uid)
 
 async function pushSupported() {
   if (!PORTAIL.pushVapidKey || !("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return false;
@@ -557,6 +558,7 @@ async function registerPushToken() {
     const registration = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, { vapidKey: PORTAIL.pushVapidKey, serviceWorkerRegistration: registration });
     if (!token || !me) return;
+    pushToken = token;
     const ref = doc(db, "pushTokens", me.uid);
     const snap = await getDoc(ref);
     const tokens = (snap.exists() && Array.isArray(snap.data().tokens) ? snap.data().tokens : []).filter(t => t !== token);
@@ -626,10 +628,28 @@ onAuthStateChanged(auth, user => {
   if (!user) { stopAll(); me = null; setAppBadge(0); }
 });
 
-// Déconnexion : cet appareil ne reçoit plus les notifications du compte
-document.getElementById("logout-btn")?.addEventListener("click", () => {
-  if (messaging) deleteToken(messaging).catch(() => {});
-}, true);
+// Déconnexion : cet appareil ne reçoit plus les notifications de CE compte.
+// On retire seulement son jeton de la liste du compte, sans supprimer l'abonnement du
+// téléphone : un seul abonnement sert à tous les comptes ouverts sur l'appareil (un compte
+// par onglet), et le supprimer coupait les notifications des autres comptes, sans prévenir.
+// Appelé par auth.js juste avant la déconnexion (il faut encore être connecté pour écrire).
+window.hiptownBeforeLogout = async function () {
+  const uid = auth.currentUser?.uid;
+  const token = pushToken;
+  pushToken = null;
+  if (!uid || !token) return;
+  try {
+    const ref = doc(db, "pushTokens", uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists() || !Array.isArray(snap.data().tokens)) return;
+    const tokens = snap.data().tokens.filter(t => t !== token);
+    if (tokens.length !== snap.data().tokens.length) {
+      await setDoc(ref, { tokens, updatedAt: serverTimestamp() });
+    }
+  } catch (err) {
+    console.error("Appareil non retiré des notifications du compte", err);
+  }
+};
 
 // Clic sur une notification alors que le portail est déjà ouvert (message envoyé par sw.js)
 navigator.serviceWorker?.addEventListener("message", e => {
