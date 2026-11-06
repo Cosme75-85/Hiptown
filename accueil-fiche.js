@@ -3,13 +3,16 @@
 //  (page publique https://cosme75-85.github.io/Hiptown-Accueil-1/)
 // ═══════════════════════════════════════════════════════
 //  - accueil/{id}              : nom, ville, site, logo, visible (l'entreprise a choisi d'apparaître),
-//                                locked (code d'accès demandé), personnes ({id, name, firstName?,
-//                                lastName?, role?}), lisibles par tous
+//                                locked (code d'accès demandé aussi pour prévenir), general (case
+//                                « Contacter <entreprise> » en premier), generalPhone, personnes ({id, name,
+//                                firstName?, lastName?, role?, hasPhone?}), lisibles par tous
 //                                (id = companyId pour une entreprise du portail ; « m-… » pour une case
 //                                ajoutée à la main par l'équipe d'une ville, voir accueil-gestion.js)
 //  - accueilEmails/{id}        : adresse qui reçoit les visites (email), celle de chaque personne
-//                                (people : {id de la personne: e-mail}) et code d'accès (pin), jamais publics
-//                                (lus par Apps Script, reservation/Accueil.gs)
+//                                (people : {id de la personne: e-mail}), numéros (phone : l'entreprise ;
+//                                phones : {id de la personne: numéro}) et code d'accès (pin), jamais publics
+//                                (lus par Apps Script, reservation/Accueil.gs, qui ne donne un numéro
+//                                qu'avec le bon code)
 //  La case est créée toute seule : à la connexion d'un salarié coworking, et quand
 //  l'équipe ouvre « Gestion des entreprises » ou valide un compte coworking. Elle reste
 //  masquée (visible: false) tant que l'entreprise n'a pas choisi de s'afficher (Mon profil).
@@ -29,6 +32,16 @@ const SAFE_LOGO = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PIN = /^[0-9]{4}$/;
 const MAX_PEOPLE = 30;           // même limite que firestore.rules
+const PHONE = /^\+?[0-9]{6,15}$/;  // même règle que firestore.rules
+
+/** Numéro tapé (« 06 12 34 56 78 », « +33 6… ») sans espaces ni séparateurs ; "" si vide. */
+export function cleanPhone(phone) {
+  return String(phone || "").replace(/[\s.\-()\/]/g, "");
+}
+
+export function isValidPhone(phone) {
+  return PHONE.test(phone);
+}
 
 export function isSafeLogo(logo) {
   return typeof logo === "string" && logo.length <= MAX_LOGO_LENGTH && SAFE_LOGO.test(logo);
@@ -70,13 +83,16 @@ export async function listAccueilCards(city) {
 export async function getAccueilPrivate(id) {
   const snap = await getDoc(doc(db, "accueilEmails", id));
   const data = snap.exists() ? snap.data() : {};
-  return { email: data.email || "", people: data.people || {}, pin: data.pin || "" };
+  return {
+    email: data.email || "", people: data.people || {}, pin: data.pin || "",
+    phone: data.phone || "", phones: data.phones || {}
+  };
 }
 
 /**
  * Enregistre la partie privée d'une case (la case doit exister : les règles lisent sa ville).
  * Seuls les champs donnés changent.
- * @param {{email?: string, people?: Object<string, string>, pin?: string}} fields
+ * @param {{email?: string, people?: Object<string, string>, pin?: string, phone?: string, phones?: Object<string, string>}} fields
  */
 export async function setAccueilPrivate(id, fields) {
   // mergeFields : chaque champ donné est remplacé en entier (une personne retirée perd aussi son adresse)
@@ -88,10 +104,10 @@ export async function setAccueilPrivate(id, fields) {
  * Crée ou modifie une case ajoutée à la main par l'équipe d'une ville.
  * @returns {Promise<string>} identifiant de la case
  */
-export async function saveManualAccueilCard(id, { name, city, siteId = null, logo = "", people = [], locked = false }) {
+export async function saveManualAccueilCard(id, { name, city, siteId = null, logo = "", people = [], locked = false, general = false, generalPhone = false }) {
   const cardId = id || "m-" + slugOf(name) + "-" + Date.now().toString(36);
   await setDoc(doc(db, "accueil", cardId),
-    { name, city, siteId: siteId || null, logo, people, locked, manual: true, updatedAt: serverTimestamp() }, { merge: true });
+    { name, city, siteId: siteId || null, logo, people, locked, general, generalPhone, manual: true, updatedAt: serverTimestamp() }, { merge: true });
   return cardId;
 }
 
@@ -173,6 +189,8 @@ export function initAccueilFiche(getContext) {
   const logoInput = $("accueil-logo-input");
   const removeBtn = $("accueil-logo-remove");
   const emailInput = $("accueil-email");
+  const generalInput = $("accueil-general");
+  const phoneInput = $("accueil-phone");
   const visibleInput = $("accueil-visible");
   const lockedInput = $("accueil-locked");
   const pinInput = $("accueil-pin");
@@ -184,7 +202,7 @@ export function initAccueilFiche(getContext) {
 
   let logo = "";
   let companyId = null;
-  let people = []; // [{id, firstName, lastName, email}]
+  let people = []; // [{id, firstName, lastName, email, phone}]
 
   function showMessage(text, isError) {
     message.textContent = text;
@@ -207,7 +225,6 @@ export function initAccueilFiche(getContext) {
 
   function renderDetails() {
     details.hidden = !visibleInput.checked;
-    pinInput.hidden = !lockedInput.checked;
   }
 
   function renderPeople() {
@@ -219,6 +236,7 @@ export function initAccueilFiche(getContext) {
         <input type="text" class="profile-input" data-field="firstName" maxlength="40" placeholder="Prénom *" aria-label="Prénom"/>
         <input type="text" class="profile-input" data-field="lastName" maxlength="40" placeholder="Nom" aria-label="Nom"/>
         <input type="email" class="profile-input accueil-person-email" data-field="email" maxlength="120" placeholder="E-mail *" aria-label="E-mail"/>
+        <input type="tel" class="profile-input accueil-person-email" data-field="phone" maxlength="24" placeholder="Téléphone (facultatif)" aria-label="Téléphone"/>
         <button class="profile-link" type="button">Retirer</button>`;
       row.querySelectorAll("input").forEach(input => {
         input.value = p[input.dataset.field] || "";
@@ -235,11 +253,10 @@ export function initAccueilFiche(getContext) {
 
   visibleInput.addEventListener("change", renderDetails);
   lockedInput.addEventListener("change", () => {
-    renderDetails();
-    if (lockedInput.checked) pinInput.focus();
+    if (lockedInput.checked && !pinInput.value) pinInput.focus();
   });
   personAddBtn.addEventListener("click", () => {
-    people.push({ id: null, firstName: "", lastName: "", email: "" });
+    people.push({ id: null, firstName: "", lastName: "", email: "", phone: "" });
     renderPeople();
     peopleBox.lastElementChild?.querySelector("input")?.focus();
   });
@@ -253,6 +270,8 @@ export function initAccueilFiche(getContext) {
     showMessage("", false);
     logo = "";
     emailInput.value = "";
+    phoneInput.value = "";
+    generalInput.checked = false;
     visibleInput.checked = false;
     lockedInput.checked = false;
     pinInput.value = "";
@@ -266,6 +285,8 @@ export function initAccueilFiche(getContext) {
       const card = cardSnap.data() || {};
       logo = isSafeLogo(card.logo) ? card.logo : "";
       emailInput.value = priv.email;
+      phoneInput.value = priv.phone;
+      generalInput.checked = card.general === true;
       visibleInput.checked = card.visible === true;
       lockedInput.checked = card.locked === true;
       pinInput.value = priv.pin;
@@ -273,7 +294,8 @@ export function initAccueilFiche(getContext) {
         id: p.id,
         firstName: p.firstName != null ? p.firstName : (p.name || ""),
         lastName: p.lastName || "",
-        email: priv.people[p.id] || ""
+        email: priv.people[p.id] || "",
+        phone: priv.phones[p.id] || ""
       }));
       renderLogo();
       renderDetails();
@@ -306,29 +328,48 @@ export function initAccueilFiche(getContext) {
     if (!companyId) return;
     const email = emailInput.value.trim().toLowerCase();
     if (email && !EMAIL.test(email)) return showMessage("L'adresse e-mail n'est pas valide.", true);
+    const phone = cleanPhone(phoneInput.value);
+    if (phone && !PHONE.test(phone)) return showMessage("Le téléphone de l'entreprise n'est pas valide.", true);
+    const general = generalInput.checked;
     const locked = lockedInput.checked;
     const pin = pinInput.value.trim();
-    if (locked && !PIN.test(pin)) return showMessage("Le code d'accès doit faire 4 chiffres.", true);
     const filled = people
-      .map(p => ({ ...p, firstName: p.firstName.trim(), lastName: p.lastName.trim(), email: p.email.trim().toLowerCase() }))
-      .filter(p => p.firstName || p.lastName || p.email);
+      .map(p => ({
+        ...p, firstName: p.firstName.trim(), lastName: p.lastName.trim(),
+        email: p.email.trim().toLowerCase(), phone: cleanPhone(p.phone)
+      }))
+      .filter(p => p.firstName || p.lastName || p.email || p.phone);
     const incomplete = filled.find(p => !p.firstName || !EMAIL.test(p.email));
     if (incomplete) {
       return showMessage(incomplete.firstName
         ? `Il manque un e-mail valide pour ${incomplete.firstName}.` : "Chaque personne doit avoir un prénom.", true);
     }
+    const badPhone = filled.find(p => p.phone && !PHONE.test(p.phone));
+    if (badPhone) return showMessage(`Le téléphone de ${badPhone.firstName} n'est pas valide.`, true);
+    // Un numéro n'est donné au visiteur qu'avec le code d'accès : le code est alors obligatoire
+    const hasPhones = !!phone || filled.some(p => p.phone);
+    if (pin && !PIN.test(pin)) return showMessage("Le code d'accès doit faire 4 chiffres.", true);
+    if (!pin && hasPhones) return showMessage("Choisissez un code d'accès à 4 chiffres : il protège les numéros de téléphone.", true);
+    if (!pin && locked) return showMessage("Choisissez le code d'accès à 4 chiffres.", true);
     const cardPeople = filled.map(p => ({
       id: p.id || newPersonId(), firstName: p.firstName, lastName: p.lastName,
-      name: (p.firstName + " " + p.lastName).trim().slice(0, 80)
+      name: (p.firstName + " " + p.lastName).trim().slice(0, 80),
+      hasPhone: !!p.phone
     }));
     const peopleEmails = {};
-    filled.forEach((p, i) => { peopleEmails[cardPeople[i].id] = p.email; });
+    const peoplePhones = {};
+    filled.forEach((p, i) => {
+      peopleEmails[cardPeople[i].id] = p.email;
+      if (p.phone) peoplePhones[cardPeople[i].id] = p.phone;
+    });
 
     saveBtn.disabled = true;
     try {
       await setDoc(doc(db, "accueil", companyId),
-        { logo, visible: visibleInput.checked, locked, people: cardPeople, updatedAt: serverTimestamp() }, { merge: true });
-      await setAccueilPrivate(companyId, { email, people: peopleEmails, pin: locked ? pin : "" });
+        { logo, visible: visibleInput.checked, locked, general, generalPhone: general && !!phone,
+          people: cardPeople, updatedAt: serverTimestamp() }, { merge: true });
+      await setAccueilPrivate(companyId, { email, people: peopleEmails, pin, phone, phones: peoplePhones });
+      phoneInput.value = phone;
       people = filled.map((p, i) => ({ ...p, id: cardPeople[i].id }));
       renderPeople();
       showMessage(visibleInput.checked ? "Accueil visiteurs enregistré ✓" : "Enregistré ✓ Votre entreprise n'apparaît pas à l'accueil.", false);
