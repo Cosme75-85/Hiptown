@@ -111,6 +111,14 @@ export async function saveManualAccueilCard(id, { name, city, siteId = null, log
   return cardId;
 }
 
+/**
+ * Réglages d'une case d'entreprise du portail par l'équipe (son nom et son site suivent le portail).
+ * @param {{logo: string, visible: boolean, locked: boolean, general: boolean, generalPhone: boolean, people: Object[]}} fields
+ */
+export async function saveAccueilSettings(id, fields) {
+  await setDoc(doc(db, "accueil", id), { ...fields, updatedAt: serverTimestamp() }, { merge: true });
+}
+
 /** Change seulement le logo d'une case (entreprise du portail : son nom et son site suivent le portail). */
 export async function setAccueilLogo(id, logo) {
   await setDoc(doc(db, "accueil", id), { logo, updatedAt: serverTimestamp() }, { merge: true });

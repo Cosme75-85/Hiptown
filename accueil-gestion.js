@@ -3,14 +3,15 @@
 //  L'équipe d'une ville ajoute, modifie et retire les entreprises affichées sur la page
 //  publique d'accueil de sa ville (lien dans PORTAIL.accueilPages, config.js).
 //  Les entreprises qui ont un compte sur le portail ont leur case toute seule (accueil-fiche.js) et
-//  décident elles-mêmes dans Mon profil : apparaître ou non, code d'accès, personnes affichées.
-//  Ici, on voit leurs choix et on ne change que leur logo et leur e-mail.
+//  peuvent tout régler elles-mêmes dans Mon profil. Ici, l'équipe règle aussi toutes les cases :
+//  contact général (e-mail, téléphone), salariés (e-mail, téléphone) et code d'accès, obligatoire
+//  dès qu'un téléphone est donné.
 // ═══════════════════════════════════════════════════════
 
 import {
   listAccueilCards, getAccueilPrivate, setAccueilPrivate, saveManualAccueilCard,
-  setAccueilLogo, deleteAccueilCard, resizeLogo, isSafeLogo, isValidEmail, isValidPin, newPersonId,
-  cleanPhone, isValidPhone
+  deleteAccueilCard, resizeLogo, isSafeLogo, isValidEmail, isValidPin, newPersonId,
+  cleanPhone, isValidPhone, saveAccueilSettings
 } from "./accueil-fiche.js";
 
 const MAX_PEOPLE = 30; // même limite que firestore.rules
@@ -22,7 +23,7 @@ let cities = [];      // villes que l'admin connecté gère
 let city = null;      // ville affichée
 let editing = null;   // case en cours de modification (null = nouvelle)
 let formLogo = "";
-let formPeople = [];  // [{id, name, role, email, phone}]
+let formPeople = [];  // [{id, name, role, email, phone, orig}] (orig : la personne telle qu'enregistrée)
 
 function escapeHtml(text) {
   return String(text == null ? "" : text)
@@ -96,7 +97,7 @@ function cardRow(c, priv) {
   const sites = sitesOf(city);
   const people = peopleOf(c);
   const details = [
-    c.manual ? "" : (c.visible === true ? "compte portail · affichée" : "compte portail · masquée par l'entreprise"),
+    c.manual ? "" : (c.visible === true ? "compte portail · affichée" : "compte portail · masquée"),
     c.siteId ? (sites[c.siteId] || c.siteId) : "",
     priv.email || "pas d'e-mail : l'équipe Hiptown est prévenue",
     people.length ? people.length + (people.length > 1 ? " personnes" : " personne") : "",
@@ -191,29 +192,21 @@ function openForm(card, priv) {
   formLogo = card && isSafeLogo(card.logo) ? card.logo : "";
   renderFormLogo();
   $("accueil-form-email").value = priv.email || "";
-  $("accueil-form-manual").hidden = portalCard;
   $("accueil-form-portal").hidden = !portalCard;
   if (portalCard) {
-    const people = peopleOf(card);
-    $("accueil-form-portal-status").textContent = [
-      card.visible === true ? "L'entreprise a choisi d'apparaître sur la page." : "L'entreprise a choisi de ne pas apparaître sur la page.",
-      card.general ? "Elle propose « Contacter l'entreprise »." : "",
-      (card.generalPhone || peopleOf(card).some(p => p.hasPhone)) ? "Elle donne des téléphones, protégés par son code d'accès." : "",
-      card.locked ? "Elle demande son code pour envoyer un message." : "",
-      people.length ? "Personnes affichées : " + people.map(p => p.name).join(", ") + "." : "Aucune personne affichée.",
-      "Ces choix se font dans Mon profil, par l'entreprise."
-    ].filter(Boolean).join(" ");
+    $("accueil-form-visible").checked = card.visible === true;
+    $("accueil-form-portal-status").textContent =
+      "Compte du portail : ses salariés peuvent aussi changer ces réglages dans Mon profil.";
   }
-  formPeople = (card && card.manual && Array.isArray(card.people) ? card.people : []).map(p => ({
+  formPeople = (card && Array.isArray(card.people) ? card.people : []).map(p => ({
     id: p.id, name: p.name || "", role: p.role || "", email: priv.people[p.id] || "",
-    phone: (priv.phones || {})[p.id] || ""
+    phone: (priv.phones || {})[p.id] || "", orig: p
   }));
   renderFormPeople();
-  const manualCard = !!(card && card.manual);
-  $("accueil-form-pin").value = manualCard ? priv.pin || "" : "";
-  $("accueil-form-locked").checked = manualCard && card.locked === true;
-  $("accueil-form-general").checked = manualCard && card.general === true;
-  $("accueil-form-phone").value = manualCard ? priv.phone || "" : "";
+  $("accueil-form-pin").value = card ? priv.pin || "" : "";
+  $("accueil-form-locked").checked = !!(card && card.locked === true);
+  $("accueil-form-general").checked = !!(card && card.general === true);
+  $("accueil-form-phone").value = card ? priv.phone || "" : "";
   showMessage("accueil-form-message", "");
   $("accueil-form").hidden = false;
   $("accueil-add").hidden = true;
@@ -233,11 +226,10 @@ async function saveForm() {
   if (email && !isValidEmail(email)) return showMessage("accueil-form-message", "L'adresse e-mail n'est pas valide.", true);
   const pin = $("accueil-form-pin").value.trim();
   if (pin && !isValidPin(pin)) return showMessage("accueil-form-message", "Le code d'accès doit faire 4 chiffres.", true);
-  const manual = !(editing && !editing.manual);
   const phone = cleanPhone($("accueil-form-phone").value);
   const general = $("accueil-form-general").checked;
   const locked = $("accueil-form-locked").checked;
-  if (manual && phone && !isValidPhone(phone)) return showMessage("accueil-form-message", "Le téléphone de l'entreprise n'est pas valide.", true);
+  if (phone && !isValidPhone(phone)) return showMessage("accueil-form-message", "Le téléphone de l'entreprise n'est pas valide.", true);
   const filled = formPeople.map(p => ({
     ...p, name: p.name.trim(), role: p.role.trim(), email: p.email.trim().toLowerCase(), phone: cleanPhone(p.phone)
   })).filter(p => p.name || p.role || p.email || p.phone);
@@ -247,11 +239,19 @@ async function saveForm() {
   const wrongPhone = filled.find(p => p.phone && !isValidPhone(p.phone));
   if (wrongPhone) return showMessage("accueil-form-message", `Le téléphone de ${wrongPhone.name} n'est pas valide.`, true);
   // Un numéro n'est donné qu'avec le code d'accès : le code est alors obligatoire
-  if (manual && !pin && (phone || filled.some(p => p.phone))) {
+  if (!pin && (phone || filled.some(p => p.phone))) {
     return showMessage("accueil-form-message", "Choisissez un code d'accès à 4 chiffres : il protège les téléphones.", true);
   }
-  if (manual && !pin && locked) return showMessage("accueil-form-message", "Choisissez le code d'accès à 4 chiffres.", true);
-  const people = filled.map(p => ({ id: p.id || newPersonId(), name: p.name, role: p.role, hasPhone: !!p.phone }));
+  if (!pin && locked) return showMessage("accueil-form-message", "Choisissez le code d'accès à 4 chiffres.", true);
+  const people = filled.map(p => {
+    const person = { id: p.id || newPersonId(), name: p.name, role: p.role, hasPhone: !!p.phone };
+    // Personne ajoutée par l'entreprise (Mon profil) et pas renommée : on garde son prénom et son nom
+    if (p.orig && p.orig.name === p.name && p.orig.firstName != null) {
+      person.firstName = p.orig.firstName;
+      person.lastName = p.orig.lastName || "";
+    }
+    return person;
+  });
   const peopleEmails = {};
   const peoplePhones = {};
   filled.forEach((p, i) => {
@@ -265,8 +265,11 @@ async function saveForm() {
     let id;
     if (editing && !editing.manual) {
       id = editing.id;
-      await setAccueilLogo(id, formLogo);
-      await setAccueilPrivate(id, { email }); // le code et les collaborateurs restent ceux de l'entreprise
+      await saveAccueilSettings(id, {
+        logo: formLogo, visible: $("accueil-form-visible").checked, locked, general,
+        generalPhone: general && !!phone, people
+      });
+      await setAccueilPrivate(id, { email, people: peopleEmails, pin, phone, phones: peoplePhones });
     } else {
       id = await saveManualAccueilCard(editing ? editing.id : null,
         { name, city, siteId: $("accueil-form-site").value || null, logo: formLogo, people, locked,

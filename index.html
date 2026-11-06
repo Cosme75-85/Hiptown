@@ -273,8 +273,8 @@
       <label class="profile-label" for="accueil-form-email">E-mail qui reçoit les visites</label>
       <input type="email" id="accueil-form-email" class="profile-input" maxlength="120" placeholder="ex. accueil@entreprise.fr"/>
       <p class="profile-help">Jamais affiché sur la page. Sans adresse, c'est l'équipe Hiptown de la ville qui est prévenue.</p>
-      <!-- Case ajoutée à la main : l'équipe choisit les personnes et le code -->
-      <div id="accueil-form-manual">
+      <!-- Contact général, personnes et code : l'équipe les règle pour toutes les entreprises -->
+      <div id="accueil-form-contacts">
         <label class="accueil-check">
           <input type="checkbox" id="accueil-form-general"/> Proposer « Contacter l'entreprise » avant les personnes
         </label>
@@ -291,9 +291,11 @@
           <input type="checkbox" id="accueil-form-locked"/> Demander aussi le code pour envoyer un message
         </label>
       </div>
-      <!-- Entreprise du portail : elle choisit elle-même (Mon profil) ; ici, on ne fait que voir -->
+      <!-- Entreprise du portail : elle peut aussi tout régler elle-même (Mon profil) -->
       <div id="accueil-form-portal" hidden>
-        <p class="profile-label">Choix de l'entreprise</p>
+        <label class="accueil-check">
+          <input type="checkbox" id="accueil-form-visible"/> Afficher l'entreprise sur la page d'accueil
+        </label>
         <p class="profile-help" id="accueil-form-portal-status"></p>
       </div>
       <p class="profile-help" id="accueil-form-message" role="status" hidden></p>
