@@ -533,6 +533,53 @@ function companyCoworkingRecords(user, from, to) {
   return list.sort((a, b) => a.start - b.start);
 }
 
+/**
+ * Réservations ajoutées à la main par l'équipe dans Google Agenda pour une entreprise :
+ * événements sans aucun tag du portail (ni entreprise, ni compte, ni email de demandeur)
+ * dont le titre ou la description contient le nom de l'entreprise (mots entiers, sans
+ * tenir compte des majuscules ni des accents). Elles s'affichent dans « Mes réservations »
+ * de l'entreprise, sans crédits et sans modification possible depuis le portail.
+ */
+function companyManualRecords(companyName, from, to) {
+  const name = normalizeForMatch(companyName);
+  if (name.replace(/ /g, '').length < 3) return []; // nom trop court : trop de risques de confusion
+  const list = [];
+  getAllSpaces().forEach(space => {
+    const cal = CalendarApp.getCalendarById(space.calendarId);
+    if (!cal) return;
+    cal.getEvents(from, to).forEach(event => {
+      if (event.getTag(TAG_COMPANY) || event.getTag(TAG_PORTAL_UID) || event.getTag(TAG_EMAIL)) return;
+      const title = event.getTitle() || '';
+      const text = ' ' + normalizeForMatch(title + ' ' + (event.getDescription() || '')) + ' ';
+      if (text.indexOf(' ' + name + ' ') === -1) return;
+      const people = ((event.getDescription() || '').match(/Nombre de personnes : (\d+)/) || [])[1];
+      list.push({
+        spaceId: space.id,
+        eventId: event.getId(),
+        title: [COWORKING.titlePrefix, CONFIRMED_PREFIX, PENDING_PREFIX]
+          .reduce((t, prefix) => t.indexOf(prefix) === 0 ? t.slice(prefix.length) : t, title) || 'Réservation',
+        start: event.getStartTime().getTime(),
+        end: event.getEndTime().getTime(),
+        people: people ? Number(people) : 0,
+        notes: '',
+        meals: '',
+        quote: '',
+        credits: 0,
+        bookedBy: 'l\'équipe Hiptown',
+        mine: false,
+        manual: true
+      });
+    });
+  });
+  return list;
+}
+
+/** Texte comparable : minuscules, sans accents, mots séparés par un seul espace. */
+function normalizeForMatch(text) {
+  return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
 /** Même forme que listOwnEvents, pour un événement CalendarApp. */
 function ownEventFromCalendarEvent(event) {
   return {
