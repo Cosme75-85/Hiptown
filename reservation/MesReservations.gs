@@ -40,7 +40,9 @@ function getMyUpcomingBookings(idToken) {
     : monthStart;
   let records;
   try {
-    records = isCoworker ? companyCoworkingRecords(account, from, to) : readCoworkingRecords(account.uid);
+    records = isCoworker
+      ? companyCoworkingRecords(account, from, to).concat(manualRecordsFor(account, idToken, from, to))
+      : readCoworkingRecords(account.uid);
   } catch (err) {
     return { success: false, message: 'Impossible de lire vos réservations : ' + err.message };
   }
@@ -52,7 +54,7 @@ function getMyUpcomingBookings(idToken) {
       bookings.push({
         kind: 'coworking',
         status: 'confirmed',
-        editable: r.start > now.getTime(), // modifiable ou annulable jusqu'à son début
+        editable: !r.manual && r.start > now.getTime(), // modifiable ou annulable jusqu'à son début
         past: r.end <= now.getTime(),
         spaceId: view.spaceId,
         spaceName: view.spaceName,
@@ -66,12 +68,13 @@ function getMyUpcomingBookings(idToken) {
         endDateString: view.endDateString,
         startHour: view.startHour,
         endHour: view.endHour,
-        numberOfPeople: view.numberOfPeople,
+        numberOfPeople: r.manual ? (r.people || null) : view.numberOfPeople,
         bookedBy: view.bookedBy,
         mine: view.mine,
         total: ''
       });
     });
+    bookings.sort((a, b) => a.start - b.start);
     return { success: true, bookings: bookings, contactEmail: OWNER_EMAIL };
   }
 
@@ -92,6 +95,20 @@ function getMyUpcomingBookings(idToken) {
   }
   bookings.sort((a, b) => a.start - b.start);
   return { success: true, bookings: bookings, contactEmail: OWNER_EMAIL };
+}
+
+/**
+ * Coworker : réservations ajoutées à la main par l'équipe dans Google Agenda avec le nom
+ * de son entreprise (companyManualRecords). Un souci de lecture n'empêche pas la liste.
+ */
+function manualRecordsFor(account, idToken, from, to) {
+  try {
+    const company = readFirestoreDoc('companies/' + encodeURIComponent(account.companyId), idToken);
+    return company && company.name ? companyManualRecords(company.name, from, to) : [];
+  } catch (err) {
+    Logger.log('⚠️ Réservations ajoutées à la main non lues : ' + err.message);
+    return [];
+  }
 }
 
 /**
