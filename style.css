@@ -114,10 +114,11 @@ button.events-dot { border: none; padding: 0; }
   display: flex;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  align-items: flex-start;
+  /* Toutes les communications prennent la hauteur de la plus haute : la barre ne change
+     jamais de taille au défilement, la page ne bouge pas */
+  align-items: stretch;
   scrollbar-width: none;
   border-radius: var(--radius-lg);
-  transition: height 0.3s ease; /* hauteur de la communication affichée (communications.js) */
 }
 .events-track::-webkit-scrollbar { display: none; }
 
@@ -134,7 +135,6 @@ button.events-dot { border: none; padding: 0; }
 /* Même proportion que le format conseillé aux admins : 1200 × 400 px */
 .comm-img { position: relative; aspect-ratio: 3 / 1; background: var(--bg); overflow: hidden; }
 .comm-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-.comm-img .comm-img-bg { display: none; }
 
 /* Titre et texte à gauche, date et boutons à droite : la barre reste basse */
 .comm-info { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
@@ -150,18 +150,18 @@ button.events-dot { border: none; padding: 0; }
   .comm-side { max-width: none; align-items: flex-start; }
   .comm-side .event-date { text-align: left; }
   .comm-btns { justify-content: flex-start; }
-  /* Sans titre ni texte : l'image occupe toute la largeur mais garde la hauteur des autres
-     communications (62 % de large en 3:1), pour que la page ne saute pas au défilement.
-     L'image entière reste visible au centre (rien n'est coupé) et une copie floutée remplit les côtés.
-     Date et boutons éventuels se posent en bas à droite de l'image. */
-  .comm-card-full { position: relative; flex-direction: column; }
-  .comm-card-full .comm-img { flex: 0 0 auto; aspect-ratio: 300 / 62; }
-  .comm-card-full .comm-img img { object-fit: contain; }
-  .comm-card-full .comm-img .comm-img-bg { display: block; object-fit: cover; filter: blur(20px) brightness(0.85); transform: scale(1.2); }
-  .comm-card-full .comm-main { display: none; }
-  .comm-card-full .comm-info { position: absolute; right: 0; bottom: 0; padding: 10px 12px; }
-  .comm-card-full .comm-side { flex-direction: row; align-items: center; gap: 8px; }
+  /* Image seule : même hauteur que les autres (62 % de large en 3:1), sur toute la largeur.
+     Format conseillé aux admins : 1450 × 300 px (communications.js) */
+  .comm-card-full { flex-direction: column; }
+  .comm-card-full .comm-img { aspect-ratio: 300 / 62; }
 }
+/* Sans titre ni texte : l'image remplit toute la communication, sans bande vide ni flou.
+   Date et boutons éventuels se posent en bas à droite de l'image. */
+.comm-card-full { position: relative; }
+.comm-card-full .comm-img { flex: 1 1 auto; }
+.comm-card-full .comm-main { display: none; }
+.comm-card-full .comm-info { position: absolute; right: 0; bottom: 0; padding: 10px 12px; }
+.comm-card-full .comm-side { max-width: none; flex-direction: row; align-items: center; gap: 8px; }
 .comm-info-only { padding: 12px; }
 .comm-title { font-size: 14px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
 .comm-text { font-size: 12px; color: var(--text-soft); margin-top: 2px; white-space: pre-line; overflow-wrap: anywhere; }
