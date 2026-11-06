@@ -24,7 +24,8 @@ const ACCUEIL_LOGO_URL = 'https://cosme75-85.github.io/Hiptown-Accueil-1/Logo%20
 const ACCUEIL_TEAM_CONTACTS = {
   'anne-lise': { name: 'Anne-Lise Médalin', email: 'alm@hiptown.com' },
   'come':      { name: 'Côme Chabridon',    email: 'cc@hiptown.com' },
-  'benedicte': { name: 'Bénédicte Yeznikian', email: 'by@hiptown.com' } // Marseille
+  'benedicte': { name: 'Bénédicte Yeznikian', email: 'by@hiptown.com' }, // Marseille
+  'juliette':  { name: 'Juliette Dudek',      email: 'jd@hiptown.com' }  // Marseille
 };
 
 /**
