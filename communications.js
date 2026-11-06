@@ -14,9 +14,12 @@ import {
 
 const MAX_COMMS = 10;
 const MAX_BUTTONS = 3;
-// Format affiché aux admins : l'image est montrée en 3:1, recadrée au centre si besoin
+// Format affiché aux admins : l'image est montrée en 3:1, recadrée au centre si besoin.
+// Sans titre ni texte, l'image remplit toute la barre (même hauteur, toute la largeur) : format plus allongé.
 const IMAGE_WIDTH = 1200;
 const IMAGE_HEIGHT = 400;
+const FULL_WIDTH = 1450;
+const FULL_HEIGHT = 300;
 const MAX_IMAGE_LENGTH = 500000; // caractères, même limite que firestore.rules
 const SAFE_IMAGE = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/;
 const SAFE_URL = /^(https?:\/\/|mailto:|tel:)[^\s"'<>]+$/i;
@@ -78,7 +81,6 @@ function syncBanner() {
   const show = !!ctx && !dashboard.hidden && (items.length > 0 || ctx.canEdit);
   if (banner.hidden === !show) return;
   banner.hidden = !show;
-  if (show) fitHeight(); // masquée, la barre n'avait pas de hauteur à mesurer
 }
 new MutationObserver(syncBanner).observe(dashboard, { attributes: true, attributeFilter: ["hidden"] });
 
@@ -93,7 +95,7 @@ function cardHtml(c) {
   const full = img && !c.title && !c.text;
   return `
     <div class="comm-card${full ? " comm-card-full" : ""}">
-      ${img ? `<div class="comm-img">${full ? `<img class="comm-img-bg" src="${c.image}" alt="" aria-hidden="true" loading="lazy"/>` : ""}${img}</div>` : ""}
+      ${img ? `<div class="comm-img">${img}</div>` : ""}
       ${hasText || buttons ? `<div class="comm-info${img ? "" : " comm-info-only"}">
         <div class="comm-main">
           ${c.title ? `<div class="comm-title">${escapeHtml(c.title)}</div>` : ""}
@@ -115,7 +117,6 @@ function renderBanner() {
   dotsEl.innerHTML = "";
   if (!items.length) {
     track.innerHTML = `<p class="comm-empty">Aucune communication pour le moment. Cliquez sur « Modifier » pour en ajouter.</p>`;
-    track.style.height = "";
     syncBanner();
     return;
   }
@@ -136,8 +137,6 @@ function renderBanner() {
   }
   track.scrollLeft = 0;
   syncBanner();
-  fitHeight();
-  track.querySelectorAll("img").forEach(img => img.addEventListener("load", fitHeight));
 }
 
 function currentIndex() {
@@ -148,18 +147,10 @@ function goTo(i) {
   track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
 }
 
-/** La barre prend la hauteur de la communication affichée. */
-function fitHeight() {
-  const card = track.children[currentIndex()];
-  track.style.height = card && card.classList.contains("comm-card") ? card.offsetHeight + "px" : "";
-}
-
 track.addEventListener("scroll", () => {
   const i = currentIndex();
   dotsEl.querySelectorAll(".events-dot").forEach((d, j) => d.classList.toggle("active", i === j));
-  fitHeight();
 }, { passive: true });
-window.addEventListener("resize", fitHeight);
 
 async function loadBanner() {
   if (!ctx || !bannerCity) { items = []; renderBanner(); return; }
@@ -437,12 +428,13 @@ async function readImage(file) {
     }
     if (data.length > MAX_IMAGE_LENGTH) throw new Error("Image trop lourde, essayez-en une plus petite.");
 
-    const ratio = w / h, target = IMAGE_WIDTH / IMAGE_HEIGHT;
+    const ratio = w / h;
+    const near = (tw, th) => Math.abs(ratio - tw / th) / (tw / th) <= 0.15;
     let info = { text: `Votre image : ${w} × ${h} px ✓`, warn: false };
-    if (Math.abs(ratio - target) / target > 0.15) {
-      info = { text: `Votre image : ${w} × ${h} px. Le format conseillé est ${IMAGE_WIDTH} × ${IMAGE_HEIGHT} px : le haut et le bas (ou les côtés) seront coupés, comme dans l'aperçu.`, warn: true };
+    if (!near(IMAGE_WIDTH, IMAGE_HEIGHT) && !near(FULL_WIDTH, FULL_HEIGHT)) {
+      info = { text: `Votre image : ${w} × ${h} px. Le format conseillé est ${IMAGE_WIDTH} × ${IMAGE_HEIGHT} px (ou ${FULL_WIDTH} × ${FULL_HEIGHT} px pour une image seule) : le haut et le bas (ou les côtés) seront coupés.`, warn: true };
     } else if (w < IMAGE_WIDTH * 0.6) {
-      info = { text: `Votre image : ${w} × ${h} px. Elle risque d'être floue : ${IMAGE_WIDTH} × ${IMAGE_HEIGHT} px est conseillé.`, warn: true };
+      info = { text: `Votre image : ${w} × ${h} px. Elle risque d'être floue : ${IMAGE_WIDTH} px de large au moins est conseillé.`, warn: true };
     }
     return { data, info };
   } finally {
