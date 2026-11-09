@@ -399,10 +399,10 @@ function getCreditBalance(user, year, month, excludeEventId, withDetails) {
 }
 
 /** Solde affiché dans le portail pour le mois demandé (défaut : mois en cours). */
-function getCoworkingCredits(idToken, year, month) {
+function getCoworkingCredits(idToken, year, month, viewAsUid) {
   let user;
   try {
-    user = getPortalUser(idToken);
+    user = viewAsUid ? getPreviewedUser(idToken, viewAsUid) : getPortalUser(idToken);
   } catch (err) {
     return { success: false, message: err.message };
   }
@@ -430,10 +430,10 @@ function frenchMonthLabel(year, month) {
  * Réservations à venir (pas encore commencées) dans les salles proposées aux coworkers :
  * celles de toute l'entreprise pour un coworker, les siennes pour l'équipe Hiptown.
  */
-function getMyCoworkingBookings(idToken) {
+function getMyCoworkingBookings(idToken, viewAsUid) {
   let user;
   try {
-    user = getPortalUser(idToken);
+    user = viewAsUid ? getPreviewedUser(idToken, viewAsUid) : getPortalUser(idToken);
   } catch (err) {
     return { success: false, message: err.message };
   }
@@ -1164,6 +1164,46 @@ function getPortalUser(idToken) {
   }
   if (!profile.email) throw new Error('Adresse email manquante sur votre compte. Contactez l\'équipe Hiptown.');
   return portalUserFromProfile(uid, profile, idToken);
+}
+
+// ==================== APERÇU « VOIR COMME UN CLIENT » (admin général) ====================
+// Depuis Gestion > Voir comme un client, l'admin général regarde le portail tel que le voit
+// un compte client, pour tout vérifier sans créer de compte de test. Seules les LECTURES
+// (crédits, réservations à venir) acceptent viewAsUid : réserver, modifier ou annuler
+// se fait toujours au nom de la personne connectée.
+
+/**
+ * Vérifie que le jeton est celui d'un admin général (admin validé sans ville) et renvoie
+ * sa fiche. Lève une erreur sinon.
+ */
+function requireGeneralAdmin(idToken) {
+  const uid = tokenUid(idToken);
+  if (!uid) throw new Error('Session expirée, merci de vous reconnecter au portail.');
+  const me = readFirestoreDoc('users/' + encodeURIComponent(uid), idToken);
+  if (!me || me.role !== 'admin' || me.status !== 'approved' || me.site) {
+    throw new Error('L\'aperçu d\'un compte client est réservé à l\'admin général.');
+  }
+  return me;
+}
+
+/** Fiche du compte regardé en aperçu par l'admin général, lue avec le jeton de l'admin. */
+function previewedProfile(idToken, viewAsUid) {
+  requireGeneralAdmin(idToken);
+  const uid = String(viewAsUid || '');
+  if (!/^[A-Za-z0-9]{1,128}$/.test(uid)) throw new Error('Compte de l\'aperçu introuvable.');
+  const profile = readFirestoreDoc('users/' + encodeURIComponent(uid), idToken);
+  if (!profile || profile.status !== 'approved') throw new Error('Ce compte n\'est pas validé.');
+  if (!profile.email) throw new Error('Adresse email manquante sur ce compte.');
+  return { uid: uid, profile: profile };
+}
+
+/** Comme getPortalUser, mais pour le compte regardé en aperçu (lecture seule). */
+function getPreviewedUser(idToken, viewAsUid) {
+  const target = previewedProfile(idToken, viewAsUid);
+  if (COWORKING.allowedRoles.indexOf(target.profile.role) === -1) {
+    throw new Error('Ce compte ne réserve pas les salles du coworking.');
+  }
+  return portalUserFromProfile(target.uid, target.profile, idToken);
 }
 
 /**

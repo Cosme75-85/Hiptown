@@ -1524,3 +1524,21 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
   .accueil-visit { flex-direction: column; align-items: stretch; }
   .accueil-visit-ok { align-self: flex-end; }
 }
+
+/* ── Bandeau du mode aperçu (admin général, app-auth.js) ── */
+.preview-banner {
+  position: sticky; top: 0; z-index: 900;
+  width: 100%;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px;
+  padding: 10px 16px;
+  background: #ffe700; color: #1e1847;
+  font-size: 14px; text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+.preview-banner[hidden] { display: none; }
+.preview-banner-note { display: block; font-size: 12px; }
+.preview-banner-btn {
+  padding: 6px 12px; border-radius: 999px; border: 1.5px solid #1e1847;
+  background: transparent; color: #1e1847; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.preview-banner-exit { background: #1e1847; color: #ffe700; }

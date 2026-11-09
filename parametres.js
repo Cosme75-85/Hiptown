@@ -147,7 +147,8 @@ export function initSettingsPage({ getContext, save, onClose }) {
         showMessage(setting.saved, false);
       } catch (err) {
         console.error("Paramètres : enregistrement impossible", err);
-        showMessage("Réglage gardé sur cet appareil, mais pas encore enregistré sur votre compte.", true);
+        showMessage(/^Mode aperçu/.test(err?.message || "") ? err.message // aperçu de l'admin général (app-auth.js)
+          : "Réglage gardé sur cet appareil, mais pas encore enregistré sur votre compte.", true);
       }
     });
   }

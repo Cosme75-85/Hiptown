@@ -597,6 +597,8 @@ document.addEventListener("hiptown-dashboard", e => {
   const d = e.detail || {};
   stopAll();
   if (!d.uid || !["salle", "coworking", "hiptown"].includes(d.space)) { me = null; return; }
+  // Aperçu d'un compte client par l'admin général : pas de messagerie (elle écrirait au nom du client)
+  if (d.preview && d.preview.readOnly) { me = null; return; }
   const c = d.contact || {};
   me = {
     uid: d.uid,
@@ -657,7 +659,11 @@ navigator.serviceWorker?.addEventListener("message", e => {
 });
 
 document.addEventListener("hiptown-tile-action", e => {
-  if (e.detail === "messages") openMessagerie();
+  if (e.detail !== "messages") return;
+  if (!me && window.hiptownPreview && window.hiptownPreview.readOnly) {
+    return alert("Mode aperçu : la messagerie n'est pas disponible quand vous voyez le portail comme un client.");
+  }
+  openMessagerie();
 });
 
 $("msg-inbox-list").addEventListener("click", e => {

@@ -19,10 +19,10 @@ const COMPANY_HISTORY_MONTHS = 3; // coworkers : réservations passées de l'ent
  * les espaces : celles du mois en cours, passées comprises (past: true), et pour un
  * coworker celles des COMPANY_HISTORY_MONTHS mois précédents, puis celles des 12 prochains mois.
  */
-function getMyUpcomingBookings(idToken) {
+function getMyUpcomingBookings(idToken, viewAsUid) {
   let account;
   try {
-    account = getPortalAccount(idToken);
+    account = viewAsUid ? getPreviewedAccount(idToken, viewAsUid) : getPortalAccount(idToken);
   } catch (err) {
     return { success: false, message: err.message };
   }
@@ -306,6 +306,13 @@ function getPortalAccount(idToken) {
   const email = tokenEmail(idToken);
   if (!email) throw new Error('Adresse email manquante sur votre compte. Contactez l\'équipe Hiptown.');
   return { uid: uid, email: email, role: profile.role || '', companyId: profile.companyId ? String(profile.companyId) : '' };
+}
+
+/** Comme getPortalAccount, pour le compte regardé en aperçu par l'admin général (Coworking.gs). */
+function getPreviewedAccount(idToken, viewAsUid) {
+  const target = previewedProfile(idToken, viewAsUid);
+  const p = target.profile;
+  return { uid: target.uid, email: String(p.email).toLowerCase(), role: p.role || '', companyId: p.companyId ? String(p.companyId) : '' };
 }
 
 /** Email écrit dans le jeton (vérifié par Firestore dans getPortalAccount), en minuscules. */

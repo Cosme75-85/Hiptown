@@ -56,7 +56,8 @@ async function load() {
     const res = await fetch(BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
-      body: JSON.stringify({ action: isTeam() ? "getAllUpcomingBookings" : "getMyUpcomingBookings", idToken: idToken })
+      body: JSON.stringify({ action: isTeam() ? "getAllUpcomingBookings" : "getMyUpcomingBookings", idToken: idToken,
+        viewAsUid: (window.hiptownPreview && window.hiptownPreview.uid) || undefined }) // aperçu de l'admin général (app-auth.js)
     }).then(r => r.json());
     if (token !== requestToken) return;
     if (!res.success || !Array.isArray(res.bookings)) {
@@ -107,7 +108,7 @@ async function loadCredits() {
     const res = await fetch(BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "getCoworkingCredits", idToken: idToken })
+      body: JSON.stringify({ action: "getCoworkingCredits", idToken: idToken, viewAsUid: (window.hiptownPreview && window.hiptownPreview.uid) || undefined })
     }).then(r => r.json());
     if (token !== requestToken || !res.success || !res.chargesCredits) return;
     box.innerHTML = '<h3 class="my-credits-title">Crédits ' + escapeHtml(res.company ? "de " + res.company + " " : "")
