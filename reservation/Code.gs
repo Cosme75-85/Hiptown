@@ -101,10 +101,10 @@ function doPost(e) {
       return jsonResponse(bookCoworkingRoom(body.idToken, body.payload));
     }
     if (body.action === 'getCoworkingCredits') {
-      return jsonResponse(getCoworkingCredits(body.idToken, body.year, body.month));
+      return jsonResponse(getCoworkingCredits(body.idToken, body.year, body.month, body.viewAsUid));
     }
     if (body.action === 'getMyCoworkingBookings') {
-      return jsonResponse(getMyCoworkingBookings(body.idToken));
+      return jsonResponse(getMyCoworkingBookings(body.idToken, body.viewAsUid));
     }
     if (body.action === 'cancelCoworking') {
       return jsonResponse(cancelCoworkingBooking(body.idToken, body.payload));
@@ -117,7 +117,7 @@ function doPost(e) {
     }
     // Tableau de bord du portail : toutes les réservations à venir du compte (voir MesReservations.gs)
     if (body.action === 'getMyUpcomingBookings') {
-      return jsonResponse(getMyUpcomingBookings(body.idToken));
+      return jsonResponse(getMyUpcomingBookings(body.idToken, body.viewAsUid));
     }
     // Agenda de l'équipe : toutes les réunions à venir (voir MesReservations.gs)
     if (body.action === 'getAllUpcomingBookings') {

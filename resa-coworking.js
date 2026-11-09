@@ -186,6 +186,10 @@ function creditsFor(people, startHour, endHour, numberOfDays) {
   return perDay * (numberOfDays || 1);
 }
 
+// Aperçu d'un compte client par l'admin général (app-auth.js) : lecture seule, on ne réserve rien
+const PREVIEW_MESSAGE = "Mode aperçu : réserver, modifier ou annuler est désactivé.";
+const isReadOnlyPreview = () => !!(window.hiptownPreview && window.hiptownPreview.readOnly);
+
 async function postJson(body) {
   const res = await fetch(BASE_URL, {
     method: "POST",
@@ -202,7 +206,7 @@ async function loadCredits() {
   if (!auth.currentUser) return;
   try {
     const idToken = await auth.currentUser.getIdToken();
-    const res = await postJson({ action: "getCoworkingCredits", idToken: idToken, year: year, month: month });
+    const res = await postJson({ action: "getCoworkingCredits", idToken: idToken, year: year, month: month, viewAsUid: (window.hiptownPreview && window.hiptownPreview.uid) || undefined });
     if (year !== currentYear || month !== currentMonth) return; // mois changé entre-temps
     if (!res.success) {
       creditBalance = null;
@@ -232,7 +236,7 @@ async function refreshHeaderCredits() {
   if (!box || !auth.currentUser) return;
   try {
     const idToken = await auth.currentUser.getIdToken();
-    showHeaderCredits(await postJson({ action: "getCoworkingCredits", idToken: idToken }));
+    showHeaderCredits(await postJson({ action: "getCoworkingCredits", idToken: idToken, viewAsUid: (window.hiptownPreview && window.hiptownPreview.uid) || undefined }));
   } catch (err) {
     box.hidden = true;
   }
@@ -620,6 +624,7 @@ function resetForm() {
 }
 
 async function confirmBooking() {
+  if (isReadOnlyPreview()) return showToast(PREVIEW_MESSAGE);
   const b = pendingBooking;
   if (!b || b.startHour === null) return;
 
@@ -699,7 +704,7 @@ async function loadMine() {
   if (!auth.currentUser) return;
   try {
     const idToken = await auth.currentUser.getIdToken();
-    const res = await postJson({ action: "getMyCoworkingBookings", idToken: idToken });
+    const res = await postJson({ action: "getMyCoworkingBookings", idToken: idToken, viewAsUid: (window.hiptownPreview && window.hiptownPreview.uid) || undefined });
     if (!res.success || !Array.isArray(res.bookings)) { box.hidden = true; return; }
     myBookings = res.bookings;
     renderMine();
@@ -882,6 +887,7 @@ function downloadIcs(b) {
 }
 
 async function cancelMine(b, btn) {
+  if (isReadOnlyPreview()) return showToast(PREVIEW_MESSAGE);
   const whose = b.mine === false && b.bookedBy ? "la réservation de " + b.bookedBy : "votre réservation";
   if (!confirm("Annuler " + whose + " « " + b.title + " » (" + b.spaceName + ", " + describeSlot(b) + ") ?")) return;
   if (!auth.currentUser) return showToast("Session expirée, merci de vous reconnecter.");
@@ -972,6 +978,7 @@ function updateEditForm() {
 
 async function submitEdit() {
   if (!editing) return;
+  if (isReadOnlyPreview()) return showToast(PREVIEW_MESSAGE);
   const p = editPayload();
   if (!p.dateString) return showToast("Merci de choisir une date.");
   if (p.startHour >= p.endHour) return showToast("L'heure de fin doit être après l'heure de début.");

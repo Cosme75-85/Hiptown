@@ -33,6 +33,7 @@ const stepGestionServices = document.getElementById("step-gestion-services");
 const stepGestionDevis = document.getElementById("step-gestion-devis");
 const stepGestionStats = document.getElementById("step-gestion-stats");
 const stepGestionAccueil = document.getElementById("step-gestion-accueil");
+const stepGestionApercu = document.getElementById("step-gestion-apercu");
 const stepSettings = document.getElementById("step-settings");
 const stepCommunications = document.getElementById("step-communications");
 const authError   = document.getElementById("auth-error");
@@ -43,7 +44,7 @@ const authError   = document.getElementById("auth-error");
 // masque en plus les sections de connexion et de gestion.
 function hideAllAuth() {
   if (window.hideAll) window.hideAll();
-  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepGestionAccueil, stepSettings, stepCommunications].forEach(s => { if (s) s.hidden = true; });
+  [stepAuth, stepPending, stepAdmin, stepProfile, stepGestion, stepCompanies, stepReductions, stepGestionSalles, stepGestionServices, stepGestionDevis, stepGestionStats, stepGestionAccueil, stepGestionApercu, stepSettings, stepCommunications].forEach(s => { if (s) s.hidden = true; });
 }
 window.hideAllAuth = hideAllAuth;
 
@@ -178,7 +179,7 @@ document.getElementById("pending-logout")?.addEventListener("click", async () =>
 
 // ── Routage automatique selon l'état de connexion ──
 watchAuthState(async (user, profile) => {
-  if (!user) { session = null; applyUserSettings(null); return; } // reste sur l'écran de choix / auth, rien à faire
+  if (!user) { clearPreview(); session = null; applyUserSettings(null); return; } // reste sur l'écran de choix / auth, rien à faire
 
   if (!profile || profile.status === "pending") {
     hideAllAuth();
@@ -193,6 +194,7 @@ watchAuthState(async (user, profile) => {
   }
 
   // status === "approved"
+  clearPreview(); // nouvelle connexion : on repart toujours de son propre compte
   const space = profile.role === "admin" ? "hiptown" : profile.role;
   if (!SPACE_STYLES[space]) return; // rôle inconnu : on ne route nulle part
   let company = null;
@@ -262,11 +264,12 @@ function buildClient() {
 const profilePage = initProfilePage({
   getContext: () => ({ profile: session.profile, space: session.space, companyName: companyNameOf(session) }),
   save: async (fields) => {
+    blockInPreview();
     await updateMyProfile(session.uid, fields);
     Object.assign(session.profile, fields);
     window.renderIdentity(buildClient());
   },
-  changePassword: changeMyPassword,
+  changePassword: async (current, next) => { blockInPreview(); return changeMyPassword(current, next); },
   onClose: () => {
     hideAllAuth();
     document.getElementById("step-dashboard").hidden = false;
@@ -276,8 +279,11 @@ const accueilFiche = initAccueilFiche(() => ({ profile: session.profile, space: 
 ["company-badge", "profile-link"].forEach(id => {
   document.getElementById(id)?.addEventListener("click", () => {
     if (!session) return;
-    profilePage.open();
-    accueilFiche.open();
+    profilePage.open(isReadOnlyPreview() ? PREVIEW_READONLY_MESSAGE : undefined);
+    // Fiche de l'accueil visiteurs : pas en aperçu (elle s'enregistre au fil des modifications)
+    const fiche = document.getElementById("accueil-fiche");
+    if (isReadOnlyPreview()) { if (fiche) fiche.hidden = true; }
+    else accueilFiche.open();
   });
 });
 
@@ -285,6 +291,7 @@ const accueilFiche = initAccueilFiche(() => ({ profile: session.profile, space: 
 const settingsPage = initSettingsPage({
   getContext: () => ({ uid: session.uid, profile: session.profile }),
   save: async (fields) => {
+    blockInPreview();
     await updateMyProfile(session.uid, fields);
     Object.assign(session.profile, fields);
   },
@@ -310,6 +317,8 @@ function routeToDashboard(client, space) {
     // Ville, site et entreprise du compte, et périmètre de l'équipe (messagerie.js)
     place: { site: profile.site || null, siteId: profile.siteId || null, companyId: profile.companyId || null },
     scope: space === "hiptown" ? adminScope() : null,
+    // Aperçu de l'admin général (null sinon) : readOnly = compte client regardé, rien ne s'enregistre
+    preview: session.preview || null,
     contact: { firstName: profile.firstName || "", lastName: profile.lastName || "", company: companyNameOf(session), email: profile.email || "" }
   } }));
   if (space === "hiptown") applySiteAccess();
@@ -335,6 +344,8 @@ const isHiptownStaff = () => session?.space === "hiptown";
 
 function openGestionMenu() {
   if (!isHiptownStaff()) return;
+  const apercuCard = document.getElementById("open-gestion-apercu");
+  if (apercuCard) apercuCard.hidden = !isRealGeneralAdmin() || !!session.preview;
   hideAllAuth();
   stepGestion.hidden = false;
 }
@@ -380,6 +391,11 @@ document.getElementById("back-from-gestion-salles")?.addEventListener("click", o
 document.getElementById("back-from-gestion-services")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-devis")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-gestion-stats")?.addEventListener("click", openGestionMenu);
+document.getElementById("back-from-gestion-apercu")?.addEventListener("click", () => {
+  if (isHiptownStaff()) return openGestionMenu();
+  hideAllAuth(); // aperçu d'un client : pas de menu Gestion, retour à son tableau de bord
+  document.getElementById("step-dashboard").hidden = false;
+});
 document.getElementById("back-from-gestion-accueil")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-reductions")?.addEventListener("click", openGestionMenu);
 document.getElementById("back-from-companies")?.addEventListener("click", openGestionMenu);
@@ -1419,3 +1435,172 @@ if (signupCity && signupSite) {
   signupCity.innerHTML = cityOptionsHtml(PORTAIL.defaultSite);
   wireCitySite(signupCity, signupSite, "", "— Votre site Hiptown —");
 }
+
+// ═══════════════════════════════════════════════════════
+//  APERÇU « VOIR COMME UNE VILLE OU UN CLIENT » (admin général)
+// ═══════════════════════════════════════════════════════
+// L'admin général choisit une ville, puis l'équipe de cette ville ou un compte client :
+// le portail s'affiche comme pour eux, sans créer de compte de test.
+//  - Équipe de la ville : il garde son propre compte, mais le portail se limite à cette ville
+//    (comme pour un admin de ville). Ce qu'il fait reste réellement fait, avec ses droits.
+//  - Compte client : lecture seule. Rien n'est enregistré (profil, paramètres, réservations,
+//    messagerie) ; les crédits et réservations viennent de l'outil de réservation (viewAsUid).
+// Un bandeau jaune reste en haut de l'écran tant que l'aperçu est actif.
+
+const PREVIEW_READONLY_MESSAGE = "Mode aperçu : vous voyez ce compte en lecture seule, rien n'est enregistré.";
+let realSession = null;     // session de l'admin général pendant un aperçu
+let previewAccounts = [];   // comptes proposés sur la page de l'aperçu
+
+/** Vrai pour l'admin général connecté, même pendant un aperçu. */
+function isRealGeneralAdmin() {
+  return levelOf((realSession || session)?.profile) === "general";
+}
+
+function isReadOnlyPreview() {
+  return !!session?.preview?.readOnly;
+}
+
+/** Arrête un enregistrement pendant l'aperçu d'un compte client (message affiché tel quel). */
+function blockInPreview() {
+  if (isReadOnlyPreview()) throw new Error(PREVIEW_READONLY_MESSAGE);
+}
+
+/** Oublie l'aperçu en cours (déconnexion, nouvelle connexion). */
+function clearPreview() {
+  realSession = null;
+  window.hiptownPreview = null;
+  const banner = document.getElementById("preview-banner");
+  if (banner) banner.hidden = true;
+}
+
+function renderPreviewBanner() {
+  const banner = document.getElementById("preview-banner");
+  if (!banner) return;
+  const preview = session?.preview;
+  banner.hidden = !preview;
+  if (!preview) return;
+  document.getElementById("preview-banner-who").textContent = preview.label;
+  document.getElementById("preview-banner-note").textContent = preview.readOnly
+    ? "Lecture seule : rien n'est enregistré (réservations, profil, messagerie)."
+    : "Vos actions restent réelles, limitées à cette ville.";
+}
+
+/** Ouvre la page de choix de l'aperçu (admin général seulement). */
+async function openPreviewPage() {
+  if (!isRealGeneralAdmin()) return;
+  hideAllAuth();
+  stepGestionApercu.hidden = false;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  const citySelect = document.getElementById("apercu-city");
+  const current = session.preview?.city || citySelect.value || PORTAIL.defaultSite;
+  citySelect.innerHTML = Object.keys(PORTAIL.cities || {})
+    .map(id => `<option value="${escapeHtml(id)}">${escapeHtml(cityLabel(id))}</option>`).join("");
+  citySelect.value = current;
+  if (session.preview?.kind) document.getElementById("apercu-kind").value = session.preview.kind;
+  showPreviewMessage("");
+  previewAccounts = [];
+  renderPreviewAccounts("Chargement des comptes...");
+  try {
+    const [users, companies] = await Promise.all([listAllUsers(null), listCompanies().catch(() => [])]);
+    const names = Object.fromEntries(companies.map(c => [c.id, c.name]));
+    previewAccounts = users
+      .filter(u => u.status === "approved" && (u.role === "coworking" || u.role === "salle"))
+      .map(u => ({ ...u, companyLabel: (u.companyId && names[u.companyId]) || u.companyNameHint || "Entreprise non renseignée" }))
+      .sort((a, b) => a.companyLabel.localeCompare(b.companyLabel, "fr") || adminNameOf(a).localeCompare(adminNameOf(b), "fr"));
+    renderPreviewAccounts();
+  } catch (err) {
+    console.error("Comptes de l'aperçu non chargés", err);
+    renderPreviewAccounts("Comptes indisponibles pour le moment.");
+  }
+}
+
+function showPreviewMessage(text) {
+  const box = document.getElementById("apercu-message");
+  box.textContent = text;
+  box.hidden = !text;
+}
+
+/** Liste « Entreprise — Prénom Nom » des comptes du type et de la ville choisis. */
+function renderPreviewAccounts(placeholder) {
+  const city = document.getElementById("apercu-city").value;
+  const kind = document.getElementById("apercu-kind").value;
+  const wrap = document.getElementById("apercu-account-wrap");
+  const select = document.getElementById("apercu-account");
+  const note = document.getElementById("apercu-note");
+  const goBtn = document.getElementById("apercu-go");
+  wrap.hidden = kind === "team";
+  if (kind === "team") {
+    note.textContent = "Le portail s'affiche comme pour un admin de cette ville. Vos actions restent réelles.";
+    goBtn.disabled = false;
+    return;
+  }
+  note.textContent = "Lecture seule : vous voyez ce que voit ce compte, sans rien pouvoir enregistrer ni réserver.";
+  const accounts = previewAccounts.filter(u => u.role === kind && u.site === city);
+  if (placeholder || !accounts.length) {
+    select.innerHTML = `<option value="">${escapeHtml(placeholder || "Aucun compte validé de ce type dans cette ville.")}</option>`;
+    goBtn.disabled = true;
+    return;
+  }
+  const previous = session.preview?.uid;
+  select.innerHTML = accounts.map(u => `<option value="${escapeHtml(u.uid)}">${escapeHtml(u.companyLabel)} — ${escapeHtml(adminNameOf(u))}${u.siteId ? " (" + escapeHtml(siteLabel(u.siteId)) + ")" : ""}</option>`).join("");
+  if (previous && accounts.some(u => u.uid === previous)) select.value = previous;
+  goBtn.disabled = false;
+}
+
+/** Affiche le portail comme l'équipe d'une ville ou comme un compte client. */
+async function startPreview() {
+  if (!isRealGeneralAdmin()) return;
+  const base = realSession || session;
+  const city = document.getElementById("apercu-city").value;
+  const kind = document.getElementById("apercu-kind").value;
+  let next;
+  if (kind === "team") {
+    next = {
+      uid: base.uid,
+      profile: { ...base.profile, site: city, adminLevel: "city", siteIds: [] },
+      space: "hiptown",
+      company: null,
+      preview: { kind, city, readOnly: false, label: "équipe Hiptown de " + cityLabel(city) }
+    };
+  } else {
+    const u = previewAccounts.find(a => a.uid === document.getElementById("apercu-account").value);
+    if (!u) return showPreviewMessage("Choisissez un compte.");
+    let company = null;
+    if (u.role === "coworking" && u.companyId) company = await getCompany(u.companyId).catch(() => null);
+    next = {
+      uid: u.uid,
+      profile: { ...u },
+      space: u.role,
+      company,
+      preview: {
+        kind, city, readOnly: true, uid: u.uid,
+        label: `${adminNameOf(u)} · ${u.companyLabel} · ${u.role === "coworking" ? "coworking" : "salle de réunion"} · ${cityLabel(city)}`
+      }
+    };
+  }
+  realSession = base;
+  session = next;
+  // Lu par les autres modules (réservations, messagerie...) : compte regardé et lecture seule
+  window.hiptownPreview = { readOnly: next.preview.readOnly, uid: next.preview.readOnly ? next.uid : null };
+  applyUserSettings(session.uid, session.profile);
+  renderPreviewBanner();
+  routeToDashboard(buildClient(), session.space);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/** Revient à son propre compte d'admin général. */
+function stopPreview() {
+  if (!realSession) return;
+  session = realSession;
+  clearPreview();
+  applyUserSettings(session.uid, session.profile);
+  routeToDashboard(buildClient(), session.space);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("open-gestion-apercu")?.addEventListener("click", (e) => { e.preventDefault(); openPreviewPage(); });
+document.getElementById("preview-change")?.addEventListener("click", openPreviewPage);
+document.getElementById("preview-exit")?.addEventListener("click", stopPreview);
+document.getElementById("apercu-city")?.addEventListener("change", () => renderPreviewAccounts());
+document.getElementById("apercu-kind")?.addEventListener("change", () => renderPreviewAccounts());
+document.getElementById("apercu-go")?.addEventListener("click", startPreview);

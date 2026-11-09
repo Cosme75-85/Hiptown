@@ -80,7 +80,9 @@ box?.addEventListener("click", async e => {
 
 document.addEventListener("hiptown-dashboard", e => {
   const d = e.detail || {};
-  watch(d.space === "coworking" || d.space === "hiptown" ? d.uid : null);
+  // Aperçu d'un client par l'admin général : ses visites ne sont lisibles que par lui
+  const previewed = d.preview && d.preview.readOnly;
+  watch(!previewed && (d.space === "coworking" || d.space === "hiptown") ? d.uid : null);
 });
 
 onAuthStateChanged(auth, user => { if (!user) watch(null); });

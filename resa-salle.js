@@ -24,6 +24,11 @@ document.addEventListener("hiptown-dashboard", e => {
 
 document.addEventListener("hiptown-tile-action", e => {
   if (e.detail !== "resasalle") return;
+  // Aperçu d'un client par l'admin général : pas de demande envoyée en son nom
+  const preview = !!(window.hiptownPreview && window.hiptownPreview.readOnly);
+  $("resa-salle-preview").hidden = !preview;
+  $("resa-salle-frame").hidden = preview;
+  if (preview) { $("resa-salle-frame").src = "about:blank"; return; }
   const url = frameUrl();
   $("resa-salle-open").href = url;
   // Rechargé à chaque ouverture : disponibilités toujours à jour (la page garde sinon

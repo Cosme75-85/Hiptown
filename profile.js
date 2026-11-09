@@ -180,7 +180,8 @@ export function initProfilePage({ getContext, save, changePassword, onClose }) {
       await save(fields);
       showMessage("Profil enregistré ✓", false);
     } catch (err) {
-      showMessage("Enregistrement impossible. Réessayez.", true);
+      // « Mode aperçu » : l'admin général regarde ce compte en lecture seule (app-auth.js)
+      showMessage(/^Mode aperçu/.test(err?.message || "") ? err.message : "Enregistrement impossible. Réessayez.", true);
     } finally {
       saveBtn.disabled = false;
     }
@@ -238,7 +239,7 @@ export function initProfilePage({ getContext, save, changePassword, onClose }) {
       closePasswordForm();
       $("password-done").hidden = false;
     } catch (err) {
-      showPasswordMessage(passwordErrorMessage(err), true);
+      showPasswordMessage(/^Mode aperçu/.test(err?.message || "") ? err.message : passwordErrorMessage(err), true);
     } finally {
       passwordSave.disabled = false;
     }

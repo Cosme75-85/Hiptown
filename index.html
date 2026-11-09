@@ -34,6 +34,14 @@
   <p id="header-tagline">Votre espace client</p>
 </header>
 
+<!-- BANDEAU DU MODE APERÇU — l'admin général voit le portail comme une ville ou un client (app-auth.js) -->
+<div id="preview-banner" class="preview-banner" role="status" hidden>
+  <span class="preview-banner-text">👁️ <b>Mode aperçu</b> : <span id="preview-banner-who"></span>
+    <span id="preview-banner-note" class="preview-banner-note"></span></span>
+  <button type="button" class="preview-banner-btn" id="preview-change">Changer</button>
+  <button type="button" class="preview-banner-btn preview-banner-exit" id="preview-exit">Quitter l'aperçu</button>
+</div>
+
 <!-- BARRE DE COMMUNICATION — propre à chaque ville, modifiée par l'équipe Hiptown de la ville (communications.js) -->
 <div id="events-banner" hidden>
   <div class="events-header">
@@ -230,6 +238,10 @@
         <div class="outil-logo">📊</div>
         <div class="outil-name">Statistiques</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-apercu" hidden>
+        <div class="outil-logo">👁️</div>
+        <div class="outil-name">Voir comme une ville ou un client</div>
+      </a>
     </div>
   </section>
 
@@ -354,6 +366,31 @@
     </div>
 
     <div id="comm-list"></div>
+  </section>
+
+  <!-- ÉTAPE : APERÇU (admin général) — voir le portail comme une ville ou un compte client (app-auth.js) -->
+  <section id="step-gestion-apercu" hidden>
+    <button class="back-btn" id="back-from-gestion-apercu">Gestion</button>
+    <h2 class="step-title" style="margin-bottom:4px;">👁️ Voir comme une ville ou un client</h2>
+    <p style="font-size:13px;color:#64748b;margin-bottom:12px;">
+      Pour vérifier le portail sans créer de compte de test : choisissez une ville, puis l'équipe
+      de cette ville ou un compte client. Un bandeau jaune rappelle que vous êtes en aperçu.
+    </p>
+    <label class="profile-label" for="apercu-city">Ville</label>
+    <select class="profile-input" id="apercu-city"></select>
+    <label class="profile-label" for="apercu-kind">Voir comme</label>
+    <select class="profile-input" id="apercu-kind">
+      <option value="team">L'équipe Hiptown de la ville (admin de ville)</option>
+      <option value="coworking">Un client coworking</option>
+      <option value="salle">Un client salle de réunion</option>
+    </select>
+    <div id="apercu-account-wrap" hidden>
+      <label class="profile-label" for="apercu-account">Entreprise et compte</label>
+      <select class="profile-input" id="apercu-account"></select>
+    </div>
+    <p class="profile-help" id="apercu-note"></p>
+    <p class="profile-help" id="apercu-message" role="status" hidden style="color:#dc2626;"></p>
+    <button class="direct-btn" id="apercu-go" type="button" style="margin-top:14px;">👁️ Voir le portail</button>
   </section>
 
   <!-- ÉTAPE : STATISTIQUES DE CLICS (admin, phase de test) — statistiques.js et reservation/Stats.gs -->
@@ -1230,6 +1267,9 @@
   <!-- RÉSERVER UNE SALLE (clients salle de réunion) : l'outil de réservation affiché dans le portail (resa-salle.js) -->
   <section id="step-resa-salle" class="resa-salle-step" hidden>
     <button class="back-btn" id="back-from-resa-salle">Salle de réunion</button>
+    <p id="resa-salle-preview" class="profile-help" hidden style="font-size:14px;padding:16px;">
+      👁️ Mode aperçu : l'outil de réservation n'est pas affiché, pour ne pas envoyer de demande au nom de ce client.
+      Vous pouvez l'ouvrir vous-même depuis votre propre compte.</p>
     <iframe id="resa-salle-frame" class="resa-salle-frame" title="Réserver une salle" allow="clipboard-write"></iframe>
     <p class="resa-salle-fallback">La page ne s'affiche pas ? <a id="resa-salle-open" href="#" target="_blank" rel="noopener">Ouvrir la réservation dans un nouvel onglet</a></p>
   </section>
