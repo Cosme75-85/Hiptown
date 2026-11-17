@@ -445,6 +445,8 @@ function getMyCoworkingBookings(idToken, viewAsUid) {
   try {
     const records = user.chargesCredits
       ? companyCoworkingRecords(user, new Date(now), new Date(now + 366 * DAY_MS))
+        .concat(safeCompanyManualRecords(user.company, new Date(now), new Date(now + 366 * DAY_MS)))
+        .sort((a, b) => a.start - b.start)
       : myCoworkingRecords(user.uid);
     records.forEach(r => {
       const space = findSpace(r.spaceId);
@@ -476,15 +478,26 @@ function coworkingBookingView(space, r, chargesCredits) {
     endDateString: slot.isMultiDay ? slot.endDateString : null,
     startHour: slot.startHour,
     endHour: slot.endHour,
-    numberOfPeople: r.people || 1,
+    numberOfPeople: r.manual ? (r.people || null) : (r.people || 1),
     notes: r.notes || '',
     services: requestedServices(meals),
     servicesLabel: servicesLabel(meals),
     quoteNumber: r.quote || '',
     credits: chargesCredits ? (Number(r.credits) || 0) : null,
     bookedBy: r.bookedBy || '',
-    mine: r.mine !== false
+    mine: r.mine !== false,
+    manual: !!r.manual // ajoutée à la main par l'équipe : ni modifiable ni annulable depuis le portail
   };
+}
+
+/** companyManualRecords, sans jamais empêcher l'affichage des autres réservations. */
+function safeCompanyManualRecords(companyName, from, to) {
+  try {
+    return companyName ? companyManualRecords(companyName, from, to) : [];
+  } catch (err) {
+    Logger.log('⚠️ Réservations ajoutées à la main non lues : ' + err.message);
+    return [];
+  }
 }
 
 /**
