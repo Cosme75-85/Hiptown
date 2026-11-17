@@ -160,8 +160,10 @@
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <select id="signup-city"
                 style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:#fff;"></select>
-        <select id="signup-site"
-                style="width:100%;padding:12px;margin-bottom:14px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:#fff;"></select>
+        <!-- Le choix du site se fait dans la liste de cartes ; la liste déroulante cachée garde la valeur envoyée -->
+        <select id="signup-site" hidden></select>
+        <p class="signup-site-title">Votre site Hiptown</p>
+        <div class="signup-site-list" id="signup-site-list" role="radiogroup" aria-label="Votre site Hiptown"></div>
         <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
         <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
           Votre compte sera activé après validation par l'équipe Hiptown.

@@ -1446,6 +1446,24 @@ const signupSite = document.getElementById("signup-site");
 if (signupCity && signupSite) {
   signupCity.innerHTML = cityOptionsHtml(PORTAIL.defaultSite);
   wireCitySite(signupCity, signupSite, "", "— Votre site Hiptown —");
+  // Une carte par site : « NABO06 - Émergence » puis l'adresse en dessous
+  const siteList = document.getElementById("signup-site-list");
+  const drawSiteCards = () => {
+    const sites = PORTAIL.cities?.[signupCity.value]?.sites || {};
+    const ids = Object.keys(sites);
+    siteList.innerHTML = ids.length ? ids.map(id => {
+      const [code, ...rest] = sites[id].split(" — ");
+      const address = PORTAIL.siteAddresses?.[id] || "";
+      return `<label class="signup-site-card">
+          <input type="radio" name="signup-site-choice" value="${escapeHtml(id)}" ${signupSite.value === id ? "checked" : ""}/>
+          <span><b>${escapeHtml(rest.length ? code + " - " + rest.join(" — ") : code)}</b>
+          ${address ? `<small>${escapeHtml(address)}</small>` : ""}</span>
+        </label>`;
+    }).join("") : '<p class="profile-help">Aucun site configuré pour cette ville pour le moment.</p>';
+    siteList.querySelectorAll("input").forEach(r => r.addEventListener("change", () => { signupSite.value = r.value; }));
+  };
+  signupCity.addEventListener("change", drawSiteCards);
+  drawSiteCards();
 }
 
 // ═══════════════════════════════════════════════════════

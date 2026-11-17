@@ -48,6 +48,12 @@ const PORTAIL = {
     rennes:    { name: "Rennes",    code: "BRRE", sites: {} },
     lille:     { name: "Lille",     code: "HFLI", sites: {} },
   },
+  // Adresse de chaque site, affichée sous son nom quand un client choisit son site
+  // à l'inscription. Un site sans adresse ici s'affiche sans adresse.
+  siteAddresses: {
+    nabo06: "52 quai de Paludate 33800 Bordeaux",
+  },
+
   // Sites qui ont un espace coworking (signalés « (coworking) » dans Gestion des comptes)
   coworkingSites: ["nabo06"],
 
