@@ -815,7 +815,7 @@ function bookingCard(b, i) {
     + '<div class="rc-bk-body">'
     + '<div class="rc-bk-room">' + escapeHtml(b.spaceName) + "</div>"
     + '<div class="rc-bk-title">' + escapeHtml(b.title) + " · " + escapeHtml(when) + "</div>"
-    + '<ul class="rc-bk-facts"><li>' + hours + "</li><li>👥 " + b.numberOfPeople + " personne(s)</li>"
+    + '<ul class="rc-bk-facts"><li>' + hours + "</li>" + (b.numberOfPeople ? "<li>👥 " + b.numberOfPeople + " personne(s)</li>" : "")
     + (b.bookedBy ? "<li>👤 Réservé par " + (b.mine ? "vous" : escapeHtml(b.bookedBy)) + "</li>" : "")
     + (b.credits ? "<li>💳 " + b.credits + " crédit(s)</li>" : "")
     + (b.servicesLabel ? "<li>🧾 " + escapeHtml(b.servicesLabel) + (b.quoteNumber ? " (devis n°" + escapeHtml(b.quoteNumber) + ")" : "") + "</li>" : "")
@@ -826,8 +826,10 @@ function bookingCard(b, i) {
     + '<a href="' + escapeHtml(googleCalendarUrl(b)) + '" target="_blank" rel="noopener">Google Agenda</a>'
     + '<button type="button" data-ics="' + i + '">Apple, Outlook… (fichier .ics)</button>'
     + "</div></details>"
-    + '<button type="button" class="rc-option" data-edit="' + i + '">Modifier</button>'
-    + '<button type="button" class="rc-option rc-danger" data-cancel="' + i + '">Annuler</button>'
+    + (b.manual
+      ? '<span class="rc-bk-note">Ajoutée par l\'équipe Hiptown : contactez-la pour la modifier ou l\'annuler.</span>'
+      : '<button type="button" class="rc-option" data-edit="' + i + '">Modifier</button>'
+        + '<button type="button" class="rc-option rc-danger" data-cancel="' + i + '">Annuler</button>')
     + "</div></div></article>";
 }
 
