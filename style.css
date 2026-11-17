@@ -1541,3 +1541,8 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
   background: transparent; color: #1e1847; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 .preview-banner-exit { background: #1e1847; color: #ffe700; }
+
+/* Inscription : étape du choix du site (cartes code - nom, adresse dessous) */
+.signup-site-list { display: flex; flex-direction: column; gap: 10px; }
+.signup-site-card { width: 100%; font: inherit; text-align: left; }
+.signup-site-card .choice-title, .signup-site-card .choice-desc { display: block; }
