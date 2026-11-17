@@ -787,6 +787,7 @@ export async function renderAdminPanel() {
   adminUsersCache.sort((a, b) => adminNameOf(a).localeCompare(adminNameOf(b), "fr"));
   renderAllUsersList();
   renderUnassignedTool();
+  renderTestAccountsTool();
 }
 
 // ── Liste des comptes rangée par ville, puis par site ──
@@ -1046,6 +1047,83 @@ function fillUserForm(form, u) {
       console.error(err);
       showMessage("Suppression impossible (droits insuffisants ?).", true);
     }
+  });
+}
+
+// ── Comptes test (admin général) ──
+// Repère les comptes qui ressemblent à des essais (« test », « essai », adresse jetable,
+// adresse avec un « + »...) et les supprime en une fois, avec leurs clics des statistiques.
+// Rien n'est coché d'office : l'admin choisit, puis confirme.
+const TEST_WORDS = /(?<![a-z])test|essai|d[eé]mo\b|toto|tata|titi|bidon|fake|exemple|example|azerty|qwerty|yopmail|mailinator|tempmail|trashmail|guerrillamail|jetable/i;
+
+function testReasonOf(u) {
+  const email = (u.email || "").toLowerCase();
+  const text = [email, u.firstName, u.lastName, u.nickname, u.companyNameHint].filter(Boolean).join(" ");
+  if (TEST_WORDS.test(text)) return "mot « test » ou adresse jetable";
+  if (/\+[^@]*@/.test(email)) return "adresse avec un « + »";
+  if (email.endsWith("@hiptown.com") && u.role && u.role !== "admin") return "adresse Hiptown sur un compte client";
+  return "";
+}
+
+let showAllForTest = false;
+
+function renderTestAccountsTool() {
+  const box = document.getElementById("admin-test-accounts");
+  if (!box) return;
+  box.hidden = myAdminLevel() !== "general";
+  if (box.hidden) return;
+  const me = session?.uid;
+  const others = adminUsersCache.filter(u => u.uid !== me);
+  const suspects = others.map(u => ({ u, reason: testReasonOf(u) })).filter(x => x.reason);
+  const list = showAllForTest ? others.map(u => ({ u, reason: testReasonOf(u) })) : suspects;
+  const rows = list.map(({ u, reason }) => `
+    <label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid #e2e8f0;cursor:pointer;">
+      <input type="checkbox" class="test-pick" value="${escapeHtml(u.uid)}" style="margin-top:3px;">
+      <span style="font-size:13px;"><b>${escapeHtml(adminNameOf(u))}</b> · ${escapeHtml(u.email || "")}<br>
+        <span style="color:#64748b;">${escapeHtml([u.role === "admin" ? "Équipe Hiptown" : u.role, u.companyNameHint, cityLabel(u.site)].filter(Boolean).join(" · "))}${reason ? ` · <i>${escapeHtml(reason)}</i>` : ""}</span></span>
+    </label>`).join("");
+  box.innerHTML = `
+    <p style="font-size:13px;margin-bottom:6px;"><b>🧪 Comptes test</b> : ${suspects.length} compte(s) qui ressemblent à des essais.
+      Coche ceux à supprimer : leur fiche et leurs clics des statistiques seront effacés.</p>
+    <button class="direct-btn test-toggle" type="button" style="margin:0 0 6px;width:auto;padding:6px 12px;">${showAllForTest ? "Ne montrer que les comptes test probables" : "Montrer tous les comptes"}</button>
+    <div class="test-list" style="max-height:320px;overflow:auto;">${rows || '<p style="color:#94a3b8;font-size:13px;padding:6px 0;">Aucun compte test repéré.</p>'}</div>
+    <button class="direct-btn test-delete" type="button" disabled style="margin-top:8px;width:auto;padding:8px 14px;color:#dc2626;">Supprimer les comptes cochés</button>
+    <div class="test-done" hidden style="font-size:13px;margin-top:10px;"></div>`;
+
+  const delBtn = box.querySelector(".test-delete");
+  const picked = () => [...box.querySelectorAll(".test-pick:checked")].map(c => c.value);
+  box.querySelectorAll(".test-pick").forEach(c => c.addEventListener("change", () => {
+    const n = picked().length;
+    delBtn.disabled = n === 0;
+    delBtn.textContent = n ? `Supprimer les ${n} compte(s) coché(s)` : "Supprimer les comptes cochés";
+  }));
+  box.querySelector(".test-toggle").addEventListener("click", () => { showAllForTest = !showAllForTest; renderTestAccountsTool(); });
+
+  delBtn.addEventListener("click", async () => {
+    const uids = picked();
+    const accounts = adminUsersCache.filter(u => uids.includes(u.uid));
+    if (!accounts.length) return;
+    const names = accounts.map(u => "• " + adminNameOf(u)).join("\n");
+    if (!confirm(`Supprimer définitivement ces ${accounts.length} compte(s) et leurs clics ?\n\n${names}\n\nCette action ne peut pas être annulée.`)) return;
+    delBtn.disabled = true;
+    delBtn.textContent = "Suppression…";
+    const done = [], failed = [];
+    for (const u of accounts) {
+      try { await deleteUserDoc(u.uid); done.push(u); }
+      catch (err) { console.error(err); failed.push(u); }
+    }
+    adminUsersCache = adminUsersCache.filter(u => !done.includes(u));
+    renderAllUsersList();
+    renderTestAccountsTool();
+    refreshNotifBadge();
+    const report = box.querySelector(".test-done");
+    const emails = done.map(u => u.email).filter(Boolean);
+    report.hidden = false;
+    report.innerHTML = `<p style="color:#166534;"><b>${done.length} compte(s) supprimé(s) ✓</b>${failed.length ? ` <span style="color:#dc2626;">(${failed.length} impossible(s) : ${escapeHtml(failed.map(adminNameOf).join(", "))})</span>` : ""}</p>`
+      + (emails.length ? `<p style="margin-top:6px;">Dernière étape, pour pouvoir réutiliser ces adresses : dans la
+        <a href="https://console.firebase.google.com/project/erp-hiptown/authentication/users" target="_blank" rel="noopener">console Firebase (Authentication)</a>,
+        supprime ces adresses (⋮ au bout de la ligne, puis « Supprimer le compte ») :</p>
+        <textarea readonly class="profile-input" style="width:100%;min-height:${Math.min(160, 24 + emails.length * 20)}px;margin-top:6px;font-size:12px;">${escapeHtml(emails.join("\n"))}</textarea>` : "");
   });
 }
 
