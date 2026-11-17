@@ -541,8 +541,8 @@ function companyCoworkingRecords(user, from, to) {
  * de l'entreprise, sans crédits et sans modification possible depuis le portail.
  */
 function companyManualRecords(companyName, from, to) {
-  const name = normalizeForMatch(companyName);
-  if (name.replace(/ /g, '').length < 3) return []; // nom trop court : trop de risques de confusion
+  const names = companyNameVariants(companyName);
+  if (!names.length) return []; // nom trop court : trop de risques de confusion
   const list = [];
   getAllSpaces().forEach(space => {
     const cal = CalendarApp.getCalendarById(space.calendarId);
@@ -550,8 +550,7 @@ function companyManualRecords(companyName, from, to) {
     cal.getEvents(from, to).forEach(event => {
       if (event.getTag(TAG_COMPANY) || event.getTag(TAG_PORTAL_UID) || event.getTag(TAG_EMAIL)) return;
       const title = event.getTitle() || '';
-      const text = ' ' + normalizeForMatch(title + ' ' + (event.getDescription() || '')) + ' ';
-      if (text.indexOf(' ' + name + ' ') === -1) return;
+      if (!textMentionsCompany(title + ' ' + (event.getDescription() || ''), names)) return;
       const people = ((event.getDescription() || '').match(/Nombre de personnes : (\d+)/) || [])[1];
       list.push({
         spaceId: space.id,
@@ -572,6 +571,38 @@ function companyManualRecords(companyName, from, to) {
     });
   });
   return list;
+}
+
+// Formes juridiques ignorées dans le nom d'une entreprise (« Yes Sign SAS » -> « yes sign »)
+const LEGAL_FORM_WORDS = ['sas', 'sasu', 'sarl', 'eurl', 'sa', 'sci', 'snc', 'scop', 'ei', 'eirl', 'micro', 'entreprise'];
+
+/**
+ * Formes du nom d'une entreprise à chercher, écrites sans espace (« yessign ») : le nom
+ * entier, et le nom sans sa forme juridique. Aucune si le nom fait moins de 3 lettres.
+ */
+function companyNameVariants(companyName) {
+  const words = normalizeForMatch(companyName).split(' ').filter(Boolean);
+  const core = words.filter(w => LEGAL_FORM_WORDS.indexOf(w) === -1);
+  return [words.join(''), core.join('')]
+    .filter((v, i, all) => v.length >= 3 && all.indexOf(v) === i);
+}
+
+/**
+ * true si le texte contient le nom de l'entreprise en mots entiers, avec ou sans espaces
+ * entre ses mots (« Yes sign », « YesSign », « yes-sign » pour « Yes Sign »), sans tenir
+ * compte des majuscules ni des accents.
+ */
+function textMentionsCompany(text, names) {
+  const words = normalizeForMatch(text).split(' ').filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    let joined = '';
+    for (let j = i; j < words.length; j++) {
+      joined += words[j];
+      if (names.indexOf(joined) !== -1) return true;
+      if (!names.some(n => n.indexOf(joined) === 0)) break;
+    }
+  }
+  return false;
 }
 
 /** Texte comparable : minuscules, sans accents, mots séparés par un seul espace. */

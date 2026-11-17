@@ -108,3 +108,21 @@ function testCoworkingSetup() {
     ? '✅ Firestore joignable (accès refusé sans compte, c\'est normal).'
     : '⚠️ Réponse inattendue de Firestore (code ' + code + ') : vérifier COWORKING.firebaseProjectId.');
 }
+
+/**
+ * Réservations ajoutées à la main dans les agendas des salles que le portail rattache
+ * à une entreprise. Écrire le nom de l'entreprise, tel qu'il est dans Gestion > Entreprises,
+ * entre les guillemets ci-dessous, puis exécuter.
+ */
+function testReservationsAjouteesALaMain() {
+  const companyName = 'Yes Sign';
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth() - COMPANY_HISTORY_MONTHS, 1);
+  const to = new Date(now.getTime() + 366 * DAY_MS);
+  Logger.log('Noms cherchés : ' + companyNameVariants(companyName).join(', '));
+  const list = companyManualRecords(companyName, from, to);
+  if (!list.length) Logger.log('❌ Aucune réservation trouvée pour « ' + companyName + ' ».');
+  list.forEach(r => {
+    Logger.log('✅ ' + findSpace(r.spaceId).name + ' — ' + new Date(r.start) + ' — ' + r.title);
+  });
+}
