@@ -78,8 +78,17 @@ window.openSignupScreen = function (role) {
     r.checked = (r.value === signupRole);
   });
   document.getElementById("signup-role-label").textContent = SIGNUP_ROLE_LABELS[signupRole];
+  // Salle de réunion : toujours au site des salles (config.js), sans étape « choix du site »
+  const meetingSite = signupRole === "salle" ? PORTAIL.meetingRoomSite : null;
+  document.getElementById("signup-change-site").hidden = !!meetingSite;
+  if (meetingSite && window.pickSignupSite) { window.pickSignupSite(meetingSite); return; }
   showSiteStep();
 };
+
+/** Vrai quand l'inscription en cours est pour une salle de réunion (site imposé). */
+function isMeetingRoomSignup() {
+  return document.querySelector('input[name="signup-role"]:checked')?.value === "salle" && !!PORTAIL.meetingRoomSite;
+}
 
 // Étape « Dans quel site Hiptown êtes-vous ? » : après le type de compte, avant le formulaire
 function showSiteStep() {
@@ -91,7 +100,7 @@ function showSiteStep() {
 function switchAuthTab(tab) {
   stepAuth.dataset.tab = tab;
   document.getElementById("auth-title").textContent = tab === "signup" ? "Inscription" : "Connexion";
-  document.getElementById("back-from-auth").textContent = tab === "signup" ? "Choix du site" : "Accueil";
+  document.getElementById("back-from-auth").textContent = tab !== "signup" ? "Accueil" : isMeetingRoomSignup() ? "Type de compte" : "Choix du site";
   document.getElementById("login-form").hidden  = tab !== "login";
   document.getElementById("signup-form").hidden = tab !== "signup";
   authError.hidden = true;
@@ -105,7 +114,7 @@ document.getElementById("auth-to-login")?.addEventListener("click", () => switch
 
 // Retour : depuis l'inscription on revient au choix du site, sinon à l'accueil
 document.getElementById("back-from-auth")?.addEventListener("click", () => {
-  if (stepAuth.dataset.tab === "signup") { showSiteStep(); return; }
+  if (stepAuth.dataset.tab === "signup") { isMeetingRoomSignup() ? showChoiceStep() : showSiteStep(); return; }
   hideAllAuth();
   document.getElementById("step-welcome").hidden = false;
 });
@@ -1458,6 +1467,8 @@ if (signupCity && signupSite) {
   // Une carte par site : « NABO06 - Émergence » puis l'adresse en dessous ; un clic ouvre le formulaire
   const siteList = document.getElementById("signup-site-list");
   const siteName = id => {
+    const publicName = PORTAIL.sitePublicNames?.[id];
+    if (publicName) return id.toUpperCase() + " - " + publicName;
     const [code, ...rest] = (PORTAIL.cities?.[signupCity.value]?.sites?.[id] || id).split(" — ");
     return rest.length ? code + " - " + rest.join(" — ") : code;
   };
@@ -1472,17 +1483,21 @@ if (signupCity && signupSite) {
         </button>`;
     }).join("") : `<p class="profile-help">Aucun site configuré pour cette ville pour le moment.</p>
       <button type="button" class="direct-btn signup-site-skip" style="background:var(--navy);color:#fff;">Continuer</button>`;
-    siteList.querySelectorAll(".signup-site-card").forEach(card => card.addEventListener("click", () => {
-      signupSite.value = card.dataset.site;
-      document.getElementById("signup-site-label").textContent = siteName(card.dataset.site);
-      document.getElementById("signup-site-chip").hidden = false;
-      showAuthStep("signup");
-    }));
+    siteList.querySelectorAll(".signup-site-card").forEach(card => card.addEventListener("click", () => window.pickSignupSite(card.dataset.site)));
     siteList.querySelector(".signup-site-skip")?.addEventListener("click", () => {
       signupSite.value = "";
       document.getElementById("signup-site-label").textContent = cityLabel(signupCity.value);
       showAuthStep("signup");
     });
+  };
+  // Retient le site choisi (ville comprise) et ouvre le formulaire d'inscription
+  window.pickSignupSite = siteId => {
+    const city = cityOfSite(siteId);
+    if (city && signupCity.value !== city) { signupCity.value = city; signupCity.dispatchEvent(new Event("change")); }
+    signupSite.value = siteId;
+    document.getElementById("signup-site-label").textContent = siteName(siteId);
+    document.getElementById("signup-site-chip").hidden = false;
+    showAuthStep("signup");
   };
   signupCity.addEventListener("change", drawSiteCards);
   drawSiteCards();
