@@ -52,7 +52,8 @@ window.hideAllAuth = hideAllAuth;
 // La connexion ne demande que l'e-mail et le mot de passe : l'espace affiché
 // (équipe, coworking, salle) dépend uniquement du rôle du compte (voir watchAuthState).
 // Le type de compte ne se choisit qu'à l'inscription (cartes de l'étape « step-choice »).
-const SIGNUP_ROLE_LABELS = { salle: "Compte salle de réunion", coworking: "Compte coworking" };
+// « coworking » = Client Hiptown (tous les sites, bureau opéré ou coworking) ; nom interne inchangé
+const SIGNUP_ROLE_LABELS = { salle: "Réserver une salle de réunion", coworking: "Client Hiptown" };
 
 function showAuthStep(tab) {
   hideAllAuth();
@@ -64,7 +65,6 @@ function showAuthStep(tab) {
 function showChoiceStep() {
   hideAllAuth();
   document.getElementById("step-choice").hidden = false;
-  document.getElementById("choice-team-note").hidden = true;
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -639,7 +639,7 @@ function readAccessFields(container, role) {
 // Entreprise des comptes administrateurs Hiptown
 const HIPTOWN_COMPANY = "Hiptown";
 
-const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Coworking" };
+const ROLE_LABELS = { admin: "Administrateur Hiptown", salle: "Salle de réunion", coworking: "Client Hiptown" };
 const STATUS_LABELS = { approved: "Validé", pending: "En attente", rejected: "Refusé" };
 
 /** Identifiant Firestore lisible à partir d'un nom d'entreprise (« Café Joli » -> « cafe-joli »). */
@@ -695,14 +695,14 @@ function createPendingCard(u, companies, onDone) {
       <p style="font-weight:600;font-size:13px;">${escapeHtml(adminNameOf(u))}</p>
       <p style="font-size:11px;color:#94a3b8;">${escapeHtml(u.email)}</p>
       <p style="font-size:12px;color:#64748b;">
-        Demandé : ${u.requestedRole === "coworking" ? "Coworking" : "Salle de réunion"}
+        Demandé : ${u.requestedRole === "coworking" ? "Client Hiptown" : "Salle de réunion"}
         ${u.companyNameHint ? " — " + escapeHtml(u.companyNameHint) : ""}
         <br>Site : ${escapeHtml(accountPlaceLabel(u))}
       </p>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
         <select class="approve-role" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
           <option value="salle" ${u.requestedRole === "salle" ? "selected" : ""}>Salle de réunion</option>
-          <option value="coworking" ${u.requestedRole === "coworking" ? "selected" : ""}>Coworking</option>
+          <option value="coworking" ${u.requestedRole === "coworking" ? "selected" : ""}>Client Hiptown</option>
         </select>
         <select class="approve-company" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
           <option value="">— Entreprise —</option>
@@ -947,7 +947,7 @@ function fillUserForm(form, u) {
       ${Object.entries(ROLE_LABELS).filter(([v]) => canSetAdmin || v !== "admin").map(([v, l]) => `<option value="${v}" ${u.role === v ? "selected" : ""}>${l}</option>`).join("")}
       ${u.role ? "" : '<option value="" selected>— Sans rôle —</option>'}
     </select>`)}
-    <div class="f-company-wrap">${field("Entreprise coworking (pour le rôle Coworking)", `<select class="profile-input f-company">
+    <div class="f-company-wrap">${field("Entreprise (pour le rôle Client Hiptown)", `<select class="profile-input f-company">
       <option value="">— Aucune —</option>
       ${adminCompaniesCache.map(c => `<option value="${escapeHtml(c.id)}" ${u.companyId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
     </select>`)}</div>

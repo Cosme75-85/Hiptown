@@ -47,8 +47,6 @@
 
   const choiceSalle     = document.getElementById("choice-salle");
   const choiceCoworking = document.getElementById("choice-coworking");
-  const choiceHiptown   = document.getElementById("choice-hiptown");
-  const choiceTeamNote  = document.getElementById("choice-team-note");
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -247,11 +245,7 @@
   // ── Inscription : type de compte ──────────────────────
   choiceSalle.addEventListener("click", function () { window.openSignupScreen("salle"); });
   choiceCoworking.addEventListener("click", function () { window.openSignupScreen("coworking"); });
-  // L'équipe ne s'inscrit pas elle-même : on explique et on propose la connexion
-  choiceHiptown.addEventListener("click", function () {
-    choiceTeamNote.hidden = false;
-    choiceTeamNote.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  });
+  // L'équipe ne s'inscrit pas elle-même : une phrase sous les cartes renvoie vers la connexion
   document.getElementById("choice-team-login").addEventListener("click", function () { window.openLoginScreen(); });
 
   // ── Dashboard ─────────────────────────────────────────
