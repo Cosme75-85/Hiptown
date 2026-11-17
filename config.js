@@ -51,7 +51,13 @@ const PORTAIL = {
   // Adresse de chaque site, affichée sous son nom quand un client choisit son site
   // à l'inscription. Un site sans adresse ici s'affiche sans adresse.
   siteAddresses: {
+    nabo02: "12 place de la Bourse 33000 Bordeaux",
+    nabo03: "37 rue Ferrère 33000 Bordeaux",
+    nabo04: "27 rue Saint-Joseph 33000 Bordeaux",
+    nabo05: "17 place de la Bourse 33000 Bordeaux",
     nabo06: "52 quai de Paludate 33800 Bordeaux",
+    nabo07: "Allée de Tourny 33000 Bordeaux",
+    nabo08: "67 avenue John Fitzgerald Kennedy 33700 Mérignac",
   },
 
   // Sites qui ont un espace coworking (signalés « (coworking) » dans Gestion des comptes)
