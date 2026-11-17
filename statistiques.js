@@ -114,6 +114,7 @@ async function refreshAccounts() {
       const counts = data.counts || {};
       return {
         uid: d.id,
+        deleted: !byUid[d.id],
         name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || "Compte supprimé",
         company: u.companyName || "",
         space: SPACE_LABELS[data.space] || data.space || "",
@@ -144,13 +145,38 @@ function renderAccounts() {
   }
   const cols = caseColumns();
   const head = "<tr><th>Compte</th><th>Total</th>" + cols.map(c => `<th>${escapeHtml(c.label)}</th>`).join("") + "</tr>";
+  const remove = a => panel.canReset
+    ? ` <button type="button" class="stats-remove" data-uid="${escapeHtml(a.uid)}" title="Retirer les clics de ce compte" style="border:0;background:none;color:#dc2626;cursor:pointer;padding:0 2px;">✕</button>` : "";
   const rows = panel.accounts.map(a =>
-    `<tr><td><b>${escapeHtml(a.name)}</b><br><span class="stats-sub">${escapeHtml([a.company, a.space].filter(Boolean).join(" · "))}</span></td>`
+    `<tr><td><b>${escapeHtml(a.name)}</b>${remove(a)}<br><span class="stats-sub">${escapeHtml([a.company, a.space].filter(Boolean).join(" · "))}</span></td>`
     + `<td><b>${a.total}</b></td>`
     + cols.map(c => `<td>${Number(a.counts[c.id]) || ""}</td>`).join("") + "</tr>").join("");
   const foot = `<tr class="stats-total"><td>Tous les comptes (${panel.accounts.length})</td>`
     + `<td>${cols.reduce((s, c) => s + c.total, 0)}</td>` + cols.map(c => `<td>${c.total}</td>`).join("") + "</tr>";
-  box.innerHTML = `<div class="stats-scroll"><table class="stats-table"><thead>${head}</thead><tbody>${rows}${foot}</tbody></table></div>`;
+  const orphans = panel.accounts.filter(a => a.deleted);
+  const orphanBtn = panel.canReset && orphans.length
+    ? `<button class="direct-btn stats-remove-orphans" type="button" style="width:auto;margin:0 0 8px;padding:8px 14px;color:#dc2626;">Retirer les clics des ${orphans.length} compte(s) supprimé(s)</button>` : "";
+  box.innerHTML = orphanBtn + `<div class="stats-scroll"><table class="stats-table"><thead>${head}</thead><tbody>${rows}${foot}</tbody></table></div>`;
+  box.querySelector(".stats-remove-orphans")?.addEventListener("click", () => removeClicks(orphans));
+  box.querySelectorAll(".stats-remove").forEach(btn => btn.addEventListener("click", () => {
+    const a = panel.accounts.find(x => x.uid === btn.dataset.uid);
+    if (a) removeClicks([a]);
+  }));
+}
+
+/** Admin général : efface les clics de quelques comptes (comptes test, comptes supprimés). */
+async function removeClicks(accounts) {
+  if (!panel.canReset || !accounts.length) return;
+  const label = accounts.length === 1 ? `les clics de « ${accounts[0].name} »` : `les clics de ces ${accounts.length} comptes`;
+  if (!confirm(`Retirer ${label} des statistiques ? Cette action ne peut pas être annulée.`)) return;
+  try {
+    await Promise.all(accounts.map(a => deleteDoc(doc(db, "clickStats", a.uid))));
+    showMessage(accounts.length === 1 ? "Clics retirés." : `Clics de ${accounts.length} comptes retirés.`);
+  } catch (err) {
+    console.error(err);
+    showMessage("Suppression impossible, merci de réessayer.", true);
+  }
+  await refreshAccounts();
 }
 
 /** Fichier pour Excel ou Google Sheets : une ligne par compte, une colonne par case. */

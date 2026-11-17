@@ -81,6 +81,9 @@ export async function updateUser(uid, fields) {
 
 export async function deleteUserDoc(uid) {
   await deleteDoc(doc(db, "users", uid));
+  // Ses clics (statistiques de la phase de test) partent avec la fiche.
+  // Seul l'admin général a le droit de les effacer : pour les autres, on laisse faire.
+  await deleteDoc(doc(db, "clickStats", uid)).catch(() => {});
   // Remarque : ceci supprime la fiche Firestore, pas le compte Auth
   // (la suppression d'un compte Auth par un autre utilisateur nécessite
   // Cloud Functions + Admin SDK côté serveur, hors périmètre de cette V1).
