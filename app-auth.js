@@ -705,7 +705,33 @@ function enableNewCompanyOption(select, companies, suggestedName = "") {
 }
 
 // Carte de demande en attente, réutilisée dans le panneau admin ET la cloche de notifications
+/** Nom d'entreprise comparable : sans accents, majuscules, ponctuation ni forme juridique. */
+function companyKey(name) {
+  return (name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(sas|sasu|sarl|eurl|sa|sci|scop|snc|ei|eirl|et cie|cie|groupe|group|france)\b/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Entreprise existante qui correspond au nom tapé à l'inscription (null si aucune ou si ambigu) :
+ * même nom (sans accents, majuscules, SAS/SARL...), sinon un seul nom qui contient l'autre.
+ */
+function guessCompany(companies, typedName) {
+  const key = companyKey(typedName);
+  if (key.length < 2) return null;
+  const same = companies.filter(c => companyKey(c.name) === key);
+  if (same.length === 1) return same[0];
+  if (same.length > 1) return null;
+  const close = companies.filter(c => {
+    const k = companyKey(c.name);
+    return k.length >= 3 && key.length >= 3 && (k.includes(key) || key.includes(k));
+  });
+  return close.length === 1 ? close[0] : null;
+}
+
 function createPendingCard(u, companies, onDone) {
+  const guessed = u.companyId ? companies.find(c => c.id === u.companyId) : guessCompany(companies, u.companyNameHint);
   const card = document.createElement("div");
   card.className = "info-card";
   card.innerHTML = `
@@ -724,11 +750,14 @@ function createPendingCard(u, companies, onDone) {
         </select>
         <select class="approve-company" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
           <option value="">— Entreprise —</option>
-          ${companies.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join("")}
+          ${companies.map(c => `<option value="${escapeHtml(c.id)}" ${guessed && guessed.id === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
         </select>
         <button class="direct-btn approve-btn" style="margin-top:0;width:auto;padding:6px 12px;background:#166534;color:#fff;border:none;font-size:12px;">Valider</button>
         <button class="direct-btn reject-btn" style="margin-top:0;width:auto;padding:6px 12px;border-color:#dc2626;color:#dc2626;font-size:12px;">Refuser</button>
       </div>
+      ${u.companyNameHint ? `<p class="approve-company-hint" style="font-size:11px;margin-top:6px;color:${guessed ? "#166534" : "#c2410c"};">${guessed
+        ? `✓ Entreprise trouvée automatiquement : <b>${escapeHtml(guessed.name)}</b>. Vérifie avant de valider.`
+        : "Aucune entreprise existante ne correspond : choisis-la dans la liste ou crée-la avec « ➕ Nouvelle entreprise… »."}</p>` : ""}
     </div>`;
   enableNewCompanyOption(card.querySelector(".approve-company"), companies, u.companyNameHint || "");
   card.querySelector(".approve-btn").addEventListener("click", async () => {
