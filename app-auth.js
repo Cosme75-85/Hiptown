@@ -771,12 +771,10 @@ export async function renderAdminPanel() {
   renderUnassignedTool();
 }
 
-// ── Liste des comptes rangée par ville, puis par catégorie ──
-// Admin général : une case par ville (Clients, Clients SDR, Salariés) ;
-// admin de ville : Salariés et Clients ; équipe de site : les clients de ses sites.
+// ── Liste des comptes rangée par ville, puis par site ──
+// Admin général : une case par ville ; dans chaque ville, « Salariés Hiptown » puis
+// une case par site (NABO02, NABO03...) ; équipe de site : les clients de ses sites.
 const ACCOUNT_CATEGORIES = {
-  clients:  "Clients coworking",
-  sdr:      "Clients SDR (salles de réunion)",
   allClients: "Clients",
   salaries: "Salariés Hiptown"
 };
@@ -790,10 +788,7 @@ function categoryOf(u) {
 }
 
 function categoriesForMe() {
-  const level = myAdminLevel();
-  if (level === "general") return ["clients", "sdr", "salaries"];
-  if (level === "city") return ["allClients", "salaries"];
-  return ["allClients"];
+  return myAdminLevel() === "site" ? ["allClients"] : ["allClients", "salaries"];
 }
 
 function userMatches(u, term, companyNames) {
@@ -818,7 +813,6 @@ function renderAllUsersList() {
   const term    = (document.getElementById("admin-search")?.value || "").trim().toLowerCase();
   const companyNames = Object.fromEntries(adminCompaniesCache.map(c => [c.id, c.name]));
   const cats = categoriesForMe();
-  const catKey = u => { const c = categoryOf(u); return cats.includes(c) ? c : (c === "salaries" ? null : "allClients"); };
 
   const users = adminUsersCache.filter(u => userMatches(u, term, companyNames));
   if (count) count.textContent = `(${users.length})`;
@@ -841,15 +835,33 @@ function renderAllUsersList() {
     draw();
   };
 
+  // Une ville : « Salariés Hiptown » en tête, puis une case par site (NABO02, NABO03...)
+  // avec ses clients. Les clients sans site vont dans une case à part.
   const renderCategories = (container, cityKey, cityUsers) => {
-    cats.forEach(cat => {
-      const list = cityUsers.filter(u => catKey(u) === cat);
+    const addBox = (key, title, list) => {
       if (term && !list.length) return; // pendant une recherche, on n'affiche que ce qui correspond
-      const key = cityKey + "|" + cat;
-      const box = accountBox(key, ACCOUNT_CATEGORIES[cat], list.length, !!term && list.length > 0, "cat");
+      const box = accountBox(key, title, list.length, !!term && list.length > 0, "cat");
       fillCategory(box.querySelector(".account-box-body"), key, list);
       container.appendChild(box);
+    };
+    if (cats.includes("salaries")) {
+      addBox(cityKey + "|salaries", ACCOUNT_CATEGORIES.salaries, cityUsers.filter(u => categoryOf(u) === "salaries"));
+    }
+    const clients = cityUsers.filter(u => categoryOf(u) !== "salaries");
+    // Sites de la ville, dans l'ordre de config.js (l'équipe de site ne voit que les siens)
+    const scope = adminScope();
+    let sites = Object.keys(PORTAIL.cities?.[cityKey]?.sites || {});
+    if (scope && scope.siteIds) sites = sites.filter(id => scope.siteIds.includes(id));
+    const extra = [...new Set(clients.map(u => u.siteId).filter(id => id && !sites.includes(id)))].sort();
+    sites = sites.concat(extra);
+    sites.forEach(siteId => {
+      const isCoworking = (PORTAIL.coworkingSites || []).includes(siteId);
+      addBox(cityKey + "|site|" + siteId, siteLabel(siteId) + (isCoworking ? " (coworking)" : ""), clients.filter(u => u.siteId === siteId));
     });
+    const noSite = clients.filter(u => !u.siteId);
+    if (noSite.length) {
+      addBox(cityKey + "|nosite", sites.length ? "Clients sans site (à rattacher)" : ACCOUNT_CATEGORIES.allClients, noSite);
+    }
   };
 
   if (term && !users.length) {
