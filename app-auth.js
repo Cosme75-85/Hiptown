@@ -848,7 +848,29 @@ function renderAllUsersList() {
       categoryTerms[key] = t;
       const shown = list.filter(u => userMatches(u, t, companyNames));
       listEl.innerHTML = shown.length ? "" : '<p style="color:#94a3b8;padding:8px 12px;">Aucun compte.</p>';
-      shown.forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
+      if (!key.includes("|site|") && !key.endsWith("|nosite")) {
+        shown.forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
+        return;
+      }
+      // Clients d'un site : regroupés par entreprise (A → Z), puis par nom dans chaque entreprise
+      const NO_COMPANY = "Entreprise non renseignée";
+      const groups = new Map();
+      shown.forEach(u => {
+        const name = (companyNames[u.companyId] || u.companyNameHint || "").trim() || NO_COMPANY;
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name).push(u);
+      });
+      [...groups.keys()]
+        .sort((a, b) => (a === NO_COMPANY) - (b === NO_COMPANY) || a.localeCompare(b, "fr", { sensitivity: "base" }))
+        .forEach(name => {
+          const title = document.createElement("p");
+          title.className = "account-company-title";
+          title.innerHTML = `${escapeHtml(name)} <span>${groups.get(name).length}</span>`;
+          listEl.appendChild(title);
+          groups.get(name)
+            .sort((a, b) => adminNameOf(a).localeCompare(adminNameOf(b), "fr", { sensitivity: "base" }))
+            .forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
+        });
     };
     input.addEventListener("input", draw);
     draw();

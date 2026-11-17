@@ -1546,3 +1546,7 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
 .signup-site-list { display: flex; flex-direction: column; gap: 10px; }
 .signup-site-card { width: 100%; font: inherit; text-align: left; }
 .signup-site-card .choice-title, .signup-site-card .choice-desc { display: block; }
+
+/* Gestion des comptes : nom de l'entreprise au-dessus de ses comptes, dans une case de site */
+.account-company-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--navy); margin: 12px 4px 2px; }
+.account-company-title span { font-weight: 400; color: #94a3b8; }
