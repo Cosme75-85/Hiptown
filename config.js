@@ -65,6 +65,7 @@ const PORTAIL = {
   sitePublicNames: {
     nabo02: "Place de la Bourse",
     nabo05: "Place de la Bourse",
+    nabo06: "Gare Saint-Jean",
   },
 
   // Seul site où l'on peut s'inscrire pour « Réserver une salle de réunion » :
