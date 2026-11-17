@@ -144,15 +144,18 @@ function renderAccounts() {
     return;
   }
   const cols = caseColumns();
-  const head = "<tr><th>Compte</th><th>Total</th>" + cols.map(c => `<th>${escapeHtml(c.label)}</th>`).join("") + "</tr>";
-  const remove = a => panel.canReset
-    ? ` <button type="button" class="stats-remove" data-uid="${escapeHtml(a.uid)}" title="Retirer les clics de ce compte" style="border:0;background:none;color:#dc2626;cursor:pointer;padding:0 2px;">✕</button>` : "";
+  // Admin général : une dernière colonne avec une flèche pour remettre à zéro les clics du compte
+  const resetCol = panel.canReset;
+  const head = "<tr><th>Compte</th><th>Total</th>" + cols.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")
+    + (resetCol ? "<th></th>" : "") + "</tr>";
+  const remove = a => resetCol
+    ? `<td><button type="button" class="stats-remove" data-uid="${escapeHtml(a.uid)}" title="Remettre à zéro les clics de ce compte" aria-label="Remettre à zéro les clics de ${escapeHtml(a.name)}" style="border:0;background:none;color:#dc2626;cursor:pointer;padding:0 4px;font-size:16px;line-height:1;">↻</button></td>` : "";
   const rows = panel.accounts.map(a =>
-    `<tr><td><b>${escapeHtml(a.name)}</b>${remove(a)}<br><span class="stats-sub">${escapeHtml([a.company, a.space].filter(Boolean).join(" · "))}</span></td>`
+    `<tr><td><b>${escapeHtml(a.name)}</b><br><span class="stats-sub">${escapeHtml([a.company, a.space].filter(Boolean).join(" · "))}</span></td>`
     + `<td><b>${a.total}</b></td>`
-    + cols.map(c => `<td>${Number(a.counts[c.id]) || ""}</td>`).join("") + "</tr>").join("");
+    + cols.map(c => `<td>${Number(a.counts[c.id]) || ""}</td>`).join("") + remove(a) + "</tr>").join("");
   const foot = `<tr class="stats-total"><td>Tous les comptes (${panel.accounts.length})</td>`
-    + `<td>${cols.reduce((s, c) => s + c.total, 0)}</td>` + cols.map(c => `<td>${c.total}</td>`).join("") + "</tr>";
+    + `<td>${cols.reduce((s, c) => s + c.total, 0)}</td>` + cols.map(c => `<td>${c.total}</td>`).join("") + (resetCol ? "<td></td>" : "") + "</tr>";
   const orphans = panel.accounts.filter(a => a.deleted);
   const orphanBtn = panel.canReset && orphans.length
     ? `<button class="direct-btn stats-remove-orphans" type="button" style="width:auto;margin:0 0 8px;padding:8px 14px;color:#dc2626;">Retirer les clics des ${orphans.length} compte(s) supprimé(s)</button>` : "";
@@ -168,7 +171,7 @@ function renderAccounts() {
 async function removeClicks(accounts) {
   if (!panel.canReset || !accounts.length) return;
   const label = accounts.length === 1 ? `les clics de « ${accounts[0].name} »` : `les clics de ces ${accounts.length} comptes`;
-  if (!confirm(`Retirer ${label} des statistiques ? Cette action ne peut pas être annulée.`)) return;
+  if (!confirm(`Remettre à zéro ${label} ? Cette action ne peut pas être annulée.`)) return;
   try {
     await Promise.all(accounts.map(a => deleteDoc(doc(db, "clickStats", a.uid))));
     showMessage(accounts.length === 1 ? "Clics retirés." : `Clics de ${accounts.length} comptes retirés.`);
