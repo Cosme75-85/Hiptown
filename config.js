@@ -60,6 +60,10 @@ const PORTAIL = {
     nabo08: "67 avenue John Fitzgerald Kennedy 33700 Mérignac",
   },
 
+  // Seul site où l'on peut s'inscrire pour « Réserver une salle de réunion » :
+  // à l'inscription, ce choix passe directement au formulaire avec ce site.
+  meetingRoomSite: "nabo06",
+
   // Sites qui ont un espace coworking (signalés « (coworking) » dans Gestion des comptes)
   coworkingSites: ["nabo06"],
 
