@@ -111,6 +111,16 @@
       <button type="button" class="auth-switch-link" id="choice-team-login">connectez-vous</button> avec votre e-mail et votre mot de passe.</p>
   </section>
 
+  <!-- ÉTAPE : INSCRIPTION — CHOIX DU SITE (avant le formulaire) -->
+  <section id="step-site" hidden>
+    <button class="back-btn" id="back-from-site">Type de compte</button>
+    <p class="step-title">Dans quel site Hiptown êtes-vous ?</p>
+    <select id="signup-city" class="profile-input" style="margin-bottom:12px;background:#fff;"></select>
+    <!-- Le choix se fait dans la liste de cartes ; la liste déroulante cachée garde la valeur envoyée -->
+    <select id="signup-site" hidden></select>
+    <div class="signup-site-list" id="signup-site-list" role="list" aria-label="Sites Hiptown"></div>
+  </section>
+
   <!-- ÉTAPE : CONNEXION / INSCRIPTION -->
   <section id="step-auth" hidden>
     <button class="back-btn" id="back-from-auth">Accueil</button>
@@ -138,6 +148,10 @@
           <span id="signup-role-label">Salle de réunion</span>
           <button type="button" class="auth-switch-link" id="signup-change-role">Changer</button>
         </p>
+        <p class="auth-role-chip" id="signup-site-chip">
+          <span id="signup-site-label"></span>
+          <button type="button" class="auth-switch-link" id="signup-change-site">Changer</button>
+        </p>
         <div hidden>
           <input type="radio" name="signup-role" value="salle" checked/>
           <input type="radio" name="signup-role" value="coworking"/>
@@ -158,12 +172,6 @@
         <ul id="signup-password-rules"></ul>
         <input type="text" id="signup-company" placeholder="Nom de votre entreprise" required maxlength="100"
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
-        <select id="signup-city"
-                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:#fff;"></select>
-        <!-- Le choix du site se fait dans la liste de cartes ; la liste déroulante cachée garde la valeur envoyée -->
-        <select id="signup-site" hidden></select>
-        <p class="signup-site-title">Votre site Hiptown</p>
-        <div class="signup-site-list" id="signup-site-list" role="radiogroup" aria-label="Votre site Hiptown"></div>
         <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
         <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
           Votre compte sera activé après validation par l'équipe Hiptown.
