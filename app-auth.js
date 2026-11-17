@@ -1467,6 +1467,8 @@ if (signupCity && signupSite) {
   // Une carte par site : « NABO06 - Émergence » puis l'adresse en dessous ; un clic ouvre le formulaire
   const siteList = document.getElementById("signup-site-list");
   const siteName = id => {
+    const publicName = PORTAIL.sitePublicNames?.[id];
+    if (publicName) return id.toUpperCase() + " - " + publicName;
     const [code, ...rest] = (PORTAIL.cities?.[signupCity.value]?.sites?.[id] || id).split(" — ");
     return rest.length ? code + " - " + rest.join(" — ") : code;
   };

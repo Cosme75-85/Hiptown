@@ -60,6 +60,13 @@ const PORTAIL = {
     nabo08: "67 avenue John Fitzgerald Kennedy 33700 Mérignac",
   },
 
+  // Nom affiché aux clients quand ils choisissent leur site à l'inscription, s'il doit
+  // être différent du nom interne ci-dessus (ex. pour ne pas montrer le nom d'un client).
+  sitePublicNames: {
+    nabo02: "Place de la Bourse",
+    nabo05: "Place de la Bourse",
+  },
+
   // Seul site où l'on peut s'inscrire pour « Réserver une salle de réunion » :
   // à l'inscription, ce choix passe directement au formulaire avec ce site.
   meetingRoomSite: "nabo06",
