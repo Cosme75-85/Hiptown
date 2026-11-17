@@ -1054,7 +1054,7 @@ function fillUserForm(form, u) {
 // Repère les comptes qui ressemblent à des essais (« test », « essai », adresse jetable,
 // adresse avec un « + »...) et les supprime en une fois, avec leurs clics des statistiques.
 // Rien n'est coché d'office : l'admin choisit, puis confirme.
-const TEST_WORDS = /test|essai|d[eé]mo\b|toto|tata|titi|bidon|fake|exemple|example|azerty|qwerty|yopmail|mailinator|tempmail|trashmail|guerrillamail|jetable/i;
+const TEST_WORDS = /(?<![a-z])test|essai|d[eé]mo\b|toto|tata|titi|bidon|fake|exemple|example|azerty|qwerty|yopmail|mailinator|tempmail|trashmail|guerrillamail|jetable/i;
 
 function testReasonOf(u) {
   const email = (u.email || "").toLowerCase();
