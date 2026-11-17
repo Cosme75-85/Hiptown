@@ -48,6 +48,9 @@ const PORTAIL = {
     rennes:    { name: "Rennes",    code: "BRRE", sites: {} },
     lille:     { name: "Lille",     code: "HFLI", sites: {} },
   },
+  // Sites qui ont un espace coworking (signalés « (coworking) » dans Gestion des comptes)
+  coworkingSites: ["nabo06"],
+
   // Crédits coworking proposés par poste négocié dans le contrat (modifiable
   // entreprise par entreprise dans « Gestion des entreprises »)
   creditsPerSeat: 160,
