@@ -349,6 +349,15 @@
       <input type="text" id="comm-form-date" class="profile-input" maxlength="40" placeholder="ex. Jeudi 15 novembre · 9 h"/>
       <label class="profile-label" for="comm-form-text">Texte (facultatif)</label>
       <textarea id="comm-form-text" class="profile-input" maxlength="300" rows="3" placeholder="ex. Rejoignez-nous pour un moment de partage autour d'un café ☕"></textarea>
+      <p class="profile-label">📅 Bouton « Ajouter à l'agenda » (facultatif)</p>
+      <p class="profile-help">Choisissez le jour de l'événement : les clients pourront l'ajouter à leur agenda (Google, Outlook, Apple…). Sans heure, il compte pour toute la journée. Heures de Paris.</p>
+      <div class="comm-agenda-row">
+        <label>Jour<input type="date" id="comm-form-agenda-day" class="profile-input"/></label>
+        <label>Début<input type="time" id="comm-form-agenda-start" class="profile-input"/></label>
+        <label>Fin<input type="time" id="comm-form-agenda-end" class="profile-input"/></label>
+      </div>
+      <label class="profile-label" for="comm-form-agenda-place">Lieu (facultatif)</label>
+      <input type="text" id="comm-form-agenda-place" class="profile-input" maxlength="120" placeholder="ex. Hiptown Tourny, 10 allées de Tourny, Bordeaux"/>
       <p class="profile-label">Boutons (jusqu'à 3)</p>
       <div id="comm-form-buttons"></div>
       <button class="direct-btn" id="comm-form-btn-add" type="button" style="margin-top:4px;width:auto;padding:8px 14px;">+ Ajouter un bouton</button>
