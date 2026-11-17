@@ -277,13 +277,19 @@ service cloud.firestore {
     }
 
     function isValidCommunication(id, data) {
-      return data.keys().hasOnly(['city', 'order', 'title', 'date', 'text', 'image', 'buttons', 'audience', 'updatedAt'])
+      return data.keys().hasOnly(['city', 'order', 'title', 'date', 'text', 'image', 'buttons', 'audience',
+                                  'agendaDay', 'agendaStart', 'agendaEnd', 'agendaPlace', 'updatedAt'])
         && data.city is string && data.city.size() > 0 && data.city.size() <= 40
         && id.matches(data.city + '-[0-9]')
         && data.order is int && data.order >= 0 && data.order <= 99
         && isShortText(data, 'title', 80)
         && isShortText(data, 'date', 40)
         && isShortText(data, 'text', 300)
+        // « Ajouter à l'agenda » (facultatif) : jour AAAA-MM-JJ, heures HH:MM, lieu
+        && (!('agendaDay' in data) || data.agendaDay == '' || (data.agendaDay is string && data.agendaDay.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+        && (!('agendaStart' in data) || data.agendaStart == '' || (data.agendaStart is string && data.agendaStart.matches('^[0-9]{2}:[0-9]{2}$')))
+        && (!('agendaEnd' in data) || data.agendaEnd == '' || (data.agendaEnd is string && data.agendaEnd.matches('^[0-9]{2}:[0-9]{2}$')))
+        && isShortText(data, 'agendaPlace', 120)
         && (!('image' in data) || data.image == ''
             || (data.image is string
                 && data.image.size() <= 500000

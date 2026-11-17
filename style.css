@@ -178,6 +178,22 @@ button.events-dot { border: none; padding: 0; }
   text-decoration: none;
 }
 .comm-btn:hover { background: var(--navy-dark); }
+button.comm-btn { border: none; font-family: inherit; cursor: pointer; }
+/* Menu « Ajouter à l'agenda » (communications.js) */
+.cal-menu {
+  position: fixed; z-index: 1000; min-width: 220px; padding: 6px;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .18);
+  display: flex; flex-direction: column;
+}
+.cal-menu a, .cal-menu button {
+  display: block; width: 100%; text-align: left; padding: 9px 12px; border: none; background: none;
+  border-radius: 8px; font: inherit; font-size: 13px; color: var(--navy); text-decoration: none; cursor: pointer;
+}
+.cal-menu a:hover, .cal-menu button:hover { background: var(--bg); }
+.comm-agenda-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+.comm-agenda-row label { font-size: 12px; color: var(--text-soft); display: grid; gap: 4px; }
+.comm-agenda-row .profile-input { margin: 0; min-width: 0; }
 .comm-empty { font-size: 13px; color: var(--text-soft); padding: 12px; background: var(--bg); border-radius: var(--radius-lg); width: 100%; }
 
 /* Page « Communications » (équipe) */

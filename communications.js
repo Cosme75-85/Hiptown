@@ -55,6 +55,146 @@ function showMessage(id, text, isError) {
 const isSafeImage = img => typeof img === "string" && img.length <= MAX_IMAGE_LENGTH && SAFE_IMAGE.test(img);
 const isSafeUrl = url => typeof url === "string" && url.length <= 500 && SAFE_URL.test(url);
 
+// ═══════════════════════════════════════════════════════
+//  « AJOUTER À L'AGENDA » : jour, heures (heure de Paris) et lieu facultatifs.
+//  Si le jour est rempli, la communication montre un bouton qui ouvre Google Agenda,
+//  Outlook, ou télécharge un fichier .ics (Apple Calendrier et autres agendas).
+// ═══════════════════════════════════════════════════════
+const AGENDA_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const AGENDA_TIME = /^\d{2}:\d{2}$/;
+const hasAgenda = c => !!c && AGENDA_DAY.test(c.agendaDay || "");
+
+/** Décalage (en minutes) de l'heure de Paris par rapport à UTC, à une date donnée (été/hiver). */
+function parisOffset(utcMs) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+  }).formatToParts(new Date(utcMs)).map(p => [p.type, p.value]));
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+  return Math.round((asUtc - utcMs) / 60000);
+}
+
+/** « 2026-11-20 » + « 09:30 » à Paris → Date (instant exact). */
+function parisDate(day, time) {
+  const [y, m, d] = day.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, h, min);
+  return new Date(guess - parisOffset(guess - parisOffset(guess) * 60000) * 60000);
+}
+
+const pad = n => String(n).padStart(2, "0");
+const utcStamp = date => `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}00Z`;
+const dayStamp = day => day.replace(/-/g, "");
+function nextDay(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`;
+}
+
+/** Début / fin de l'événement. Sans heure : toute la journée. Sans heure de fin : 1 heure. */
+function agendaTimes(c) {
+  if (!AGENDA_TIME.test(c.agendaStart || "")) return { allDay: true, day: c.agendaDay, end: nextDay(c.agendaDay) };
+  const start = parisDate(c.agendaDay, c.agendaStart);
+  let end = AGENDA_TIME.test(c.agendaEnd || "") ? parisDate(c.agendaDay, c.agendaEnd) : null;
+  if (!end || end <= start) end = new Date(start.getTime() + 3600000);
+  return { allDay: false, start, end };
+}
+
+function agendaDetails(c) {
+  return [c.text, "Hiptown " + cityName(c.city)].filter(Boolean).join("\n\n");
+}
+
+function googleUrl(c) {
+  const t = agendaTimes(c);
+  const dates = t.allDay ? `${dayStamp(t.day)}/${dayStamp(t.end)}` : `${utcStamp(t.start)}/${utcStamp(t.end)}`;
+  const q = new URLSearchParams({ action: "TEMPLATE", text: c.title || "Événement Hiptown", dates, details: agendaDetails(c), location: c.agendaPlace || "" });
+  return "https://calendar.google.com/calendar/render?" + q.toString();
+}
+
+function outlookUrl(c, host) {
+  const t = agendaTimes(c);
+  const q = new URLSearchParams({
+    path: "/calendar/action/compose", rru: "addevent",
+    subject: c.title || "Événement Hiptown", body: agendaDetails(c), location: c.agendaPlace || "",
+    startdt: t.allDay ? t.day : t.start.toISOString(),
+    enddt: t.allDay ? t.end : t.end.toISOString(),
+    allday: t.allDay ? "true" : "false"
+  });
+  return `https://${host}/calendar/0/deeplink/compose?` + q.toString();
+}
+
+const icsText = text => String(text || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+
+function downloadIcs(c) {
+  const t = agendaTimes(c);
+  const lines = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Hiptown//Portail//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${c.id || "communication"}-${dayStamp(c.agendaDay)}@portail.hiptown`,
+    `DTSTAMP:${utcStamp(new Date())}`,
+    t.allDay ? `DTSTART;VALUE=DATE:${dayStamp(t.day)}` : `DTSTART:${utcStamp(t.start)}`,
+    t.allDay ? `DTEND;VALUE=DATE:${dayStamp(t.end)}` : `DTEND:${utcStamp(t.end)}`,
+    `SUMMARY:${icsText(c.title || "Événement Hiptown")}`,
+    `DESCRIPTION:${icsText(agendaDetails(c))}`,
+    c.agendaPlace ? `LOCATION:${icsText(c.agendaPlace)}` : "",
+    "END:VEVENT", "END:VCALENDAR"
+  ].filter(Boolean);
+  const blob = new Blob([lines.join("\r\n") + "\r\n"], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (c.title || "evenement-hiptown").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase().slice(0, 50) + ".ics";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/** Étiquette affichée quand l'équipe n'a pas écrit de « Date ou étiquette » : « jeu. 20 nov. · 9 h 30 ». */
+function agendaLabel(c) {
+  const [y, m, d] = c.agendaDay.split("-").map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const hour = t => { const [h, min] = t.split(":"); return `${+h} h${min === "00" ? "" : " " + min}`; };
+  if (!AGENDA_TIME.test(c.agendaStart || "")) return day;
+  return `${day} · ${hour(c.agendaStart)}${AGENDA_TIME.test(c.agendaEnd || "") ? " – " + hour(c.agendaEnd) : ""}`;
+}
+
+// ── Petit menu « Ajouter à l'agenda » (posé sur la page, pour ne pas être coupé par la barre) ──
+let calMenu = null;
+function closeCalMenu() {
+  if (calMenu) { calMenu.remove(); calMenu = null; }
+}
+function openCalMenu(button, c) {
+  const reopen = calMenu && calMenu.dataset.for === c.id;
+  closeCalMenu();
+  if (reopen) return;
+  calMenu = document.createElement("div");
+  calMenu.className = "cal-menu";
+  calMenu.dataset.for = c.id;
+  calMenu.setAttribute("role", "menu");
+  calMenu.innerHTML = `
+    <a role="menuitem" href="${escapeHtml(googleUrl(c))}" target="_blank" rel="noopener">Google Agenda</a>
+    <a role="menuitem" href="${escapeHtml(outlookUrl(c, "outlook.office.com"))}" target="_blank" rel="noopener">Outlook (compte pro)</a>
+    <a role="menuitem" href="${escapeHtml(outlookUrl(c, "outlook.live.com"))}" target="_blank" rel="noopener">Outlook.com / Hotmail</a>
+    <button role="menuitem" type="button">Apple Calendrier / autre agenda</button>`;
+  calMenu.querySelector("button").addEventListener("click", () => { downloadIcs(c); closeCalMenu(); });
+  calMenu.querySelectorAll("a").forEach(a => a.addEventListener("click", () => setTimeout(closeCalMenu, 0)));
+  document.body.appendChild(calMenu);
+  const r = button.getBoundingClientRect();
+  const w = calMenu.offsetWidth, h = calMenu.offsetHeight;
+  const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+  const top = r.bottom + 6 + h > window.innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6;
+  calMenu.style.left = left + "px";
+  calMenu.style.top = top + "px";
+}
+document.addEventListener("click", e => {
+  if (calMenu && !calMenu.contains(e.target) && !e.target.closest(".comm-cal-btn")) closeCalMenu();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeCalMenu(); });
+window.addEventListener("scroll", closeCalMenu, { passive: true });
+window.addEventListener("resize", closeCalMenu);
+
 /** Communications d'une ville, dans l'ordre choisi par l'équipe. */
 async function listCommunications(city) {
   const snap = await getDocs(query(collection(db, "communications"), where("city", "==", city)));
@@ -84,13 +224,15 @@ function syncBanner() {
 }
 new MutationObserver(syncBanner).observe(dashboard, { attributes: true, attributeFilter: ["hidden"] });
 
-function cardHtml(c) {
+function cardHtml(c, i) {
   const img = isSafeImage(c.image)
     ? `<img src="${c.image}" alt="${escapeHtml(c.title)}" loading="lazy"/>`
     : "";
   const buttons = (c.buttons || []).filter(b => b && b.label && isSafeUrl(b.url))
-    .map(b => `<a class="comm-btn" href="${escapeHtml(b.url)}" target="_blank" rel="noopener">${escapeHtml(b.label)}</a>`).join("");
-  const hasText = c.title || c.date || c.text;
+    .map(b => `<a class="comm-btn" href="${escapeHtml(b.url)}" target="_blank" rel="noopener">${escapeHtml(b.label)}</a>`).join("")
+    + (hasAgenda(c) ? `<button class="comm-btn comm-cal-btn" type="button" data-cal="${i}" aria-haspopup="menu">📅 Ajouter à l'agenda</button>` : "");
+  const date = c.date || (hasAgenda(c) ? agendaLabel(c) : "");
+  const hasText = c.title || date || c.text;
   // Sans titre ni texte, l'image prend toute la largeur de la barre (pas de colonne vide à côté)
   const full = img && !c.title && !c.text;
   return `
@@ -101,8 +243,8 @@ function cardHtml(c) {
           ${c.title ? `<div class="comm-title">${escapeHtml(c.title)}</div>` : ""}
           ${c.text ? `<div class="comm-text">${escapeHtml(c.text)}</div>` : ""}
         </div>
-        ${c.date || buttons ? `<div class="comm-side">
-          ${c.date ? `<div class="event-date">${escapeHtml(c.date)}</div>` : ""}
+        ${date || buttons ? `<div class="comm-side">
+          ${date ? `<div class="event-date">${escapeHtml(date)}</div>` : ""}
           ${buttons ? `<div class="comm-btns">${buttons}</div>` : ""}
         </div>` : ""}
       </div>` : ""}
@@ -120,7 +262,10 @@ function renderBanner() {
     syncBanner();
     return;
   }
+  closeCalMenu();
   track.innerHTML = items.map(cardHtml).join("");
+  track.querySelectorAll(".comm-cal-btn").forEach(b =>
+    b.addEventListener("click", () => openCalMenu(b, items[+b.dataset.cal])));
   if (items.length > 1) {
     items.forEach((_, i) => {
       const dot = document.createElement("button");
@@ -131,7 +276,7 @@ function renderBanner() {
       dotsEl.appendChild(dot);
     });
     autoplay = setInterval(() => {
-      if (banner.hidden || track.matches(":hover")) return;
+      if (banner.hidden || calMenu || track.matches(":hover")) return;
       goTo((currentIndex() + 1) % items.length);
     }, AUTOPLAY_MS);
   }
@@ -148,6 +293,7 @@ function goTo(i) {
 }
 
 track.addEventListener("scroll", () => {
+  closeCalMenu();
   const i = currentIndex();
   dotsEl.querySelectorAll(".events-dot").forEach((d, j) => d.classList.toggle("active", i === j));
 }, { passive: true });
@@ -229,7 +375,7 @@ function editRow(c, i) {
     ? `<img src="${c.image}" alt="" class="comm-thumb"/>`
     : `<span class="comm-thumb comm-thumb-empty">📣</span>`;
   const nbButtons = (c.buttons || []).length;
-  const details = [c.date, audienceLabel(c), nbButtons ? `${nbButtons} bouton${nbButtons > 1 ? "s" : ""}` : ""]
+  const details = [c.date || (hasAgenda(c) ? agendaLabel(c) : ""), hasAgenda(c) ? "📅 Agenda" : "", audienceLabel(c), nbButtons ? `${nbButtons} bouton${nbButtons > 1 ? "s" : ""}` : ""]
     .filter(Boolean).join(" · ");
   const small = "margin-top:0;width:auto;padding:6px 10px;font-size:12px;";
   const row = document.createElement("div");
@@ -332,6 +478,10 @@ function openForm(c) {
   $("comm-form-name").value = c ? c.title || "" : "";
   $("comm-form-date").value = c ? c.date || "" : "";
   $("comm-form-text").value = c ? c.text || "" : "";
+  $("comm-form-agenda-day").value = c && hasAgenda(c) ? c.agendaDay : "";
+  $("comm-form-agenda-start").value = c && hasAgenda(c) ? c.agendaStart || "" : "";
+  $("comm-form-agenda-end").value = c && hasAgenda(c) ? c.agendaEnd || "" : "";
+  $("comm-form-agenda-place").value = c && hasAgenda(c) ? c.agendaPlace || "" : "";
   const audience = c && Array.isArray(c.audience) && c.audience.length ? c.audience : Object.keys(AUDIENCES);
   document.querySelectorAll(".comm-audience").forEach(box => { box.checked = audience.includes(box.value); });
   const buttons = $("comm-form-buttons");
@@ -377,6 +527,14 @@ async function saveForm() {
     buttons.push({ label, url });
   }
   if (!title && !formImage) return showMessage("comm-form-message", "Ajoutez au moins un titre ou une image.", true);
+  const agendaDay = $("comm-form-agenda-day").value;
+  const agendaStart = agendaDay ? $("comm-form-agenda-start").value : "";
+  const agendaEnd = agendaStart ? $("comm-form-agenda-end").value : "";
+  const agendaPlace = agendaDay ? $("comm-form-agenda-place").value.trim() : "";
+  if (agendaDay && !AGENDA_DAY.test(agendaDay)) return showMessage("comm-form-message", "Le jour de l'événement n'est pas valide.", true);
+  if (!agendaDay && ($("comm-form-agenda-start").value || $("comm-form-agenda-end").value))
+    return showMessage("comm-form-message", "Pour le bouton « Ajouter à l'agenda », choisissez aussi le jour.", true);
+  if (agendaEnd && agendaEnd <= agendaStart) return showMessage("comm-form-message", "L'heure de fin doit être après l'heure de début.", true);
   if (!audience.length) return showMessage("comm-form-message", "Choisissez qui voit cette communication.", true);
 
   const id = editing ? editing.id : freeId();
@@ -388,7 +546,8 @@ async function saveForm() {
   btn.disabled = true;
   try {
     await setDoc(doc(db, "communications", id), {
-      city: editCity, order, title, date, text, image: formImage, buttons, audience, updatedAt: serverTimestamp()
+      city: editCity, order, title, date, text, image: formImage, buttons, audience,
+      agendaDay, agendaStart, agendaEnd, agendaPlace, updatedAt: serverTimestamp()
     });
     showMessage("comm-message", "Communication enregistrée ✓", false);
     closeForm();
