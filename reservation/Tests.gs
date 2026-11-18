@@ -138,5 +138,7 @@ function testReservationsAjouteesALaMain() {
         + ' — ' + event.getStartTime() + ' — ' + event.getTitle());
     });
   });
-  Logger.log('Total retrouvé : ' + companyManualRecords(companyName, from, to).length);
+  const t0 = Date.now();
+  const found = companyManualRecords(companyName, from, to).length;
+  Logger.log('Total retrouvé par le portail : ' + found + ' (en ' + Math.round((Date.now() - t0) / 1000) + ' s)');
 }
