@@ -558,20 +558,15 @@ function companyManualRecords(companyName, from, to) {
   if (!names.length) return []; // nom trop court : trop de risques de confusion
   const list = [];
   getAllSpaces().forEach(space => {
-    const cal = CalendarApp.getCalendarById(space.calendarId);
-    if (!cal) return;
-    cal.getEvents(from, to).forEach(event => {
-      if (event.getTag(TAG_COMPANY) || event.getTag(TAG_PORTAL_UID) || event.getTag(TAG_EMAIL)) return;
-      const title = event.getTitle() || '';
-      if (!textMentionsCompany(title + ' ' + (event.getDescription() || ''), names)) return;
-      const people = ((event.getDescription() || '').match(/Nombre de personnes : (\d+)/) || [])[1];
+    listCompanyMentions(space, names, from, to).forEach(ev => {
+      const people = (ev.description.match(/Nombre de personnes : (\d+)/) || [])[1];
       list.push({
         spaceId: space.id,
-        eventId: event.getId(),
+        eventId: ev.id,
         title: [COWORKING.titlePrefix, CONFIRMED_PREFIX, PENDING_PREFIX]
-          .reduce((t, prefix) => t.indexOf(prefix) === 0 ? t.slice(prefix.length) : t, title) || 'Réservation',
-        start: event.getStartTime().getTime(),
-        end: event.getEndTime().getTime(),
+          .reduce((t, prefix) => t.indexOf(prefix) === 0 ? t.slice(prefix.length) : t, ev.title) || 'Réservation',
+        start: ev.start.getTime(),
+        end: ev.end.getTime(),
         people: people ? Number(people) : 0,
         notes: '',
         meals: '',
@@ -584,6 +579,60 @@ function companyManualRecords(companyName, from, to) {
     });
   });
   return list;
+}
+
+/**
+ * Événements d'une salle qui citent l'entreprise (names : companyNameVariants) et ne portent
+ * aucun tag du portail (ni entreprise, ni compte, ni email de demandeur) :
+ * { id, title, start, end, description }. Avec le service avancé Calendar, une seule
+ * requête par tranche de 250 événements ; sinon CalendarApp, en ne lisant les tags que
+ * des événements qui citent l'entreprise (lire chaque événement un par un est très lent
+ * et faisait dépasser le temps de réponse du portail).
+ */
+function listCompanyMentions(space, names, from, to) {
+  const tags = [TAG_COMPANY, TAG_PORTAL_UID, TAG_EMAIL];
+  if (typeof Calendar !== 'undefined') {
+    const out = [];
+    let pageToken;
+    do {
+      const page = Calendar.Events.list(space.calendarId, {
+        timeMin: from.toISOString(),
+        timeMax: to.toISOString(),
+        singleEvents: true,
+        maxResults: 250,
+        pageToken: pageToken,
+        fields: 'nextPageToken,items(iCalUID,status,summary,start,end,description,extendedProperties)'
+      });
+      (page.items || []).forEach(ev => {
+        if (ev.status === 'cancelled') return;
+        if (!textMentionsCompany((ev.summary || '') + ' ' + (ev.description || ''), names)) return;
+        const props = ev.extendedProperties || {};
+        const all = Object.assign({}, props.shared || {}, props.private || {});
+        if (tags.some(t => all[t])) return;
+        out.push({
+          id: ev.iCalUID,
+          title: ev.summary || '',
+          start: new Date(apiEventTime(ev.start)),
+          end: new Date(apiEventTime(ev.end)),
+          description: ev.description || ''
+        });
+      });
+      pageToken = page.nextPageToken;
+    } while (pageToken);
+    return out;
+  }
+  const cal = CalendarApp.getCalendarById(space.calendarId);
+  if (!cal) return [];
+  return cal.getEvents(from, to)
+    .filter(event => textMentionsCompany((event.getTitle() || '') + ' ' + (event.getDescription() || ''), names))
+    .filter(event => !tags.some(t => event.getTag(t)))
+    .map(event => ({
+      id: event.getId(),
+      title: event.getTitle() || '',
+      start: event.getStartTime(),
+      end: event.getEndTime(),
+      description: event.getDescription() || ''
+    }));
 }
 
 // Formes juridiques ignorées dans le nom d'une entreprise (« Yes Sign SAS » -> « yes sign »)

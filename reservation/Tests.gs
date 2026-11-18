@@ -138,5 +138,33 @@ function testReservationsAjouteesALaMain() {
         + ' — ' + event.getStartTime() + ' — ' + event.getTitle());
     });
   });
-  Logger.log('Total retrouvé : ' + companyManualRecords(companyName, from, to).length);
+  const t0 = Date.now();
+  const found = companyManualRecords(companyName, from, to).length;
+  Logger.log('Total retrouvé par le portail : ' + found + ' (en ' + Math.round((Date.now() - t0) / 1000) + ' s)');
+}
+
+/**
+ * Tous les événements des salles entre deux dates, avec leurs tags du portail, puis ce que
+ * « Réservations de l'entreprise » retrouve pour chaque entreprise taguée.
+ * Changer les dates ci-dessous si besoin, puis exécuter.
+ */
+function testReservationsEntreDeuxDates() {
+  const from = new Date(2026, 11, 2); // 2 décembre 2026 (les mois comptent à partir de 0)
+  const to = new Date(2026, 11, 4);   // jusqu'au 3 décembre inclus
+  const companies = {};
+  getAllSpaces().forEach(space => {
+    const cal = CalendarApp.getCalendarById(space.calendarId);
+    if (!cal) return Logger.log('❌ ' + space.name + ' : agenda inaccessible');
+    cal.getEvents(from, to).forEach(event => {
+      const company = event.getTag(TAG_COMPANY) || '';
+      if (company) companies[company] = true;
+      Logger.log('📅 ' + space.name + ' — ' + event.getStartTime() + ' — ' + event.getTitle()
+        + ' | entreprise : ' + (company || '-') + ' | compte : ' + (event.getTag(TAG_PORTAL_UID) || '-')
+        + ' | email : ' + (event.getTag(TAG_EMAIL) || '-') + ' | crédits : ' + (event.getTag(TAG_CREDITS) || '-'));
+    });
+  });
+  Object.keys(companies).forEach(companyId => {
+    const list = companyCoworkingRecords({ uid: '', companyId: companyId }, from, to);
+    Logger.log('➡️ Entreprise ' + companyId + ' : ' + list.length + ' réservation(s) retrouvée(s) par le portail');
+  });
 }
