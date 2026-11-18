@@ -3,6 +3,10 @@
 // ═══════════════════════════════════════════════════════
 
 import { SOUNDS, DEFAULT_SOUND, setNotificationSound, playNotificationSound } from "./notif-sound.js";
+import { demarrerGardeContraste, verifierContraste } from "./contraste.js";
+
+// Aucun bouton ne doit disparaître sur le fond ou les cases choisis (contraste.js)
+demarrerGardeContraste();
 
 // Couleurs de la charte Hiptown (v5, couleurs 2023) éclaircies à 20 %, comme le « gris chaud light » de la charte :
 // vert d'eau #67DFCB, menthe #68DEA4, citron #FFE700, lavande #A781D7, gris chaud #D9D4CD.
@@ -68,6 +72,7 @@ function applySetting(key, id) {
   if (key === "background") {
     document.body.classList.toggle("fond-sombre", !!choices.find(c => c.id === id).sombre);
   }
+  if (key === "background" || key === "cases") verifierContraste();
 }
 
 // Copie locale des réglages, par compte : ils s'affichent tout de suite au chargement,
