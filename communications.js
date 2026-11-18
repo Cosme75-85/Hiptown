@@ -545,16 +545,26 @@ async function saveForm() {
   const btn = $("comm-form-save");
   btn.disabled = true;
   try {
-    await setDoc(doc(db, "communications", id), {
-      city: editCity, order, title, date, text, image: formImage, buttons, audience,
-      agendaDay, agendaStart, agendaEnd, agendaPlace, updatedAt: serverTimestamp()
-    });
+    const data = {
+      city: editCity, order, title, date, text, image: formImage, buttons, audience, updatedAt: serverTimestamp()
+    };
+    // Champs « Ajouter à l'agenda » envoyés seulement s'ils sont remplis : une communication
+    // sans agenda s'enregistre même si les règles Firestore publiées ne les connaissent pas encore.
+    if (agendaDay) data.agendaDay = agendaDay;
+    if (agendaStart) data.agendaStart = agendaStart;
+    if (agendaEnd) data.agendaEnd = agendaEnd;
+    if (agendaPlace) data.agendaPlace = agendaPlace;
+    await setDoc(doc(db, "communications", id), data);
     showMessage("comm-message", "Communication enregistrée ✓", false);
     closeForm();
     await afterChange();
   } catch (err) {
     console.error(err);
-    showMessage("comm-form-message", "Enregistrement impossible. Réessayez.", true);
+    showMessage("comm-form-message", err && err.code === "permission-denied"
+      ? (agendaDay
+        ? "Enregistrement refusé : les règles Firestore publiées ne connaissent pas encore « Ajouter à l'agenda ». Republiez firestore.rules dans la console Firebase, ou videz le jour de l'événement."
+        : "Enregistrement refusé par les règles Firestore. Republiez firestore.rules dans la console Firebase.")
+      : "Enregistrement impossible. Réessayez.", true);
   } finally {
     btn.disabled = false;
   }
