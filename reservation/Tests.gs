@@ -112,17 +112,31 @@ function testCoworkingSetup() {
 /**
  * Réservations ajoutées à la main dans les agendas des salles que le portail rattache
  * à une entreprise. Écrire le nom de l'entreprise, tel qu'il est dans Gestion > Entreprises,
- * entre les guillemets ci-dessous, puis exécuter.
+ * entre les guillemets ci-dessous, puis exécuter. Le journal montre chaque étape :
+ * salles lues, événements qui citent le nom, et pourquoi un événement est écarté.
  */
 function testReservationsAjouteesALaMain() {
-  const companyName = 'Yes Sign';
+  const companyName = 'YES SIGN';
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth() - COMPANY_HISTORY_MONTHS, 1);
   const to = new Date(now.getTime() + 366 * DAY_MS);
-  Logger.log('Noms cherchés : ' + companyNameVariants(companyName).join(', '));
-  const list = companyManualRecords(companyName, from, to);
-  if (!list.length) Logger.log('❌ Aucune réservation trouvée pour « ' + companyName + ' ».');
-  list.forEach(r => {
-    Logger.log('✅ ' + findSpace(r.spaceId).name + ' — ' + new Date(r.start) + ' — ' + r.title);
+  const names = companyNameVariants(companyName);
+  Logger.log('Noms cherchés : ' + (names.join(', ') || '(aucun : nom trop court)'));
+  getAllSpaces().forEach(space => {
+    const cal = CalendarApp.getCalendarById(space.calendarId);
+    if (!cal) {
+      Logger.log('❌ ' + space.name + ' : agenda introuvable ou sans accès (' + space.calendarId + ')');
+      return;
+    }
+    const events = cal.getEvents(from, to);
+    Logger.log('📅 ' + space.name + ' : ' + events.length + ' événement(s) lus dans « ' + cal.getName() + ' »');
+    events.forEach(event => {
+      const text = (event.getTitle() || '') + ' ' + (event.getDescription() || '');
+      if (!textMentionsCompany(text, names)) return;
+      const tags = [TAG_COMPANY, TAG_PORTAL_UID, TAG_EMAIL].filter(t => event.getTag(t));
+      Logger.log((tags.length ? '⚠️ écarté (fait par le portail, tags : ' + tags.join(', ') + ')' : '✅ retrouvé')
+        + ' — ' + event.getStartTime() + ' — ' + event.getTitle());
+    });
   });
+  Logger.log('Total retrouvé : ' + companyManualRecords(companyName, from, to).length);
 }
