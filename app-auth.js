@@ -788,6 +788,7 @@ export async function renderAdminPanel() {
   const scope       = adminScope();
   const companies   = await listCompanies();
   adminCompaniesCache = companies;
+  await loadAccueilLogos();
 
   const siteTitle = document.getElementById("admin-site-label");
   if (siteTitle) siteTitle.textContent = adminScopeTitle();
@@ -860,6 +861,7 @@ function renderAllUsersList() {
   const count   = document.getElementById("admin-all-count");
   const term    = (document.getElementById("admin-search")?.value || "").trim().toLowerCase();
   const companyNames = Object.fromEntries(adminCompaniesCache.map(c => [c.id, c.name]));
+  const companiesById = Object.fromEntries(adminCompaniesCache.map(c => [c.id, c]));
   const cats = categoriesForMe();
 
   const users = adminUsersCache.filter(u => userMatches(u, term, companyNames));
@@ -881,24 +883,44 @@ function renderAllUsersList() {
         shown.forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
         return;
       }
-      // Clients d'un site : regroupés par entreprise (A → Z), puis par nom dans chaque entreprise
+      // Clients d'un site : salles de réunion d'un côté, clients coworking de l'autre ;
+      // dans chaque colonne, regroupés par entreprise (A → Z), puis par nom
+      listEl.className = "companies-columns account-list";
+      listEl.innerHTML = "";
+      [["sdr", "🚪 Salles de réunion"], ["clients", "💼 Clients coworking"]].forEach(([cat, label]) => {
+        const users = shown.filter(u => categoryOf(u) === cat);
+        const col = document.createElement("div");
+        col.className = "companies-col";
+        col.innerHTML = `<p class="account-col-title">${label} <span>${users.length}</span></p><div class="info-grid"></div>`;
+        const colList = col.querySelector(".info-grid");
+        if (!users.length) colList.innerHTML = '<p style="color:#94a3b8;padding:8px 12px;font-size:13px;">Aucun compte.</p>';
+        appendByCompany(colList, users);
+        listEl.appendChild(col);
+      });
+    };
+    // Comptes regroupés par entreprise, avec le cercle (logo ou initiales) de l'entreprise
+    const appendByCompany = (el, users) => {
       const NO_COMPANY = "Entreprise non renseignée";
       const groups = new Map();
-      shown.forEach(u => {
+      // Même entreprise malgré des majuscules ou accents différents : un seul groupe
+      const keyOf = n => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      users.forEach(u => {
         const name = (companyNames[u.companyId] || u.companyNameHint || "").trim() || NO_COMPANY;
-        if (!groups.has(name)) groups.set(name, []);
-        groups.get(name).push(u);
+        const k = keyOf(name);
+        if (!groups.has(k)) groups.set(k, { name, members: [] });
+        groups.get(k).members.push(u);
       });
-      [...groups.keys()]
-        .sort((a, b) => (a === NO_COMPANY) - (b === NO_COMPANY) || a.localeCompare(b, "fr", { sensitivity: "base" }))
-        .forEach(name => {
+      [...groups.values()]
+        .sort((a, b) => (a.name === NO_COMPANY) - (b.name === NO_COMPANY) || a.name.localeCompare(b.name, "fr", { sensitivity: "base" }))
+        .forEach(({ name, members }) => {
+          const company = companiesById[members.find(u => u.companyId)?.companyId];
           const title = document.createElement("p");
           title.className = "account-company-title";
-          title.innerHTML = `${escapeHtml(name)} <span>${groups.get(name).length}</span>`;
-          listEl.appendChild(title);
-          groups.get(name)
+          title.innerHTML = `${name === NO_COMPANY ? "" : companyBadgeHtml(name, { logo: company ? companyLogoOf(company) : "", color: company?.color, textColor: company?.textColor, size: 24 })}${escapeHtml(name)} <span>${members.length}</span>`;
+          el.appendChild(title);
+          members
             .sort((a, b) => adminNameOf(a).localeCompare(adminNameOf(b), "fr", { sensitivity: "base" }))
-            .forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
+            .forEach(u => el.appendChild(createUserCard(u, companyNames, { compact: true })));
         });
     };
     input.addEventListener("input", draw);
@@ -968,21 +990,25 @@ function renderAllUsersList() {
   }
 }
 
-function createUserCard(u, companyNames) {
+// compact : dans les colonnes d'un site, l'entreprise, le rôle et le site sont déjà dans les titres
+function createUserCard(u, companyNames, { compact = false } = {}) {
   const card = document.createElement("div");
   card.className = "info-card";
   const companyName = companyNames[u.companyId] || u.companyNameHint
     || (u.role === "admin" ? HIPTOWN_COMPANY : "Entreprise non renseignée");
   const statusColor = u.status === "approved" ? "#166534" : u.status === "rejected" ? "#dc2626" : "#c2410c";
+  // Cercle : la photo de la personne, sinon le logo de son entreprise, sinon ses initiales
+  const company = adminCompaniesCache.find(c => c.id === u.companyId);
+  const logo = !isSafePhoto(u.photo) && company ? companyLogoOf(company) : "";
   card.innerHTML = `
     <div class="info-item" style="gap:10px;">
-      ${avatarHtml(u)}
+      ${logo ? companyBadgeHtml(companyName, { logo, size: 32 }) : avatarHtml(u)}
       <span style="flex:1;min-width:0;">
-        <b>${escapeHtml(adminNameOf(u))}</b> — ${escapeHtml(companyName)}<br>
-        <span style="font-size:11px;color:#94a3b8;">
-          ${escapeHtml(u.email)} — ${escapeHtml(ROLE_LABELS[u.role] || "Sans rôle")}
+        <b>${escapeHtml(adminNameOf(u))}</b>${compact ? "" : ` — ${escapeHtml(companyName)}`}<br>
+        <span style="font-size:11px;color:#94a3b8;${compact ? "overflow-wrap:anywhere;" : ""}">
+          ${escapeHtml(u.email)}${compact ? "" : ` — ${escapeHtml(ROLE_LABELS[u.role] || "Sans rôle")}`}
           · <span style="color:${statusColor};">${escapeHtml(STATUS_LABELS[u.status] || u.status || "—")}</span>
-          · ${escapeHtml(accountPlaceLabel(u))}
+          ${compact ? "" : `· ${escapeHtml(accountPlaceLabel(u))}`}
         </span>
       </span>
       <button class="direct-btn edit-user-btn" type="button" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px;">Modifier</button>
@@ -1232,17 +1258,21 @@ async function renderCompaniesPanel() {
   const members = {};
   users.forEach(u => { if (u.companyId) (members[u.companyId] = members[u.companyId] || []).push(u); });
   syncAccueilCards(companies, users);
-  // Logo déjà choisi pour l'accueil visiteurs : affiché tant que la fiche n'a pas le sien
+  await loadAccueilLogos();
+  companiesCache = companies;
+  companyMembers = members;
+  companiesUsers = users;
+  closeNewCompanyForm();
+  renderCompaniesList();
+}
+
+/** Logos déjà choisis pour l'accueil visiteurs : affichés tant que la fiche n'a pas le sien. */
+async function loadAccueilLogos() {
   const logos = {};
   await Promise.all(visibleCities().map(city => listAccueilCards(city)
     .then(cards => cards.forEach(card => { if (isSafeLogo(card.logo)) logos[card.id] = card.logo; }))
     .catch(() => null)));
-  companiesCache = companies;
-  companyMembers = members;
-  companiesUsers = users;
   accueilLogos = logos;
-  closeNewCompanyForm();
-  renderCompaniesList();
 }
 
 /** Logo à afficher pour une entreprise : celui de sa fiche, sinon celui de l'accueil visiteurs. */
