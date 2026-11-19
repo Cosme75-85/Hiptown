@@ -8,7 +8,7 @@ import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, 
 import { attachPasswordRules, passwordProblem } from "./password-rules.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import { initSettingsPage, applyUserSettings } from "./parametres.js";
-import { initAccueilFiche, ensureAccueilCard } from "./accueil-fiche.js";
+import { initAccueilFiche, ensureAccueilCard, listAccueilCards, isSafeLogo, resizeLogo } from "./accueil-fiche.js";
 import { renderAccueilPanel } from "./accueil-gestion.js";
 import {
   listPendingUsers, listAllUsers, approveUser, rejectUser,
@@ -1216,37 +1216,131 @@ function syncAccueilCards(companies, users) {
 }
 
 // ── Gestion des entreprises coworking ──────────────────
-// Entreprises et nombre de comptes rattachés, gardés pour filtrer sans tout relire
+// Une case par site : les clients coworking (fiches « companies ») d'un côté, les clients
+// « salle de réunion » de l'autre (ils n'ont pas de fiche : regroupés par le nom d'entreprise
+// donné à l'inscription). Données gardées pour filtrer sans tout relire.
 let companiesCache = [];
-let companyMembers = {};
+let companyMembers = {};      // id d'entreprise → comptes rattachés
+let companiesUsers = [];      // comptes visibles par l'admin
+let accueilLogos = {};        // id d'entreprise → logo de sa case à l'accueil visiteurs
 
 async function renderCompaniesPanel() {
   const companies = await listCompanies();
   companies.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, "fr", { sensitivity: "base" }));
-  // Nombre de comptes rattachés à chaque entreprise (parmi les comptes visibles par l'admin)
+  // Comptes rattachés à chaque entreprise (parmi les comptes visibles par l'admin)
   const users = await listAllUsers(adminScope());
   const members = {};
-  users.forEach(u => { if (u.companyId) members[u.companyId] = (members[u.companyId] || 0) + 1; });
+  users.forEach(u => { if (u.companyId) (members[u.companyId] = members[u.companyId] || []).push(u); });
   syncAccueilCards(companies, users);
+  // Logo déjà choisi pour l'accueil visiteurs : affiché tant que la fiche n'a pas le sien
+  const logos = {};
+  await Promise.all(visibleCities().map(city => listAccueilCards(city)
+    .then(cards => cards.forEach(card => { if (isSafeLogo(card.logo)) logos[card.id] = card.logo; }))
+    .catch(() => null)));
   companiesCache = companies;
   companyMembers = members;
+  companiesUsers = users;
+  accueilLogos = logos;
   closeNewCompanyForm();
   renderCompaniesList();
 }
 
-/** Liste des entreprises (ordre alphabétique), filtrée par la recherche. */
+/** Logo à afficher pour une entreprise : celui de sa fiche, sinon celui de l'accueil visiteurs. */
+function companyLogoOf(c) {
+  if (isSafeLogo(c.logo)) return c.logo;
+  return accueilLogos[c.id] || "";
+}
+
+/** Cercle de l'entreprise : son logo s'il existe, sinon ses initiales sur sa couleur. */
+function companyBadgeHtml(name, { logo = "", color, textColor, size = 40 } = {}) {
+  const style = SPACE_STYLES.coworking;
+  if (isSafeLogo(logo)) {
+    return `<span class="company-badge company-badge-logo" style="width:${size}px;height:${size}px;"><img src="${escapeHtml(logo)}" alt=""/></span>`;
+  }
+  return `<span class="company-badge" style="width:${size}px;height:${size}px;font-size:${Math.round(size / 3)}px;background-color:${escapeHtml(color || style.color)};color:${escapeHtml(textColor || style.textColor)};">${escapeHtml(initialsOf({ firstName: name }))}</span>`;
+}
+
+/** Entreprises rangées par site : une case par site, coworking d'un côté et salles de réunion de l'autre. */
 function renderCompaniesList() {
   const list  = document.getElementById("companies-list");
   const count = document.getElementById("companies-count");
   const normalize = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const term = normalize(document.getElementById("companies-search")?.value.trim());
-  const shown = companiesCache.filter(c => !term
-    || [c.name, c.legalName, c.siret, c.id].some(v => normalize(v).includes(term)));
+  const sortFr = (a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
 
-  if (count) count.textContent = term ? `(${shown.length} sur ${companiesCache.length})` : `(${companiesCache.length})`;
-  list.innerHTML = shown.length ? "" : `<p style="color:#94a3b8;padding:12px;">${
-    companiesCache.length ? "Aucune entreprise ne correspond à la recherche." : "Aucune entreprise pour le moment."}</p>`;
-  shown.forEach(c => list.appendChild(createCompanyCard(c, companyMembers[c.id] || 0)));
+  // Clients coworking : une fiche « companies », placée sur le site de ses salariés
+  const coworking = companiesCache
+    .filter(c => !term || [c.name, c.legalName, c.siret, c.id].some(v => normalize(v).includes(term)))
+    .map(c => ({ company: c, name: c.name || c.id, sites: [...new Set((companyMembers[c.id] || []).map(u => u.siteId || ""))] }));
+
+  // Clients salle de réunion : regroupés par site puis par nom d'entreprise donné à l'inscription
+  const NO_COMPANY = "Entreprise non renseignée";
+  const roomGroups = new Map();
+  companiesUsers
+    .filter(u => categoryOf(u) === "sdr" && u.status !== "rejected")
+    .forEach(u => {
+      const name = (u.companyNameHint || "").trim() || NO_COMPANY;
+      const key = (u.siteId || "") + "|" + normalize(name);
+      if (!roomGroups.has(key)) roomGroups.set(key, { name, site: u.siteId || "", accounts: [] });
+      roomGroups.get(key).accounts.push(u);
+    });
+  const rooms = [...roomGroups.values()].filter(g => !term || normalize(g.name).includes(term)
+    || g.accounts.some(u => normalize(adminNameOf(u) + " " + u.email).includes(term)));
+
+  const total = coworking.length + rooms.length;
+  if (count) count.textContent = `(${companiesCache.length} coworking · ${rooms.length} salle${rooms.length > 1 ? "s" : ""} de réunion)`;
+  list.innerHTML = "";
+  if (!total) {
+    list.innerHTML = `<p style="color:#94a3b8;padding:12px;">${term ? "Aucune entreprise ne correspond à la recherche." : "Aucune entreprise pour le moment."}</p>`;
+    return;
+  }
+
+  // Sites dans l'ordre de config.js (l'équipe de site ne voit que les siens), puis les sites inconnus
+  const scope = adminScope();
+  let sites = visibleCities().flatMap(city => Object.keys(PORTAIL.cities?.[city]?.sites || {}));
+  if (scope && scope.siteIds) sites = sites.filter(id => scope.siteIds.includes(id));
+  const used = new Set([...coworking.flatMap(x => x.sites), ...rooms.map(g => g.site)]);
+  sites = sites.concat([...used].filter(id => id && !sites.includes(id)).sort());
+  if (used.has("") || coworking.some(x => !x.sites.length)) sites.push("");
+
+  sites.forEach(siteId => {
+    const siteCoworking = coworking.filter(x => siteId ? x.sites.includes(siteId) : (!x.sites.length || x.sites.includes("")));
+    const siteRooms = rooms.filter(g => g.site === siteId).sort(sortFr);
+    const n = siteCoworking.length + siteRooms.length;
+    if (!n) return;
+    const isCoworking = (PORTAIL.coworkingSites || []).includes(siteId);
+    const title = siteId ? siteLabel(siteId) + (isCoworking ? " (coworking)" : "") : "Sans site (aucun salarié rattaché à un site)";
+    const box = accountBox("companies|" + siteId, title, n, !!term || sites.length === 1, "city");
+    const body = box.querySelector(".account-box-body");
+    body.innerHTML = `<div class="companies-columns">
+        <div class="companies-col"><p class="account-company-title">🚪 Salles de réunion <span>${siteRooms.length}</span></p><div class="info-grid col-rooms"></div></div>
+        <div class="companies-col"><p class="account-company-title">💼 Clients coworking <span>${siteCoworking.length}</span></p><div class="info-grid col-coworking"></div></div>
+      </div>`;
+    const empty = text => `<p style="color:#94a3b8;padding:8px 12px;font-size:13px;">${text}</p>`;
+    const roomsEl = body.querySelector(".col-rooms");
+    const coworkEl = body.querySelector(".col-coworking");
+    roomsEl.innerHTML = siteRooms.length ? "" : empty("Aucun client salle de réunion.");
+    coworkEl.innerHTML = siteCoworking.length ? "" : empty("Aucun client coworking.");
+    siteRooms.forEach(g => roomsEl.appendChild(createRoomClientCard(g)));
+    siteCoworking.forEach(x => coworkEl.appendChild(createCompanyCard(x.company, (companyMembers[x.company.id] || []).length)));
+    list.appendChild(box);
+  });
+}
+
+/** Client salle de réunion : pas de fiche entreprise, on montre ses comptes. */
+function createRoomClientCard(g) {
+  const card = document.createElement("div");
+  card.className = "info-card";
+  const names = g.accounts.map(adminNameOf).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+  card.innerHTML = `
+    <div class="info-item" style="gap:10px;">
+      ${companyBadgeHtml(g.name, { color: "#1e1847", textColor: "#ffe700" })}
+      <span style="flex:1;min-width:0;">
+        <b>${escapeHtml(g.name)}</b><br>
+        <span style="font-size:11px;color:#94a3b8;">${g.accounts.length} compte(s) · ${escapeHtml(names.join(", "))}</span>
+      </span>
+    </div>`;
+  return card;
 }
 
 function openNewCompanyForm() {
@@ -1299,6 +1393,13 @@ function buildCompanyForm(container, c, onSaved) {
   container.innerHTML = `
     <label class="profile-label">Nom de l'entreprise *</label>
     <input type="text" class="profile-input cf-name" maxlength="100" value="${escapeHtml(data.name || "")}"/>
+    <label class="profile-label">Logo (affiché dans le cercle)</label>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <span class="cf-logo-preview"></span>
+      <label class="direct-btn" style="margin-top:0;width:auto;padding:8px 14px;cursor:pointer;">🖼️ Choisir le logo
+        <input type="file" class="cf-logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden/></label>
+      <button class="profile-link cf-logo-remove" type="button">Retirer le logo</button>
+    </div>
     ${COMPANY_TEXT_FIELDS.map(fieldHtml).join("")}
 
     <h4 style="font-size:13px;font-weight:700;margin:18px 0 0;">Contrat et crédits</h4>
@@ -1339,12 +1440,39 @@ function buildCompanyForm(container, c, onSaved) {
   manual.addEventListener("change", recomputeCredits);
   recomputeCredits();
 
+  // Logo : réduit dans le navigateur, enregistré sur la fiche ; sans logo, les initiales
+  let logo = isSafeLogo(data.logo) ? data.logo : "";
+  const drawLogo = () => {
+    const name = $(".cf-name").value.trim() || "?";
+    $(".cf-logo-preview").innerHTML = companyBadgeHtml(name, {
+      logo: logo || (c ? accueilLogos[c.id] : ""), color: $(".cf-color").value, textColor: $(".cf-text-color").value, size: 56 });
+    $(".cf-logo-remove").hidden = !logo;
+  };
+  $(".cf-logo-input").addEventListener("change", async e => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      logo = await resizeLogo(file);
+      drawLogo();
+    } catch (err) {
+      showMessage(err.message || "Logo illisible.", true);
+    }
+  });
+  $(".cf-logo-remove").addEventListener("click", () => { logo = ""; drawLogo(); });
+  ["input", "change"].forEach(ev => {
+    $(".cf-name").addEventListener(ev, drawLogo);
+    $(".cf-color").addEventListener(ev, drawLogo);
+    $(".cf-text-color").addEventListener(ev, drawLogo);
+  });
+
   const showMessage = (text, isError) => {
     const m = $(".cf-message");
     m.textContent = text;
     m.style.color = isError ? "#dc2626" : "#166534";
     m.hidden = false;
   };
+  drawLogo();
 
   $(".cf-save").addEventListener("click", async () => {
     const fields = { name: $(".cf-name").value.trim() };
@@ -1357,6 +1485,7 @@ function buildCompanyForm(container, c, onSaved) {
     fields.creditsManual = manual.checked;
     fields.color = $(".cf-color").value;
     fields.textColor = $(".cf-text-color").value;
+    fields.logo = logo;
 
     if (!fields.name) { showMessage("Le nom de l'entreprise est obligatoire.", true); return; }
     if (fields.siret && !/^\d{14}$/.test(fields.siret)) { showMessage("Le SIRET doit contenir 14 chiffres.", true); return; }
@@ -1384,9 +1513,6 @@ function buildCompanyForm(container, c, onSaved) {
 }
 
 function createCompanyCard(c, memberCount) {
-  const style = SPACE_STYLES.coworking;
-  const color = c.color || style.color;
-  const textColor = c.textColor || style.textColor;
   const details = [
     c.legalName,
     c.seats != null ? `${c.seats} poste(s)` : "",
@@ -1397,7 +1523,7 @@ function createCompanyCard(c, memberCount) {
   card.className = "info-card";
   card.innerHTML = `
     <div class="info-item" style="gap:10px;">
-      <span class="company-badge" style="width:32px;height:32px;font-size:11px;background-color:${escapeHtml(color)};color:${escapeHtml(textColor)};">${escapeHtml(initialsOf({ firstName: c.name || c.id }))}</span>
+      ${companyBadgeHtml(c.name || c.id, { logo: companyLogoOf(c), color: c.color, textColor: c.textColor })}
       <span style="flex:1;min-width:0;">
         <b>${escapeHtml(c.name || c.id)}</b><br>
         <span style="font-size:11px;color:#94a3b8;">${escapeHtml(details)}</span>
