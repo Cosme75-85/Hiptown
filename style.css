@@ -1591,3 +1591,11 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
 /* Gestion des comptes : nom de l'entreprise au-dessus de ses comptes, dans une case de site */
 .account-company-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--navy); margin: 12px 4px 2px; }
 .account-company-title span { font-weight: 400; color: #94a3b8; }
+
+/* Gestion des entreprises : salles de réunion d'un côté, clients coworking de l'autre */
+.companies-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.companies-col { min-width: 0; }
+@media (max-width: 760px) { .companies-columns { grid-template-columns: 1fr; } }
+/* Cercle avec le logo de l'entreprise (fond blanc, logo entier) */
+.company-badge-logo { background: #fff; border: 1px solid var(--border); overflow: hidden; }
+.company-badge-logo img { width: 78%; height: 78%; object-fit: contain; display: block; }
