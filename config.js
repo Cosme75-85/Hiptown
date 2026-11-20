@@ -44,7 +44,26 @@ const PORTAIL = {
     // Sites à compléter (identifiant en minuscules : "Code — nom", comme Bordeaux)
     paris:     { name: "Paris",     code: "IFPA", sites: {} },
     lyon:      { name: "Lyon",      code: "ARLY", sites: {} },
-    marseille: { name: "Marseille", code: "PAMA", sites: {} },
+    marseille: {
+      name: "Marseille",
+      code: "PAMA",
+      // Noms et adresses à compléter (PAMA02 = coworking)
+      sites: {
+        pama01: "PAMA01",
+        pama02: "PAMA02 — Coworking",
+        pama03: "PAMA03",
+        pama04: "PAMA04",
+        pama05: "PAMA05",
+        pama06: "PAMA06",
+        pama07: "PAMA07",
+        pama08: "PAMA08",
+        pama09: "PAMA09",
+        pama10: "PAMA10",
+        pama11: "PAMA11",
+        pama12: "PAMA12",
+        pama13: "PAMA13",
+      },
+    },
     rennes:    { name: "Rennes",    code: "BRRE", sites: {} },
     lille:     { name: "Lille",     code: "HFLI", sites: {} },
   },
@@ -73,7 +92,7 @@ const PORTAIL = {
   meetingRoomSite: "nabo06",
 
   // Sites qui ont un espace coworking (signalés « (coworking) » dans Gestion des comptes)
-  coworkingSites: ["nabo06"],
+  coworkingSites: ["nabo06", "pama02"],
 
   // Crédits coworking proposés par poste négocié dans le contrat (modifiable
   // entreprise par entreprise dans « Gestion des entreprises »)
