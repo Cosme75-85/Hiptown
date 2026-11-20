@@ -174,8 +174,8 @@
         <input type="text" id="signup-company" placeholder="Nom de votre entreprise" required maxlength="100"
                style="width:100%;padding:12px;margin-bottom:10px;border:1.5px solid var(--border);border-radius:var(--radius-md);"/>
         <button type="submit" class="direct-btn" style="background:var(--navy);color:#fff;margin-top:0;">Créer mon compte</button>
-        <p style="font-size:11px;color:var(--text-pale);margin-top:10px;">
-          Votre compte sera activé après validation par l'équipe Hiptown.
+        <p style="font-size:11px;color:var(--text-pale);margin-top:10px;" id="signup-activation-note">
+          Vous recevrez un e-mail pour vérifier votre adresse : votre compte sera activé dès que vous aurez cliqué sur le lien.
         </p>
         <p style="font-size:11px;color:var(--text-pale);margin-top:6px;">
           En créant un compte, vous acceptez les <a href="legal/cgu.html" target="_blank" rel="noopener">CGU</a>,
@@ -191,11 +191,27 @@
   <!-- ÉTAPE : COMPTE EN ATTENTE DE VALIDATION -->
   <section id="step-pending" hidden>
     <div class="pin-box">
-      <div style="font-size:40px;margin-bottom:12px;">⏳</div>
-      <p class="pin-title">Compte en attente de validation</p>
-      <p style="font-size:13px;color:var(--text-soft);margin-bottom:20px;">
-        Votre demande a bien été reçue. L'équipe Hiptown va valider votre accès sous peu.
-      </p>
+      <!-- Client coworking : validation par l'équipe -->
+      <div id="pending-team">
+        <div style="font-size:40px;margin-bottom:12px;">⏳</div>
+        <p class="pin-title">Compte en attente de validation</p>
+        <p style="font-size:13px;color:var(--text-soft);margin-bottom:20px;">
+          Votre demande a bien été reçue. L'équipe Hiptown va valider votre accès sous peu.
+        </p>
+      </div>
+      <!-- Salle de réunion : validation automatique après vérification de l'e-mail -->
+      <div id="pending-verify" hidden>
+        <div style="font-size:40px;margin-bottom:12px;">✉️</div>
+        <p class="pin-title">Vérifiez votre adresse e-mail</p>
+        <p style="font-size:13px;color:var(--text-soft);margin-bottom:16px;">
+          Nous avons envoyé un lien à <b id="pending-verify-email"></b>.
+          Cliquez dessus : votre compte sera activé tout de suite et vous pourrez réserver une salle.
+          Pensez à regarder dans vos courriers indésirables.
+        </p>
+        <button class="direct-btn" id="pending-verify-check" style="background:var(--navy);color:#fff;">J'ai cliqué sur le lien</button>
+        <button class="direct-btn" id="pending-verify-resend">Renvoyer l'e-mail</button>
+        <p class="profile-help" id="pending-verify-message" role="status" hidden style="margin-top:10px;"></p>
+      </div>
       <button class="direct-btn" id="pending-logout">Se déconnecter</button>
     </div>
   </section>

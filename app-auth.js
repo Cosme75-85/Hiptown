@@ -4,7 +4,8 @@
 //  APRÈS config.js et app.js dans index.html
 // ═══════════════════════════════════════════════════════
 
-import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, changeMyPassword } from "./auth.js";
+import { signUp, logIn, logOut, resetPassword, watchAuthState, updateMyProfile, changeMyPassword,
+  sendVerificationEmail, activateMeetingRoomAccount, getUserProfile } from "./auth.js";
 import { attachPasswordRules, passwordProblem } from "./password-rules.js";
 import { initProfilePage, isSafePhoto, initialsOf, displayNameOf, fullNameOf } from "./profile.js";
 import { initSettingsPage, applyUserSettings } from "./parametres.js";
@@ -78,6 +79,10 @@ window.openSignupScreen = function (role) {
     r.checked = (r.value === signupRole);
   });
   document.getElementById("signup-role-label").textContent = SIGNUP_ROLE_LABELS[signupRole];
+  const activationNote = document.getElementById("signup-activation-note");
+  if (activationNote) activationNote.textContent = signupRole === "salle"
+    ? "Vous recevrez un e-mail pour vérifier votre adresse : votre compte sera activé dès que vous aurez cliqué sur le lien."
+    : "Votre compte sera activé après validation par l'équipe Hiptown.";
   // Salle de réunion : toujours au site des salles (config.js), sans étape « choix du site »
   const meetingSite = signupRole === "salle" ? PORTAIL.meetingRoomSite : null;
   document.getElementById("signup-change-site").hidden = !!meetingSite;
@@ -165,9 +170,11 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
   const weak = passwordProblem(password);
   if (weak) { showAuthError(weak); return; }
   try {
-    await signUp(email, password, role, company, firstName, lastName, birthDate,
+    const user = await signUp(email, password, role, company, firstName, lastName, birthDate,
       { site: city, siteId: siteId || null });
-    // Le routage vers l'écran "en attente" se fait automatiquement
+    // La connexion a pu être routée avant que la fiche soit écrite : on relance
+    // le routage avec la fiche, pour afficher le bon écran « en attente ».
+    await routeSession(user, await getUserProfile(user.uid));
   } catch (err) {
     showAuthError(friendlyError(err));
   }
@@ -195,13 +202,86 @@ document.getElementById("pending-logout")?.addEventListener("click", async () =>
   if (stepWelcome) stepWelcome.hidden = false;
 });
 
+// ── Écran « en attente » : validation par l'équipe, ou vérification de l'e-mail (salle de réunion) ──
+let pendingUser = null; // compte « salle de réunion » qui attend la vérification de son e-mail
+
+function showPendingStep(user, profile) {
+  hideAllAuth();
+  stepPending.hidden = false;
+  const verify = !!profile && profile.requestedRole === "salle";
+  pendingUser = verify ? user : null;
+  document.getElementById("pending-team").hidden = verify;
+  document.getElementById("pending-verify").hidden = !verify;
+  if (verify) document.getElementById("pending-verify-email").textContent = user.email || "";
+}
+
+function showVerifyMessage(text, ok) {
+  const el = document.getElementById("pending-verify-message");
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = ok ? "#166534" : "#c2410c";
+  el.hidden = !text;
+}
+
+/** Revérifie l'e-mail ; si c'est bon, le compte est validé et on ouvre l'espace salle de réunion. */
+async function checkVerification(fromButton) {
+  const user = pendingUser;
+  if (!user || stepPending.hidden) return;
+  try {
+    if (await activateMeetingRoomAccount()) {
+      if (pendingUser !== user) return;
+      pendingUser = null;
+      showVerifyMessage("", true);
+      await routeSession(user, await getUserProfile(user.uid)); // ouvre l'espace salle de réunion
+      return;
+    }
+    if (fromButton) showVerifyMessage("Votre adresse n'est pas encore vérifiée. Cliquez sur le lien reçu par e-mail, puis réessayez.", false);
+  } catch (err) {
+    console.error("Vérification de l'e-mail", err);
+    if (fromButton) showVerifyMessage("Une erreur est survenue. Réessayez dans un instant.", false);
+  }
+}
+
+document.getElementById("pending-verify-check")?.addEventListener("click", () => checkVerification(true));
+document.getElementById("pending-verify-resend")?.addEventListener("click", async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  try {
+    await sendVerificationEmail();
+    showVerifyMessage("C'est envoyé ! Regardez votre boîte mail (et les courriers indésirables).", true);
+  } catch (err) {
+    showVerifyMessage(String(err.code || "").includes("too-many-requests")
+      ? "Un e-mail vient déjà de partir. Attendez quelques minutes avant de réessayer."
+      : "L'e-mail n'a pas pu être envoyé. Réessayez dans un instant.", false);
+  }
+  setTimeout(() => { btn.disabled = false; }, 30000);
+});
+// Le client revient sur l'onglet après avoir cliqué sur le lien : on revérifie tout seul
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVerification(false); });
+window.addEventListener("focus", () => checkVerification(false));
+
 // ── Routage automatique selon l'état de connexion ──
-watchAuthState(async (user, profile) => {
+watchAuthState(routeSession);
+
+async function routeSession(user, profile) {
   if (!user) { clearPreview(); session = null; applyUserSettings(null); return; } // reste sur l'écran de choix / auth, rien à faire
 
+  if (profile && profile.status === "pending" && profile.requestedRole === "salle") {
+    // Salle de réunion : validation automatique dès que l'e-mail est vérifié
+    const activated = await activateMeetingRoomAccount().catch(err => {
+      console.error("Validation automatique impossible", err);
+      return false;
+    });
+    if (activated) {
+      profile = await getUserProfile(user.uid);
+    } else {
+      showPendingStep(user, profile);
+      return;
+    }
+  }
+
   if (!profile || profile.status === "pending") {
-    hideAllAuth();
-    stepPending.hidden = false;
+    showPendingStep(user, profile);
     return;
   }
 
@@ -232,7 +312,7 @@ watchAuthState(async (user, profile) => {
   if (space === "salle" && !profile.companyNameHint) {
     profilePage.open("Merci de renseigner le nom de votre entreprise.");
   }
-});
+}
 
 // Utilisateur connecté : { uid, profile, space, company } (company = entreprise coworking officielle)
 let session = null;
@@ -743,6 +823,7 @@ function createPendingCard(u, companies, onDone) {
         ${u.companyNameHint ? " — " + escapeHtml(u.companyNameHint) : ""}
         <br>Site : ${escapeHtml(accountPlaceLabel(u))}
       </p>
+      ${u.requestedRole === "salle" ? `<p style="font-size:11px;color:#64748b;margin-top:4px;">✉️ Ce compte se validera tout seul dès que le client aura cliqué sur le lien de vérification reçu par e-mail. Tu peux aussi le valider à la main.</p>` : ""}
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
         <select class="approve-role" style="padding:6px;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;">
           <option value="salle" ${u.requestedRole === "salle" ? "selected" : ""}>Salle de réunion</option>
@@ -1541,6 +1622,12 @@ function createCompanyCard(c, memberCount) {
 }
 
 // ── Cloche de notifications ────────────────────────────
+// Les comptes « salle de réunion » se valident tout seuls après vérification de leur
+// e-mail : la cloche ne montre que les demandes qui attendent vraiment l'équipe.
+function needsTeamApproval(u) {
+  return u.requestedRole !== "salle";
+}
+
 const notifBellWrap = document.getElementById("notif-bell-wrap");
 const notifBellBtn  = document.getElementById("notif-bell-btn");
 const notifBadge    = document.getElementById("notif-badge");
@@ -1548,7 +1635,7 @@ const notifDropdown = document.getElementById("notif-dropdown");
 
 async function refreshNotifBadge() {
   if (!notifBadge) return;
-  const pending = await listPendingUsers(adminScope());
+  const pending = (await listPendingUsers(adminScope())).filter(needsTeamApproval);
   const orders  = await listUnseenBreakfastOrders();
   const total = pending.length + orders.length;
   if (total > 0) {
@@ -1561,7 +1648,7 @@ async function refreshNotifBadge() {
 
 async function renderNotifDropdown() {
   const companies = await listCompanies();
-  const pending = await listPendingUsers(adminScope());
+  const pending = (await listPendingUsers(adminScope())).filter(needsTeamApproval);
   const orders  = await listUnseenBreakfastOrders();
   notifDropdown.innerHTML = "";
 
