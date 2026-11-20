@@ -11,7 +11,9 @@ import {
   sendPasswordResetEmail,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  updatePassword
+  updatePassword,
+  sendEmailVerification,
+  reload
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   doc, setDoc, getDoc, updateDoc, serverTimestamp
@@ -19,8 +21,10 @@ import {
 
 /**
  * Crée un compte client (rôle "salle" ou "coworking").
- * Le compte est créé avec le statut "pending" : il ne pourra
- * pas accéder à son espace tant qu'un admin ne l'aura pas validé.
+ * Le compte est créé avec le statut "pending".
+ *  - coworking : il attend qu'un admin le valide ;
+ *  - salle de réunion : on lui envoie un e-mail de vérification, et le compte
+ *    se valide tout seul dès que l'adresse est vérifiée (voir activateMeetingRoomAccount).
  *
  * @param {string} email
  * @param {string} password
@@ -52,7 +56,44 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     siteId: place.siteId || null,            // site choisi par le client (ex. "nabo06")
     createdAt: serverTimestamp()
   });
+  if (requestedRole === "salle") {
+    await sendVerificationEmail().catch(err => console.error("E-mail de vérification non envoyé", err));
+  }
   return cred.user;
+}
+
+/**
+ * Envoie (ou renvoie) l'e-mail « Vérifiez votre adresse » de Firebase.
+ * Le lien du mail ramène sur le portail, où le compte se valide tout seul.
+ */
+export async function sendVerificationEmail() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Vous n'êtes plus connecté. Reconnectez-vous.");
+  auth.languageCode = "fr";
+  const portalUrl = location.origin + location.pathname;
+  await sendEmailVerification(user, { url: portalUrl });
+}
+
+/**
+ * Compte « salle de réunion » en attente : si l'adresse e-mail est vérifiée,
+ * le compte se valide lui-même (rôle "salle"), sans passer par l'équipe.
+ * Les règles Firestore n'autorisent ce passage que pour une demande « salle »
+ * encore en attente, avec un e-mail vérifié par Firebase.
+ * Renvoie true si le compte vient d'être validé.
+ */
+export async function activateMeetingRoomAccount() {
+  const user = auth.currentUser;
+  if (!user) return false;
+  await reload(user);                 // l'état « vérifié » peut avoir changé dans un autre onglet
+  if (!user.emailVerified) return false;
+  await user.getIdToken(true);        // jeton à jour, pour que Firestore voie l'e-mail vérifié
+  await updateDoc(doc(db, "users", user.uid), {
+    role: "salle",
+    status: "approved",
+    approvedAt: serverTimestamp(),
+    autoApproved: true
+  });
+  return true;
 }
 
 /**

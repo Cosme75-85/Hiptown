@@ -138,6 +138,18 @@ service cloud.firestore {
       // Un client ne peut modifier QUE sa photo, son surnom, son entreprise déclarée, son poste, sa ville, et ses réglages (fond, cases, son et couleur des notifications)
       allow update: if (canWriteUser(resource.data) && canWriteUser(request.resource.data))
         || canMoveClientToCity(resource.data, request.resource.data)
+        // Compte « salle de réunion » : il se valide lui-même une fois son e-mail vérifié
+        // (lien envoyé par Firebase à l'inscription). Jamais pour un compte refusé ni coworking.
+        || (isOwner(userId)
+            && request.auth.token.email_verified == true
+            && resource.data.status == 'pending'
+            && resource.data.get('requestedRole', null) == 'salle'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['role', 'status', 'approvedAt', 'autoApproved'])
+            && request.resource.data.role == 'salle'
+            && request.resource.data.status == 'approved'
+            && request.resource.data.approvedAt == request.time
+            && request.resource.data.autoApproved == true)
         || (isOwner(userId)
             && request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['nickname', 'photo', 'companyNameHint', 'jobTitle', 'city', 'background', 'cases', 'sound', 'notifColor'])
