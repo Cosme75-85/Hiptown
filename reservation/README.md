@@ -240,4 +240,8 @@ ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau 
   dans Gestion > Calendrier de l'Avent pour être coché « remis ».
 - L'équipe Hiptown ouvre les cases en mode test (rien n'est enregistré) et modifie les lots
   depuis la même page. Les lots de départ sont dans `ADVENT.defaultPrizes`.
+- Intro animée à l'ouverture (une fois par jour et par appareil, bouton « Passer ») : paquet
+  cadeau, titre, puis les partenaires (nom, logo, phrase, lien) gérés dans la même page
+  (`ADVENT_PARTNERS`, logos réduits par le portail dans `ADVENT_PLOGO:<année>:<id>`).
+  Le bouton « Partenaires fictifs (test) » ajoute des logos inventés pour essayer l'intro.
 - Rangement : propriétés du script (`ADVENT_*`). Pour une autre année, changer `ADVENT.year`.

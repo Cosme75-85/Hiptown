@@ -25,6 +25,8 @@
  *   ADVENT_PUBLIC:<année>            '1' quand le calendrier est visible par les clients (interrupteur
  *                                    de la gestion, éteint au départ : seule l'équipe le voit)
  *   ADVENT_PRIZES:<année>            liste des lots (modifiable depuis le portail)
+ *   ADVENT_PARTNERS:<année>          partenaires présentés dans l'intro (nom, texte, lien)
+ *   ADVENT_PLOGO:<année>:<id>        logo d'un partenaire (image réduite par le portail, ~8 Ko)
  *   ADVENT_GIVEN:<année>             nombre de lots donnés, par lot
  *   ADVENT_U:<année>:<uid>           cases ouvertes par un compte (format compact : environ
  *                                    600 octets pour 24 cases, la limite des propriétés est 500 Ko)
@@ -41,6 +43,7 @@ const ADVENT = {
   showUntil: '2027-01-06',          // le bandeau du portail disparaît après cette date (gains visibles jusque-là)
   timeZone: 'Europe/Paris',
   maxPrizes: 30,
+  maxPartners: 12,
   // Lots de départ, utilisés tant que l'équipe n'a rien enregistré dans le portail.
   // kind : 'credits' (ajoutés à l'entreprise, coworking seulement) ou 'gift' (remis par l'équipe).
   // quantity : nombre de lots ; 0 = illimité (lot de consolation). days : jours où il peut sortir ([] = tous).
@@ -269,6 +272,7 @@ function getAdvent(idToken) {
       today: today === 99 ? ADVENT.lastOpenDay + 1 : today,
       lastOpenDay: ADVENT.lastOpenDay,
       catchUp: ADVENT.catchUp,
+      partners: adventPartners(true),
       opened: opened
     };
   } catch (err) {
@@ -525,4 +529,74 @@ function setAdventPublic(idToken, raw) {
   if (raw && raw.public) props.setProperty('ADVENT_PUBLIC:' + ADVENT.year, '1');
   else props.deleteProperty('ADVENT_PUBLIC:' + ADVENT.year);
   return { success: true, public: adventIsPublic() };
+}
+
+// ==================== PARTENAIRES (intro du calendrier) ====================
+// Présentés dans l'animation d'ouverture du calendrier, modifiables dans la gestion.
+
+const ADVENT_LOGO_MAX = 9000;   // une propriété du script garde au plus 9 Ko
+
+function adventPartners(withLogos) {
+  const props = PropertiesService.getScriptProperties();
+  let list = [];
+  try { list = JSON.parse(props.getProperty('ADVENT_PARTNERS:' + ADVENT.year) || '[]') || []; } catch (err) { list = []; }
+  return list.map(p => Object.assign({}, p, withLogos ? { logo: props.getProperty('ADVENT_PLOGO:' + ADVENT.year + ':' + p.id) || '' } : {}));
+}
+
+function isValidLogo(logo) {
+  if (typeof logo !== 'string' || !logo) return true;
+  if (logo.length > ADVENT_LOGO_MAX) return false;
+  return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(logo) || /^https:\/\/[^\s"'<>]+$/.test(logo);
+}
+
+/** doPost getAdventPartners : partenaires avec leurs logos (gestion). */
+function getAdventPartners(idToken) {
+  try {
+    adventAdmin(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  return { success: true, partners: adventPartners(true) };
+}
+
+/**
+ * doPost saveAdventPartners : remplace la liste des partenaires.
+ * logo : image envoyée par le portail (data:image/…, déjà réduite), lien https, ou '' (pas de logo) ;
+ * logo absent (undefined) = on garde le logo déjà enregistré.
+ */
+function saveAdventPartners(idToken, raw) {
+  try {
+    adventAdmin(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  const list = raw && raw.partners;
+  if (!Array.isArray(list) || list.length > ADVENT.maxPartners) return { success: false, message: 'Liste de partenaires invalide (' + ADVENT.maxPartners + ' au plus).' };
+  const props = PropertiesService.getScriptProperties();
+  const prefix = 'ADVENT_PLOGO:' + ADVENT.year + ':';
+  const saved = [];
+  const logos = {};
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i] || {};
+    const name = cleanText(p.name, 60);
+    if (!name) return { success: false, message: 'Chaque partenaire doit avoir un nom.' };
+    const url = cleanText(p.url, 300);
+    if (url && !/^https?:\/\/[^\s"'<>]+$/.test(url)) return { success: false, message: '« ' + name + ' » : le lien doit commencer par https://' };
+    if (p.logo !== undefined && !isValidLogo(p.logo)) return { success: false, message: '« ' + name + ' » : logo trop lourd ou format non reconnu (PNG, JPEG ou WebP).' };
+    const id = /^[a-z0-9]{1,24}$/i.test(String(p.id || '')) && !saved.some(x => x.id === p.id) ? String(p.id) : 'pa' + Date.now().toString(36) + i;
+    saved.push({ id: id, name: name, text: cleanText(p.text, 160), url: url });
+    logos[id] = p.logo === undefined ? (props.getProperty(prefix + id) || '') : p.logo;
+  }
+  // Logos des partenaires retirés : effacés
+  Object.keys(props.getProperties()).forEach(key => {
+    if (key.indexOf(prefix) === 0 && !Object.prototype.hasOwnProperty.call(logos, key.slice(prefix.length))) props.deleteProperty(key);
+  });
+  const toSave = {};
+  toSave['ADVENT_PARTNERS:' + ADVENT.year] = JSON.stringify(saved);
+  Object.keys(logos).forEach(id => {
+    if (logos[id]) toSave[prefix + id] = logos[id];
+    else props.deleteProperty(prefix + id);
+  });
+  props.setProperties(toSave);
+  return { success: true, partners: adventPartners(true) };
 }

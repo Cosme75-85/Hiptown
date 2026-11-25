@@ -1614,7 +1614,7 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
 .company-badge-logo img { width: 78%; height: 78%; object-fit: contain; display: block; }
 
 /* ── CALENDRIER DE L'AVENT (avent.js) ── */
-.av-overlay[hidden], .av-modal[hidden], .av-toast[hidden], .av-banner[hidden], .av-overlay [hidden] { display: none !important; }
+.av-overlay[hidden], .av-modal[hidden], .av-intro[hidden], .av-toast[hidden], .av-banner[hidden], .av-overlay [hidden] { display: none !important; }
 body.av-noscroll { overflow: hidden; }
 
 /* Bandeau du tableau de bord */
@@ -1779,3 +1779,46 @@ body.av-noscroll { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .av-today .av-face, .av-card, .av-ico, .av-shake, .av-wait .av-leaf, .av-inside, .av-rays, .av-banner-new .av-banner-gift { animation: none; } .av-leaf, .av-board { transition: none; } }
 .av-switch { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,231,0,.12); border: 1px solid rgba(255,231,0,.35); font-weight: 650; cursor: pointer; }
 .av-switch input { width: 22px; height: 22px; accent-color: var(--yellow); flex: none; }
+
+/* Intro animée du calendrier et partenaires */
+.av-bar-r { display: flex; gap: 8px; }
+.av-intro { position: fixed; inset: 0; z-index: 28; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px max(5vw, 16px); background: #150f33 radial-gradient(90% 70% at 50% 45%, #3a2f8f 0%, #1e1847 55%, #110b2c 100%); overflow: hidden; text-align: center; }
+.av-intro-skip { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: max(5vw, 16px); }
+.av-intro-stage { position: relative; width: min(560px, 100%); min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.av-intro-kicker { color: var(--teal); font-weight: 800; font-size: 15px; letter-spacing: .02em; animation: av-fade-up .6s both; }
+.av-intro-title { color: #fff; font-size: clamp(34px, 8vw, 60px); line-height: 1.05; letter-spacing: -.02em; font-weight: 900; }
+.av-word { display: inline-block; white-space: nowrap; }
+.av-intro-title .av-word span { display: inline-block; animation: av-letter .55s both cubic-bezier(.2,1.6,.4,1); }
+.av-intro-title-static { animation: av-fade-up .6s both; }
+.av-intro-sub { color: rgba(255,255,255,.8); font-size: 16px; animation: av-fade-up .6s 1s both; }
+.av-intro-dots { display: flex; gap: 6px; margin-top: 18px; min-height: 8px; }
+.av-intro-dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); transition: background .3s, transform .3s; }
+.av-intro-dots i.on { background: var(--yellow); transform: scale(1.2); }
+.av-gift { position: relative; width: 200px; height: 190px; animation: av-drop 1.1s both cubic-bezier(.3,1.5,.5,1); }
+.av-gift-box { position: absolute; left: 0; bottom: 0; width: 200px; height: 150px; }
+.av-gift-lid { position: absolute; left: 0; top: 0; width: 200px; height: 70px; transform-origin: 20% 100%; transition: transform .7s cubic-bezier(.3,1.4,.5,1); }
+.av-gift-glow { position: absolute; left: 50%; top: 40px; width: 10px; height: 10px; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(closest-side, #fff6a8, rgba(255,231,0,.6), transparent); transition: width .6s, height .6s; }
+.av-s-open .av-gift-lid { transform: translate(40px, -90px) rotate(28deg); }
+.av-s-open .av-gift-glow { width: 360px; height: 360px; }
+.av-s-gift .av-intro-kicker { animation-delay: .8s; }
+.av-pa-card { width: min(380px, 100%); background: #fff; color: var(--navy); border-radius: 22px; padding: 26px 22px 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.4); animation: av-card-in .8s both cubic-bezier(.2,1.3,.4,1); }
+.av-pa-logo { width: 120px; height: 120px; object-fit: contain; border-radius: 18px; background: #f5f4ff; padding: 8px; }
+.av-logo-letter { display: grid; place-items: center; font-size: 46px; font-weight: 900; color: var(--navy); background: var(--yellow); }
+.av-pa-name { font-size: 26px; line-height: 1.1; letter-spacing: -.02em; }
+.av-pa-text { color: #475569; font-size: 15px; }
+.av-pa-link { margin-top: 6px; display: inline-block; background: var(--navy); color: #fff; font-weight: 700; font-size: 14px; padding: 9px 16px; border-radius: 10px; text-decoration: none; }
+.av-pa-wall { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 520px; }
+.av-pa-wall > * { animation: av-card-in .6s both cubic-bezier(.2,1.3,.4,1); }
+.av-pa-wall > *:nth-child(2) { animation-delay: .08s; } .av-pa-wall > *:nth-child(3) { animation-delay: .16s; } .av-pa-wall > *:nth-child(4) { animation-delay: .24s; } .av-pa-wall > *:nth-child(n+5) { animation-delay: .32s; }
+.av-pa-mini { width: 72px; height: 72px; object-fit: contain; border-radius: 14px; background: #fff; padding: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.3); }
+.av-pa-mini.av-logo-letter { font-size: 30px; }
+.av-intro-go { margin-top: 18px; font-size: 17px; padding: 14px 22px; animation: av-fade-up .6s .4s both; }
+.av-pa-row { align-items: flex-end; }
+.av-pa-logo-edit { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+.av-pa-file { cursor: pointer; color: var(--teal); }
+.av-link-soft { color: var(--teal); }
+@keyframes av-drop { 0% { transform: translateY(-120vh) rotate(-8deg); } 70% { transform: translateY(0) rotate(3deg); } 100% { transform: none; } }
+@keyframes av-letter { from { transform: translateY(40px) scale(.4) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes av-fade-up { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes av-card-in { from { transform: perspective(800px) rotateY(-70deg) translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .av-gift, .av-intro-title .av-word span, .av-intro-kicker, .av-intro-sub, .av-pa-card, .av-pa-wall > *, .av-intro-go { animation: none; } }
