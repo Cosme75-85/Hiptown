@@ -203,6 +203,7 @@ function open(withAdmin) {
   document.body.classList.add("av-noscroll");
   startSnow();
   startMusic();
+  unlockAudio(); loadCreaks();
   $("av-admin").hidden = !(state && state.mode === "test");
   if (state && state.mode === "test") { loadAdmin(); loadPartnersAdmin(); }
   if (withAdmin) setTimeout(() => $("av-admin").scrollIntoView({ behavior: "smooth" }), 50);
@@ -386,8 +387,37 @@ function playDoor() {
   noise(0, 0.45, "bandpass", 500, 0.25, 1400);           // battants qui glissent
 }
 
+// Grincements enregistrés (La Sonothèque, remixés : trois extraits courts, égalisés et normalisés)
+const CREAK_FILES = ["sons/avent-grincement-1.mp3", "sons/avent-grincement-2.mp3", "sons/avent-grincement-3.mp3"];
+let creakBuffers = [], creakLoading = false, lastCreak = -1;
+
+function loadCreaks() {
+  if (creakLoading || !actx) return;
+  creakLoading = true;
+  CREAK_FILES.forEach(url => fetch(url)
+    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(url)))
+    .then(data => new Promise((ok, ko) => actx.decodeAudioData(data, ok, ko)))
+    .then(buf => creakBuffers.push(buf))
+    .catch(() => { /* le grincement synthétisé prend le relais */ }));
+}
+
+/** Un des extraits, jamais deux fois le même de suite, un peu plus aigu ou plus grave à chaque fois. */
+function playCreakSample() {
+  let i = Math.floor(Math.random() * creakBuffers.length);
+  if (creakBuffers.length > 1 && i === lastCreak) i = (i + 1) % creakBuffers.length;
+  lastCreak = i;
+  const src = actx.createBufferSource(), g = actx.createGain();
+  src.buffer = creakBuffers[i];
+  src.playbackRate.value = 0.88 + Math.random() * 0.24;
+  g.gain.value = 0.11 + Math.random() * 0.04; // léger : environ moitié moins fort que les sons de gain
+  src.connect(g); g.connect(actx.destination);
+  src.start(actx.currentTime + 0.005);
+}
+
 /**
- * Léger grincement de porte en bois, à chaque tentative d'ouverture.
+ * Léger grincement de porte en bois, à chaque tentative d'ouverture : un vrai enregistrement
+ * (sons/avent-grincement-*.mp3, varié à chaque clic), ou à défaut, tant qu'il n'est pas chargé,
+ * ce grincement synthétisé.
  * Comme une vraie charnière : une suite de petits à-coups (le métal accroche puis glisse),
  * de plus en plus rapprochés puis qui ralentissent, et qui font résonner le bois de la porte
  * (trois résonances filtrées). Jamais tout à fait le même d'un clic à l'autre.
@@ -395,6 +425,8 @@ function playDoor() {
 function playCreak() {
   unlockAudio();
   if (!canPlay()) return;
+  loadCreaks();
+  if (creakBuffers.length) return playCreakSample();
   const sr = actx.sampleRate, len = 0.5 + Math.random() * 0.3, n = Math.ceil(sr * len);
   const buf = actx.createBuffer(1, n, sr), data = buf.getChannelData(0);
   const r0 = 18 + Math.random() * 10, peak = 70 + Math.random() * 70, top = 0.35 + Math.random() * 0.3;
