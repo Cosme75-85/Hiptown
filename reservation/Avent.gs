@@ -40,6 +40,7 @@ const ADVENT = {
   days: 24,
   lastOpenDay: 24,                  // dernier jour où l'on peut ouvrir une case
   catchUp: false,                   // false : chaque case seulement le jour même ; true : rattrapage dans l'ordre
+  loseChance: 30,                   // % de chance par défaut qu'une case soit perdue (modifiable dans la gestion)
   showUntil: '2027-01-06',          // le bandeau du portail disparaît après cette date (gains visibles jusque-là)
   timeZone: 'Europe/Paris',
   maxPrizes: 30,
@@ -139,8 +140,19 @@ function adventAvailable(prizes, given, day, player) {
   return out;
 }
 
-/** Tire un lot. null s'il n'y a vraiment plus rien (ni stock, ni lot illimité). */
-function adventDraw(prizes, given, day, player) {
+/** % de chance qu'une case soit perdue (réglé dans la gestion, sinon ADVENT.loseChance). */
+function adventLoseChance() {
+  const saved = PropertiesService.getScriptProperties().getProperty('ADVENT_LOSE:' + ADVENT.year);
+  const n = saved === null || saved === '' ? NaN : Number(saved);
+  return isFinite(n) ? n : ADVENT.loseChance;
+}
+
+/**
+ * Tire un lot. ADVENT_LOST si la case est perdue (selon le % de cases perdues),
+ * null s'il n'y a vraiment plus rien (ni stock, ni lot illimité).
+ */
+function adventDraw(prizes, given, day, player, loseChance) {
+  if (loseChance > 0 && Math.random() * 100 < loseChance) return ADVENT_LOST;
   const all = adventAvailable(prizes, given, day, player);
   // Lots à pourcentage (ex. cinéma 10 %) : chacun a sa chance, s'il en reste ce jour-là
   const withChance = all.filter(x => x.prize.chance > 0);
@@ -219,6 +231,13 @@ function adventEntryText(e) {
   return e.p + '|' + Math.floor(e.t / 1000).toString(36) + (e.x ? '|x' : '');
 }
 
+// Case perdue : enregistrée avec l'id « - » (id vide = plus aucun lot ce jour-là)
+const ADVENT_LOST = { id: '-', lost: true };
+
+function adventLostView(day) {
+  return { day: day, label: 'Perdu !', kind: 'lost', credits: 0, detail: 'Pas de cadeau dans cette case. Retentez votre chance demain !', rarity: 'none' };
+}
+
 function adventPrizeMap() {
   const map = {};
   adventPrizes().forEach(p => { map[p.id] = p; });
@@ -256,7 +275,9 @@ function adventPartnersWithPrizes() {
 
 /** Case ouverte telle que le portail l'affiche. */
 function adventDayView(day, text, prizeMap) {
-  const prize = prizeMap[adventEntry(text).p];
+  const id = adventEntry(text).p;
+  if (id === ADVENT_LOST.id) return adventLostView(day);
+  const prize = prizeMap[id];
   if (!prize) return { day: day, label: 'Merci d\'avoir ouvert la case !', kind: 'none', credits: 0, detail: 'Tous les lots du jour étaient partis.', rarity: 'none' };
   return adventPrizeView(day, prize);
 }
@@ -307,7 +328,8 @@ function openAdventDay(idToken, raw) {
   // Équipe Hiptown : tirage simulé, rien n'est enregistré
   if (player.mode === 'test') {
     const drawDay = today >= 1 && today <= ADVENT.days ? today : day;
-    const prize = adventDraw(adventPrizes(), adventGiven(), drawDay, player);
+    const prize = adventDraw(adventPrizes(), adventGiven(), drawDay, player, adventLoseChance());
+    if (prize === ADVENT_LOST) return { success: true, test: true, prize: adventLostView(day) };
     if (!prize) return { success: true, test: true, prize: { day: day, label: 'Plus aucun lot disponible', kind: 'none', credits: 0, detail: 'Ajoutez du stock dans la gestion du calendrier.', rarity: 'none' } };
     return { success: true, test: true, prize: adventPrizeView(day, prize) };
   }
@@ -341,7 +363,13 @@ function openAdventDay(idToken, raw) {
     }
 
     const given = adventGiven();
-    prize = adventDraw(prizes, given, Math.min(today, ADVENT.days), player);
+    prize = adventDraw(prizes, given, Math.min(today, ADVENT.days), player, adventLoseChance());
+    if (prize === ADVENT_LOST) {
+      record.d[day] = adventEntryText({ p: ADVENT_LOST.id, t: Date.now() });
+      Object.assign(record, { n: player.name, e: player.email, c: player.company, ci: player.companyId, r: player.role });
+      props.setProperty(adventUserKey(player.uid), JSON.stringify(record));
+      return { success: true, prize: adventLostView(day) };
+    }
     const text = adventEntryText({ p: prize ? prize.id : '', t: Date.now() });
     view = adventDayView(day, text, prizeMap);
     if (!prize) view.detail = 'Tous les lots du jour sont partis. Revenez demain !';
@@ -417,6 +445,7 @@ function getAdventAdmin(idToken) {
   const credits = {};
   let players = 0;
   let openings = 0;
+  let lost = 0;
   Object.keys(all).forEach(key => {
     if (key.indexOf(prefix) !== 0) return;
     let rec;
@@ -426,6 +455,7 @@ function getAdventAdmin(idToken) {
       const e = adventEntry(rec.d[day]);
       const prize = prizeMap[e.p];
       openings++;
+      if (e.p === ADVENT_LOST.id) lost++;
       if (!prize) return;
       if (prize.kind === 'credits') {
         const c = credits[rec.ci] || (credits[rec.ci] = { company: rec.c || rec.ci, credits: 0, wins: 0 });
@@ -445,6 +475,7 @@ function getAdventAdmin(idToken) {
     year: ADVENT.year,
     today: today,
     public: adventIsPublic(),
+    loseChance: adventLoseChance(),
     prizes: adventPrizes().map(p => Object.assign({}, p, {
       given: Number(given[p.id]) || 0,
       autoRarity: adventRarity(Object.assign({}, p, { rarity: '' })),
@@ -454,7 +485,8 @@ function getAdventAdmin(idToken) {
     winners: winners,
     credits: Object.keys(credits).map(id => credits[id]).sort((a, b) => b.credits - a.credits),
     players: players,
-    openings: openings
+    openings: openings,
+    lost: lost
   };
 }
 
@@ -541,6 +573,20 @@ function setAdventPublic(idToken, raw) {
   if (raw && raw.public) props.setProperty('ADVENT_PUBLIC:' + ADVENT.year, '1');
   else props.deleteProperty('ADVENT_PUBLIC:' + ADVENT.year);
   return { success: true, public: adventIsPublic() };
+}
+
+/** doPost setAdventLoseChance : % de chance qu'une case soit perdue (0 à 90). */
+function setAdventLoseChance(idToken, raw) {
+  try {
+    adventAdmin(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  const n = Number(raw && raw.percent);
+  if (!isFinite(n) || n < 0 || n > 90) return { success: false, message: 'Le pourcentage de cases perdues doit être entre 0 et 90.' };
+  const value = Math.round(n * 10) / 10;
+  PropertiesService.getScriptProperties().setProperty('ADVENT_LOSE:' + ADVENT.year, String(value));
+  return { success: true, loseChance: value };
 }
 
 // ==================== PARTENAIRES (intro du calendrier) ====================
