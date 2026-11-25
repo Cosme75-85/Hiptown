@@ -231,6 +231,8 @@ function shake(cell) {
 async function openDay(cell) {
   const d = +cell.dataset.d;
   if (opened[d]) return showPrize(opened[d], false);
+  if (busy) return;
+  playCreak(); // à chaque tentative, même sur une case fermée
   const st = cellState(d);
   if (st === "locked") {
     shake(cell);
@@ -382,7 +384,40 @@ const canPlay = () => soundOn && actx && actx.state !== "closed";
 function playDoor() {
   if (!canPlay()) return;
   noise(0, 0.45, "bandpass", 500, 0.25, 1400);           // battants qui glissent
-  tone(180, 0.02, 0.35, "sawtooth", 0.05, 120);          // petit grincement
+}
+
+/**
+ * Léger grincement de charnière, à chaque tentative d'ouverture d'une porte.
+ * Une dent de scie dont la hauteur hésite (frottement qui accroche puis glisse),
+ * hachée à 25-40 Hz et filtrée : jamais tout à fait le même d'un clic à l'autre.
+ */
+function playCreak() {
+  unlockAudio();
+  if (!canPlay()) return;
+  const t = actx.currentTime + 0.01, len = 0.45 + Math.random() * 0.25;
+  const o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain();
+  const lfo = actx.createOscillator(), depth = actx.createGain();
+  o.type = "sawtooth";
+  let freq = 260 + Math.random() * 120;
+  o.frequency.setValueAtTime(freq, t);
+  for (let x = 0.06; x < len; x += 0.05 + Math.random() * 0.05) {
+    freq = Math.max(180, Math.min(620, freq * (0.88 + Math.random() * 0.34)));
+    o.frequency.linearRampToValueAtTime(freq, t + x);
+  }
+  f.type = "bandpass"; f.frequency.value = 1100 + Math.random() * 500; f.Q.value = 2.5;
+  // Hachage du son : le « crr » de la charnière
+  const trem = actx.createGain();
+  trem.gain.value = 0.6;
+  lfo.frequency.value = 25 + Math.random() * 15;
+  depth.gain.value = 0.4;
+  lfo.connect(depth); depth.connect(trem.gain);   // volume qui oscille entre 0,2 et 1
+  // Enveloppe séparée : le son est bien à zéro avant et après
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.11, t + 0.08);  // léger
+  g.gain.linearRampToValueAtTime(0.08, t + len * 0.7);
+  g.gain.linearRampToValueAtTime(0, t + len);
+  o.connect(f); f.connect(trem); trem.connect(g); g.connect(actx.destination);
+  o.start(t); lfo.start(t); o.stop(t + len + 0.05); lfo.stop(t + len + 0.05);
 }
 
 function playLocked() {
