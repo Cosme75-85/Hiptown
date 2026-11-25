@@ -200,12 +200,15 @@ function open(withAdmin) {
   document.body.classList.add("av-noscroll");
   startSnow();
   $("av-admin").hidden = !(state && state.mode === "test");
-  if (state && state.mode === "test") loadAdmin();
+  if (state && state.mode === "test") { loadAdmin(); loadPartnersAdmin(); }
   if (withAdmin) setTimeout(() => $("av-admin").scrollIntoView({ behavior: "smooth" }), 50);
+  // Intro animée une fois par jour (pas en arrivant par la gestion)
+  else if (!introSeenToday()) playIntro();
 }
 
 function close() {
   if (!$("avent") || $("avent").hidden) return;
+  stopIntro();
   $("avent").hidden = true;
   $("av-modal").hidden = true;
   document.body.classList.remove("av-noscroll");
@@ -307,7 +310,8 @@ $("av-m-close")?.addEventListener("click", () => { $("av-modal").hidden = true; 
 $("av-modal")?.addEventListener("click", e => { if (e.target.id === "av-modal") e.currentTarget.hidden = true; });
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape" || $("avent").hidden) return;
-  if (!$("av-modal").hidden) $("av-modal").hidden = true; else close();
+  if (!$("av-intro").hidden) stopIntro();
+  else if (!$("av-modal").hidden) $("av-modal").hidden = true; else close();
 });
 
 // ==================== SONS (synthétisés, aucun fichier à charger) ====================
@@ -585,5 +589,237 @@ $("av-public")?.addEventListener("change", async e => {
     adminMessage("Connexion impossible, merci de réessayer.", true);
   } finally {
     box.disabled = false;
+  }
+});
+
+// ==================== INTRO ANIMÉE ET PARTENAIRES ====================
+// À l'ouverture du calendrier (une fois par jour et par appareil) : un paquet cadeau s'ouvre
+// sur « Hiptown Bordeaux présente le Calendrier de l'Avent », puis les partenaires défilent
+// (logo, nom, phrase, lien), et un dernier écran les réunit avant d'ouvrir le calendrier.
+// Le bouton « Passer » arrête tout ; « Intro » dans la barre la rejoue.
+
+let introRun = 0;   // numéro de l'intro en cours (une intro arrêtée ne continue pas)
+
+function introSeenToday() {
+  try { return localStorage.getItem("avent-intro") === new Date().toDateString(); } catch (err) { return false; }
+}
+
+function partnerLogo(p, cls) {
+  return p.logo
+    ? '<img class="' + cls + '" src="' + escapeHtml(p.logo) + '" alt="' + escapeHtml(p.name) + '">'
+    : '<span class="' + cls + ' av-logo-letter">' + escapeHtml((p.name || "?").trim().charAt(0).toUpperCase()) + "</span>";
+}
+
+function partnerLink(p, label) {
+  return p.url ? '<a class="av-pa-link" href="' + escapeHtml(p.url) + '" target="_blank" rel="noopener">' + label + "</a>" : "";
+}
+
+async function playIntro() {
+  const run = ++introRun;
+  const box = $("av-intro");
+  const partners = (state && state.partners) || [];
+  const wait = ms => new Promise(r => setTimeout(r, reduceMotion() ? Math.min(ms, 400) : ms));
+  const alive = () => run === introRun && !box.hidden;
+  const scene = (html, cls) => { $("av-intro-stage").className = "av-intro-stage " + cls; $("av-intro-stage").innerHTML = html; };
+  try { localStorage.setItem("avent-intro", new Date().toDateString()); } catch (err) { /* rejouée demain */ }
+  box.hidden = false;
+  $("av-intro-dots").innerHTML = "";
+
+  // 1. Le paquet tombe, rebondit et s'ouvre
+  scene('<div class="av-gift"><div class="av-gift-glow"></div>'
+    + '<svg class="av-gift-box" viewBox="0 0 200 150"><rect x="20" y="40" width="160" height="105" rx="10" fill="#ffe700"/><rect x="88" y="40" width="24" height="105" fill="#ff4d6d"/><rect x="20" y="40" width="160" height="14" fill="rgba(0,0,0,.12)"/></svg>'
+    + '<svg class="av-gift-lid" viewBox="0 0 200 70"><path d="M100 30c-14-28-52-26-40 0zM100 30c14-28 52-26 40 0z" fill="#ff4d6d" stroke="#1e1847" stroke-width="4"/><rect x="10" y="28" width="180" height="38" rx="9" fill="#67dfcb"/><rect x="88" y="28" width="24" height="38" fill="#ff4d6d"/></svg>'
+    + '</div><p class="av-intro-kicker">Hiptown Bordeaux présente</p>', "av-s-gift");
+  await wait(1500); if (!alive()) return;
+  $("av-intro-stage").classList.add("av-s-open");
+  playRarity("rare");
+  const r = $("av-intro-stage").getBoundingClientRect();
+  burst(r.left + r.width / 2, r.top + r.height * 0.45, 160, RARITY.legendaire.colors);
+  await wait(900); if (!alive()) return;
+
+  // 2. Le titre
+  const title = "Le Calendrier de l'Avent";
+  let n = 0; // lettres animées une à une, mot par mot (un mot ne se coupe jamais)
+  scene('<p class="av-intro-kicker">Hiptown Bordeaux présente</p><h2 class="av-intro-title">'
+    + title.split(" ").map(w => '<span class="av-word">' + [...w].map(c => '<span style="animation-delay:' + (n++ * 0.035).toFixed(3) + 's">' + escapeHtml(c) + "</span>").join("") + "</span>").join(" ")
+    + '</h2><p class="av-intro-sub">24 cases · 24 jours de cadeaux · du 1er au 24 décembre</p>', "av-s-title");
+  await wait(2600); if (!alive()) return;
+
+  // 3. Les partenaires, un par un
+  if (partners.length) {
+    $("av-intro-dots").innerHTML = partners.map(() => "<i></i>").join("");
+    for (let i = 0; i < partners.length; i++) {
+      const p = partners[i];
+      scene('<p class="av-intro-kicker">Avec nos partenaires</p>'
+        + '<div class="av-pa-card">' + partnerLogo(p, "av-pa-logo") + '<h3 class="av-pa-name">' + escapeHtml(p.name) + "</h3>"
+        + (p.text ? '<p class="av-pa-text">' + escapeHtml(p.text) + "</p>" : "") + partnerLink(p, "Découvrir " + escapeHtml(p.name)) + "</div>", "av-s-partner");
+      [...$("av-intro-dots").children].forEach((d, j) => d.classList.toggle("on", j <= i));
+      await wait(2400); if (!alive()) return;
+    }
+  }
+
+  // 4. Écran final : merci aux partenaires, puis on ouvre le calendrier
+  scene((partners.length
+    ? '<p class="av-intro-kicker">Merci à nos partenaires</p><div class="av-pa-wall">'
+      + partners.map(p => (p.url ? '<a href="' + escapeHtml(p.url) + '" target="_blank" rel="noopener" title="' + escapeHtml(p.name) + '">' : '<span title="' + escapeHtml(p.name) + '">')
+        + partnerLogo(p, "av-pa-mini") + (p.url ? "</a>" : "</span>")).join("") + "</div>"
+    : '<p class="av-intro-kicker">Hiptown Bordeaux</p><h2 class="av-intro-title av-intro-title-static">À vous de jouer !</h2>')
+    + '<button type="button" class="av-btn av-intro-go" id="av-intro-go">Ouvrir mon calendrier</button>', "av-s-end");
+  $("av-intro-go").addEventListener("click", stopIntro);
+  $("av-intro-go").focus();
+}
+
+function stopIntro() {
+  introRun++;
+  const box = $("av-intro");
+  if (box) box.hidden = true;
+}
+
+$("av-intro-skip")?.addEventListener("click", stopIntro);
+$("av-replay")?.addEventListener("click", () => { unlockAudio(); playIntro(); });
+$("av-pa-replay")?.addEventListener("click", () => { unlockAudio(); $("avent").scrollTop = 0; playIntro(); });
+
+// ---- Gestion des partenaires (équipe) ----
+let editPartners = [];
+
+function partnersMessage(text, isError) {
+  const m = $("av-pa-msg");
+  m.textContent = text || "";
+  m.style.color = isError ? "#fca5a5" : "#86efac";
+  m.hidden = !text;
+}
+
+async function loadPartnersAdmin() {
+  try {
+    const res = await call("getAdventPartners");
+    if (!res.success) return partnersMessage(res.message, true);
+    editPartners = res.partners.map(p => ({ ...p }));
+    renderPartnersAdmin();
+  } catch (err) {
+    partnersMessage("Connexion impossible, merci de réessayer.", true);
+  }
+}
+
+function renderPartnersAdmin() {
+  $("av-partners").innerHTML = editPartners.length ? editPartners.map((p, i) =>
+    '<div class="av-prize av-pa-row" data-i="' + i + '">'
+    + '<div class="av-pa-logo-edit">' + partnerLogo(p, "av-pa-mini") + '<label class="av-link av-pa-file">Logo…<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" data-logo hidden></label>'
+    + (p.logo ? '<button type="button" class="av-link" data-nologo>Retirer</button>' : "") + "</div>"
+    + '<label class="av-f">Nom<input data-k="name" maxlength="60" value="' + escapeHtml(p.name) + '"></label>'
+    + '<label class="av-f av-f-wide">Phrase de présentation<input data-k="text" maxlength="160" placeholder="ex. -10 % pour les clients Hiptown" value="' + escapeHtml(p.text || "") + '"></label>'
+    + '<label class="av-f av-f-wide">Lien (site, Instagram…)<input data-k="url" maxlength="300" placeholder="https://" value="' + escapeHtml(p.url || "") + '"></label>'
+    + '<div class="av-prize-foot"><span>' + (i + 1) + "e dans l'intro</span><span>"
+    + (i > 0 ? '<button type="button" class="av-link av-link-soft" data-up="' + i + '">Monter</button> ' : "")
+    + '<button type="button" class="av-link" data-delp="' + i + '">Supprimer</button></span></div></div>'
+  ).join("") : '<p class="av-empty">Aucun partenaire : l\'intro présente seulement le calendrier.</p>';
+}
+
+/** Réduit une image à 240 px au plus et la compresse pour tenir dans 9 Ko (une propriété du script). */
+function shrinkLogo(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      for (const max of [240, 180, 128, 96]) {
+        const k = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * k));
+        c.height = Math.max(1, Math.round(img.height * k));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        for (const q of [0.85, 0.7, 0.55]) {
+          let url = c.toDataURL("image/webp", q);
+          if (!url.startsWith("data:image/webp")) url = c.toDataURL("image/png");
+          if (url.length <= 8800) return resolve(url);
+        }
+      }
+      reject(new Error("Logo trop détaillé : essayez une image plus simple."));
+    };
+    img.onerror = () => reject(new Error("Image illisible."));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+$("av-partners")?.addEventListener("input", e => {
+  const row = e.target.closest(".av-pa-row");
+  if (row && e.target.dataset.k) editPartners[+row.dataset.i][e.target.dataset.k] = e.target.value;
+});
+$("av-partners")?.addEventListener("change", async e => {
+  if (!e.target.hasAttribute("data-logo") || !e.target.files[0]) return;
+  const i = +e.target.closest(".av-pa-row").dataset.i;
+  try {
+    editPartners[i].logo = await shrinkLogo(e.target.files[0]);
+    editPartners[i].logoChanged = true;
+    renderPartnersAdmin();
+    partnersMessage("Logo prêt : pensez à enregistrer.");
+  } catch (err) {
+    partnersMessage(err.message, true);
+  }
+});
+$("av-partners")?.addEventListener("click", e => {
+  const t = e.target;
+  if (t.dataset.delp !== undefined) editPartners.splice(+t.dataset.delp, 1);
+  else if (t.dataset.up !== undefined) { const i = +t.dataset.up; [editPartners[i - 1], editPartners[i]] = [editPartners[i], editPartners[i - 1]]; }
+  else if (t.hasAttribute("data-nologo")) { const p = editPartners[+t.closest(".av-pa-row").dataset.i]; p.logo = ""; p.logoChanged = true; }
+  else return;
+  renderPartnersAdmin();
+});
+$("av-add-partner")?.addEventListener("click", () => {
+  editPartners.push({ id: "", name: "", text: "", url: "", logo: "", logoChanged: true });
+  renderPartnersAdmin();
+  $("av-partners").lastElementChild?.querySelector("input[data-k=name]")?.focus();
+});
+$("av-save-partners")?.addEventListener("click", async () => {
+  partnersMessage("Enregistrement…");
+  try {
+    // Les logos inchangés ne sont pas renvoyés (le serveur garde ceux qu'il a)
+    const partners = editPartners.map(p => ({ id: p.id, name: p.name, text: p.text, url: p.url, ...(p.logoChanged ? { logo: p.logo || "" } : {}) }));
+    const res = await call("saveAdventPartners", { partners });
+    if (!res.success) return partnersMessage(res.message, true);
+    editPartners = res.partners.map(p => ({ ...p }));
+    if (state) state.partners = res.partners;
+    renderPartnersAdmin();
+    partnersMessage("Partenaires enregistrés.");
+  } catch (err) {
+    partnersMessage("Connexion impossible, merci de réessayer.", true);
+  }
+});
+
+// ---- Partenaires fictifs pour tester l'intro (logos dessinés ici, aucune vraie marque) ----
+const TEST_PARTNERS = [
+  { name: "Ciné Lumière (test)", text: "Partenaire fictif : une place offerte pour une achetée.", bg: "#1e1847", fg: "#ffe700", shape: "star", letters: "CL" },
+  { name: "Bistro Garonne (test)", text: "Partenaire fictif : le café offert aux clients Hiptown.", bg: "#ff4d6d", fg: "#ffffff", shape: "circle", letters: "BG" },
+  { name: "Atelier Sucré (test)", text: "Partenaire fictif : -15 % sur les gâteaux de Noël.", bg: "#b7b0ff", fg: "#1e1847", shape: "heart", letters: "AS" },
+  { name: "Vélo Express (test)", text: "Partenaire fictif : une révision de vélo offerte.", bg: "#67dfcb", fg: "#1e1847", shape: "wheel", letters: "VE" },
+  { name: "Fleurs & Co (test)", text: "Partenaire fictif : un bouquet pour l'accueil de votre bureau.", bg: "#ffe700", fg: "#1e1847", shape: "flower", letters: "F&C" }
+];
+const TEST_SHAPES = {
+  star: '<path d="M60 14l13 27 30 4-22 21 5 30-26-14-26 14 5-30-22-21 30-4z" fill="FG" opacity=".25"/>',
+  circle: '<circle cx="60" cy="60" r="40" fill="none" stroke="FG" stroke-width="6" opacity=".35"/>',
+  heart: '<path d="M60 96S20 72 20 44a20 20 0 0 1 40-6 20 20 0 0 1 40 6c0 28-40 52-40 52z" fill="FG" opacity=".25"/>',
+  wheel: '<circle cx="60" cy="60" r="38" fill="none" stroke="FG" stroke-width="5" opacity=".35"/><path d="M60 22v76M22 60h76M33 33l54 54M87 33L33 87" stroke="FG" stroke-width="3" opacity=".3"/>',
+  flower: '<g fill="FG" opacity=".25"><circle cx="60" cy="34" r="16"/><circle cx="86" cy="60" r="16"/><circle cx="60" cy="86" r="16"/><circle cx="34" cy="60" r="16"/></g>'
+};
+
+/** Dessine un logo fictif (SVG) puis le convertit en image compacte, comme un logo envoyé. */
+function testLogo(t) {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 120 120">'
+    + '<rect width="120" height="120" rx="26" fill="' + t.bg + '"/>' + TEST_SHAPES[t.shape].replace(/FG/g, t.fg)
+    + '<text x="60" y="' + (t.letters.length > 2 ? 70 : 74) + '" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="' + (t.letters.length > 2 ? 30 : 40) + '" fill="' + t.fg + '">'
+    + t.letters.replace("&", "&amp;") + "</text></svg>";
+  const blob = new Blob([svg], { type: "image/svg+xml" });
+  return shrinkLogo(blob);
+}
+
+$("av-test-partners")?.addEventListener("click", async () => {
+  partnersMessage("Création des logos de test…");
+  try {
+    for (const t of TEST_PARTNERS) {
+      if (editPartners.some(p => p.name === t.name)) continue;
+      editPartners.push({ id: "", name: t.name, text: t.text, url: "", logo: await testLogo(t), logoChanged: true });
+    }
+    renderPartnersAdmin();
+    partnersMessage("5 partenaires fictifs ajoutés : enregistrez, puis « Revoir l'intro ». Pensez à les supprimer avant d'ouvrir aux clients.");
+  } catch (err) {
+    partnersMessage(err.message, true);
   }
 });

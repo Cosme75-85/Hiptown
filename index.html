@@ -1547,7 +1547,7 @@
 <div class="av-overlay" id="avent" hidden>
   <canvas class="av-snow" id="av-snow"></canvas>
   <div class="av-wrap">
-    <div class="av-bar"><button class="av-close" id="av-close" type="button">← Retour</button><button class="av-close" id="av-sound" type="button">🔊 Son</button></div>
+    <div class="av-bar"><button class="av-close" id="av-close" type="button">← Retour</button><span class="av-bar-r"><button class="av-close" id="av-replay" type="button">▶ Intro</button><button class="av-close" id="av-sound" type="button">🔊 Son</button></span></div>
     <div class="av-top">
       <div>
         <div class="av-brand"><b>H</b>Hiptown Bordeaux</div>
@@ -1580,6 +1580,16 @@
         <button type="button" class="av-btn" id="av-save-prizes">Enregistrer les lots</button>
       </div>
       <p class="av-admin-msg" id="av-admin-msg" role="status" hidden></p>
+      <h4>Partenaires présentés dans l'intro</h4>
+      <p class="av-help">Ils défilent dans l'animation d'ouverture du calendrier (une fois par jour pour chaque client), puis tous ensemble sur l'écran final. Logo en PNG, JPEG ou WebP : il est réduit automatiquement.</p>
+      <div id="av-partners"></div>
+      <div class="av-admin-actions">
+        <button type="button" class="av-btn av-btn-ghost" id="av-pa-replay">▶ Revoir l'intro</button>
+        <button type="button" class="av-btn av-btn-ghost" id="av-test-partners">Partenaires fictifs (test)</button>
+        <button type="button" class="av-btn av-btn-ghost" id="av-add-partner">+ Ajouter un partenaire</button>
+        <button type="button" class="av-btn" id="av-save-partners">Enregistrer les partenaires</button>
+      </div>
+      <p class="av-admin-msg" id="av-pa-msg" role="status" hidden></p>
       <div class="av-admin-cols">
         <div><h4>Cadeaux gagnés</h4><ul class="av-winners" id="av-winners"></ul></div>
         <div><h4>Crédits gagnés par entreprise</h4><ul class="av-credits" id="av-credits"></ul></div>
@@ -1598,6 +1608,12 @@
     </div>
   </div>
   <div class="av-toast" id="av-toast" role="status" hidden></div>
+  <!-- Intro animée : présentation du calendrier puis des partenaires -->
+  <div class="av-intro" id="av-intro" hidden>
+    <button type="button" class="av-close av-intro-skip" id="av-intro-skip">Passer ›</button>
+    <div class="av-intro-stage" id="av-intro-stage"></div>
+    <div class="av-intro-dots" id="av-intro-dots" aria-hidden="true"></div>
+  </div>
   <canvas class="av-confetti" id="av-confetti"></canvas>
 </div>
 
