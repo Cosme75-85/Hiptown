@@ -8,8 +8,10 @@
  *  - Le lot est tiré au hasard parmi les lots qui restent. Le stock de chaque lot est
  *    réparti sur les 24 jours (au jour J, au plus quantité × J / 24 ont été donnés),
  *    pour qu'il reste des lots jusqu'au bout. Plus un lot a de stock, plus il sort souvent.
- *    Quand plus rien n'est disponible ce jour-là, c'est un lot « illimité » (quantité 0)
- *    qui sort : le lot de consolation.
+ *    Un lot peut aussi avoir un pourcentage (ex. cinéma 10 %) : à chaque case, il a cette
+ *    chance de sortir (toujours dans la limite de son stock du jour), sinon le tirage se fait
+ *    parmi les autres lots. Quand plus rien n'est disponible ce jour-là, c'est un lot
+ *    « illimité » (quantité 0) qui sort : le lot de consolation ; sans lui, la case dit merci.
  *  - Lot « crédits » : réservé aux clients coworking. Les crédits sont ajoutés tout de suite
  *    à ceux de leur entreprise pour le mois en cours (voir adventBonusCredits, utilisé par
  *    getCreditBalance dans Coworking.gs).
@@ -19,6 +21,8 @@
  *    simulé, rien n'est enregistré ni retiré du stock.
  *
  * Rangement : propriétés du script, comme les réductions (aucune base à créer) :
+ *   ADVENT_PUBLIC:<année>            '1' quand le calendrier est visible par les clients (interrupteur
+ *                                    de la gestion, éteint au départ : seule l'équipe le voit)
  *   ADVENT_PRIZES:<année>            liste des lots (modifiable depuis le portail)
  *   ADVENT_GIVEN:<année>             nombre de lots donnés, par lot
  *   ADVENT_U:<année>:<uid>           cases ouvertes par un compte (format compact : environ
@@ -39,18 +43,22 @@ const ADVENT = {
   // kind : 'credits' (ajoutés à l'entreprise, coworking seulement) ou 'gift' (remis par l'équipe).
   // quantity : nombre de lots ; 0 = illimité (lot de consolation). days : jours où il peut sortir ([] = tous).
   defaultPrizes: [
-    { id: 'credits1', label: '1 crédit de salle', kind: 'credits', credits: 1, quantity: 150, days: [] },
-    { id: 'credits2', label: '2 crédits de salle', kind: 'credits', credits: 2, quantity: 80, days: [] },
-    { id: 'credits5', label: '5 crédits de salle', kind: 'credits', credits: 5, quantity: 20, days: [] },
-    { id: 'cinema', label: '2 places de cinéma', kind: 'gift', credits: 0, quantity: 10, days: [],
-      detail: 'L\'équipe Hiptown vous les remet à l\'accueil.' },
-    { id: 'mug', label: 'Un mug Hiptown', kind: 'gift', credits: 0, quantity: 20, days: [],
+    // chance : % de chance de gagner ce lot à chaque case ouverte (0 = tiré selon son stock)
+    { id: 'cinema', label: '2 places de cinéma', kind: 'gift', credits: 0, quantity: 6, chance: 10, days: [],
+      detail: 'Une place de cinéma pour 2 personnes : l\'équipe Hiptown vous la remet à l\'accueil.' },
+    { id: 'apero', label: '2 places pour un apéro', kind: 'gift', credits: 0, quantity: 2, chance: 5, days: [],
+      detail: 'Un apéro pour 2 personnes : l\'équipe Hiptown vous contacte.' },
+    { id: 'jeu', label: 'Un jeu de société', kind: 'gift', credits: 0, quantity: 2, chance: 0, days: [],
       detail: 'À récupérer à l\'accueil Hiptown.' },
-    { id: 'cafe', label: 'Un café offert', kind: 'gift', credits: 0, quantity: 0, days: [],
-      detail: 'Présentez ce message à l\'accueil Hiptown.' }
+    { id: 'credits100', label: '100 crédits de salle', kind: 'credits', credits: 100, quantity: 40, chance: 0, days: [] },
+    { id: 'credits200', label: '200 crédits de salle', kind: 'credits', credits: 200, quantity: 20, chance: 0, days: [] },
+    { id: 'credits400', label: '400 crédits de salle', kind: 'credits', credits: 400, quantity: 5, chance: 0, days: [] },
+    { id: 'pdj', label: 'Un petit déjeuner au cowork', kind: 'gift', credits: 0, quantity: 2, chance: 0, days: [],
+      detail: 'L\'équipe Hiptown vous contacte pour choisir le jour.' },
+    { id: 'resto', label: 'Un restaurant pour 2 personnes', kind: 'gift', credits: 0, quantity: 1, chance: 0, days: [],
+      detail: 'L\'équipe Hiptown vous contacte pour vous le remettre.' }
   ]
 };
-
 const ADVENT_USER_PREFIX = 'ADVENT_U:';
 const ADVENT_BONUS_PREFIX = 'ADVENT_BONUS:';
 
@@ -62,6 +70,11 @@ function adventTodayDay(now) {
   if (ymd[0] < ADVENT.year || (ymd[0] === ADVENT.year && ymd[1] < 12)) return 0;
   if (ymd[0] > ADVENT.year) return 99;
   return ymd[2];
+}
+
+/** Le calendrier est-il ouvert aux clients ? (interrupteur de Gestion > Calendrier de l'Avent) */
+function adventIsPublic() {
+  return PropertiesService.getScriptProperties().getProperty('ADVENT_PUBLIC:' + ADVENT.year) === '1';
 }
 
 function adventIsShown(now) {
@@ -123,7 +136,14 @@ function adventAvailable(prizes, given, day, player) {
 
 /** Tire un lot. null s'il n'y a vraiment plus rien (ni stock, ni lot illimité). */
 function adventDraw(prizes, given, day, player) {
-  const pool = adventAvailable(prizes, given, day, player);
+  const all = adventAvailable(prizes, given, day, player);
+  // Lots à pourcentage (ex. cinéma 10 %) : chacun a sa chance, s'il en reste ce jour-là
+  const withChance = all.filter(x => x.prize.chance > 0);
+  for (let i = 0; i < withChance.length; i++) {
+    if (Math.random() * 100 < withChance[i].prize.chance) return withChance[i].prize;
+  }
+  // Sinon, tirage parmi les autres lots, selon leur stock du jour
+  const pool = all.filter(x => !(x.prize.chance > 0));
   if (pool.length) {
     const total = pool.reduce((s, x) => s + x.weight, 0);
     let r = Math.random() * total;
@@ -215,7 +235,7 @@ function getAdvent(idToken) {
     const player = adventPlayer(idToken);
     if (!player.mode) return { success: true, mode: null };
     const shown = adventIsShown();
-    if (player.mode === 'player' && !shown) return { success: true, mode: null };
+    if (player.mode === 'player' && (!shown || !adventIsPublic())) return { success: true, mode: null };
     const record = player.mode === 'player' ? adventRecord(player.uid) : null;
     const prizeMap = adventPrizeMap();
     const opened = record ? Object.keys(record.d || {}).map(d => adventDayView(Number(d), record.d[d], prizeMap)) : [];
@@ -256,6 +276,7 @@ function openAdventDay(idToken, raw) {
     return { success: true, test: true, prize: { day: day, label: prize.label, kind: prize.kind, credits: prize.credits || 0, detail: adventPrizeDetail(prize) } };
   }
 
+  if (!adventIsPublic()) return { success: false, message: 'Le calendrier de l\'Avent n\'est pas encore ouvert.' };
   if (today < day) return { success: false, message: 'Patience ! Cette case s\'ouvre le ' + day + (day === 1 ? 'er' : '') + ' décembre.' };
   if (today > ADVENT.lastOpenDay) return { success: false, message: 'Le calendrier de l\'Avent est terminé. Merci d\'avoir joué !' };
 
@@ -378,6 +399,7 @@ function getAdventAdmin(idToken) {
     success: true,
     year: ADVENT.year,
     today: today,
+    public: adventIsPublic(),
     prizes: adventPrizes().map(p => Object.assign({}, p, {
       given: Number(given[p.id]) || 0,
       // Encore disponibles aujourd'hui avec la répartition sur 24 jours (null = illimité)
@@ -421,8 +443,11 @@ function saveAdventPrizes(idToken, raw) {
     if (quantity > 0 && quantity < done) return { success: false, message: '« ' + label + ' » : déjà ' + done + ' gagné(s), la quantité ne peut pas être plus petite.' };
     const days = (Array.isArray(p.days) ? p.days : []).map(toInt).filter(d => d >= 1 && d <= ADVENT.days)
       .filter((d, j, a) => a.indexOf(d) === j).sort((a, b) => a - b);
+    const chance = p.chance === '' || p.chance == null ? 0 : Number(p.chance);
+    if (!(chance >= 0 && chance <= 100)) return { success: false, message: '« ' + label + ' » : pourcentage de chance entre 0 et 100.' };
     ids[id] = true;
-    prizes.push({ id: id, label: label, kind: kind, credits: credits, quantity: quantity, days: days, detail: cleanText(p.detail, 140) });
+    prizes.push({ id: id, label: label, kind: kind, credits: credits, quantity: quantity, chance: Math.round(chance * 10) / 10,
+      days: days, detail: cleanText(p.detail, 140) });
   }
   const removedWithWins = Object.keys(given).filter(id => given[id] > 0 && !ids[id]);
   if (removedWithWins.length) {
@@ -455,4 +480,17 @@ function setAdventDelivered(idToken, raw) {
     lock.releaseLock();
   }
   return { success: true };
+}
+
+/** doPost setAdventPublic : montre (true) ou cache (false) le calendrier aux clients. */
+function setAdventPublic(idToken, raw) {
+  try {
+    adventAdmin(idToken);
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+  const props = PropertiesService.getScriptProperties();
+  if (raw && raw.public) props.setProperty('ADVENT_PUBLIC:' + ADVENT.year, '1');
+  else props.deleteProperty('ADVENT_PUBLIC:' + ADVENT.year);
+  return { success: true, public: adventIsPublic() };
 }

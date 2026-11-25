@@ -190,6 +190,9 @@ function doPost(e) {
     if (body.action === 'setAdventDelivered') {
       return jsonResponse(setAdventDelivered(body.idToken, body.payload));
     }
+    if (body.action === 'setAdventPublic') {
+      return jsonResponse(setAdventPublic(body.idToken, body.payload));
+    }
     // Statistiques de la phase de test : clics sur la réservation des salles (voir Stats.gs)
     if (body.action === 'trackBookingStat') {
       return jsonResponse(trackBookingStat(body.payload));

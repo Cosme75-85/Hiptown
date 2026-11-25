@@ -1545,7 +1545,8 @@
     <section class="av-panel av-admin" id="av-admin" hidden>
       <h3>Gestion du calendrier</h3>
       <p class="av-admin-stats" id="av-admin-stats"></p>
-      <p class="av-help">À chaque case ouverte, un lot est tiré au hasard parmi ceux qui restent. Le stock est réparti sur les 24 jours, et un lot de quantité 0 est illimité : il ne sort que quand il n'y a plus rien d'autre ce jour-là. Les crédits ne vont qu'aux clients coworking, ajoutés aux crédits de leur entreprise pour le mois.</p>
+      <label class="av-switch"><input type="checkbox" id="av-public"><span id="av-public-label">Caché aux clients</span></label>
+      <p class="av-help">À chaque case ouverte, un lot est tiré au hasard parmi ceux qui restent. Le stock est réparti sur les 24 jours. Un lot avec un % de chance a cette chance de sortir à chaque case (dans la limite de son stock du jour) ; les autres sont tirés selon leur stock. Un lot de quantité 0 est illimité : il ne sort que quand il n'y a plus rien d'autre ce jour-là. Les crédits ne vont qu'aux clients coworking, ajoutés aux crédits de leur entreprise pour le mois.</p>
       <div id="av-prizes"></div>
       <div class="av-admin-actions">
         <button type="button" class="av-btn av-btn-ghost" id="av-add-prize">+ Ajouter un lot</button>

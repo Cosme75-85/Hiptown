@@ -96,8 +96,8 @@ async function load() {
     if (!res.success || !res.mode) return;
     state = res;
     (res.opened || []).forEach(p => { opened[p.day] = p; });
-    // L'équipe ne voit le bandeau qu'à partir de décembre (avant : Gestion > Calendrier de l'Avent)
-    if (res.mode === "player" || res.shown) showBanner();
+    // L'équipe voit toujours le bandeau, pour tester ; les clients seulement quand il est ouvert
+    showBanner();
   } catch (err) {
     console.error("Calendrier de l'Avent indisponible", err);
   }
@@ -319,11 +319,15 @@ async function loadAdmin() {
 }
 
 function renderAdmin() {
+  $("av-public").checked = !!admin.public;
+  $("av-public-label").textContent = admin.public
+    ? "Visible par les clients de Bordeaux" + (admin.today ? "" : " (à partir du 1er décembre)")
+    : "Caché aux clients : seule l'équipe Hiptown voit le calendrier";
   $("av-admin-stats").textContent = admin.players + " participant" + (admin.players > 1 ? "s" : "") + " · "
     + admin.openings + " case" + (admin.openings > 1 ? "s" : "") + " ouverte" + (admin.openings > 1 ? "s" : "");
   $("av-prizes").innerHTML = editPrizes.map((p, i) => {
     const stock = p.quantity > 0
-      ? (p.given || 0) + " gagné(s) sur " + p.quantity + (p.availableToday != null && admin.today ? " · " + p.availableToday + " dispo aujourd'hui" : "")
+      ? (p.given || 0) + " gagné(s) sur " + p.quantity + (p.chance > 0 ? " · " + p.chance + " % de chance par case" : "") + (p.availableToday != null && admin.today ? " · " + p.availableToday + " dispo aujourd'hui" : "")
       : (p.given || 0) + " gagné(s) · illimité (lot de consolation)";
     return '<div class="av-prize" data-i="' + i + '">'
       + '<label class="av-f av-f-wide">Nom du lot<input data-k="label" maxlength="60" value="' + escapeHtml(p.label) + '"></label>'
@@ -331,6 +335,7 @@ function renderAdmin() {
       + '<option value="gift"' + (p.kind === "gift" ? " selected" : "") + ">Cadeau</option></select></label>"
       + (p.kind === "credits" ? '<label class="av-f av-f-num">Crédits<input data-k="credits" type="number" min="1" max="500" value="' + (p.credits || 1) + '"></label>' : "")
       + '<label class="av-f av-f-num">Quantité<input data-k="quantity" type="number" min="0" max="10000" value="' + (p.quantity || 0) + '"></label>'
+      + '<label class="av-f av-f-num">Chance %<input data-k="chance" type="number" min="0" max="100" step="0.5" placeholder="stock" value="' + (p.chance || "") + '"></label>'
       + '<label class="av-f">Jours (vide = tous)<input data-k="days" placeholder="ex. 24 ou 6, 13, 20" value="' + escapeHtml(p.days) + '"></label>'
       + '<label class="av-f av-f-wide">Texte au gagnant<input data-k="detail" maxlength="140" placeholder="' + (p.kind === "credits" ? "Ajoutés aux crédits de votre entreprise pour ce mois-ci." : "L'équipe Hiptown vous contacte pour vous le remettre.") + '" value="' + escapeHtml(p.detail || "") + '"></label>'
       + '<div class="av-prize-foot"><span>' + stock + "</span>"
@@ -352,7 +357,7 @@ $("av-prizes")?.addEventListener("input", e => {
   if (!row || !e.target.dataset.k) return;
   const p = editPrizes[+row.dataset.i];
   const k = e.target.dataset.k;
-  p[k] = ["credits", "quantity"].includes(k) ? Number(e.target.value) : e.target.value;
+  p[k] = ["credits", "quantity", "chance"].includes(k) ? Number(e.target.value) : e.target.value;
   if (k === "kind") renderAdmin();
 });
 $("av-prizes")?.addEventListener("click", e => {
@@ -362,14 +367,14 @@ $("av-prizes")?.addEventListener("click", e => {
   renderAdmin();
 });
 $("av-add-prize")?.addEventListener("click", () => {
-  editPrizes.push({ id: "", label: "", kind: "gift", credits: 0, quantity: 1, days: "", detail: "", given: 0 });
+  editPrizes.push({ id: "", label: "", kind: "gift", credits: 0, quantity: 1, chance: 0, days: "", detail: "", given: 0 });
   renderAdmin();
   $("av-prizes").lastElementChild?.querySelector("input")?.focus();
 });
 $("av-save-prizes")?.addEventListener("click", async () => {
   const prizes = editPrizes.map(p => ({
     id: p.id, label: p.label, kind: p.kind, credits: p.kind === "credits" ? Number(p.credits) || 0 : 0,
-    quantity: Number(p.quantity) || 0, detail: p.detail || "",
+    quantity: Number(p.quantity) || 0, chance: Number(p.chance) || 0, detail: p.detail || "",
     days: String(p.days || "").split(/[^0-9]+/).filter(Boolean).map(Number)
   }));
   adminMessage("Enregistrement…");
@@ -391,6 +396,23 @@ $("av-winners")?.addEventListener("change", async e => {
   try {
     const res = await call("setAdventDelivered", { uid: box.dataset.uid, day: Number(box.dataset.day), delivered: box.checked });
     if (!res.success) { box.checked = !box.checked; adminMessage(res.message, true); }
+  } catch (err) {
+    box.checked = !box.checked;
+    adminMessage("Connexion impossible, merci de réessayer.", true);
+  } finally {
+    box.disabled = false;
+  }
+});
+
+$("av-public")?.addEventListener("change", async e => {
+  const box = e.target;
+  box.disabled = true;
+  try {
+    const res = await call("setAdventPublic", { public: box.checked });
+    if (!res.success) { box.checked = !box.checked; return adminMessage(res.message, true); }
+    admin.public = res.public;
+    renderAdmin();
+    adminMessage(res.public ? "Le calendrier est visible par les clients." : "Le calendrier est caché aux clients.");
   } catch (err) {
     box.checked = !box.checked;
     adminMessage("Connexion impossible, merci de réessayer.", true);

@@ -223,12 +223,17 @@ Lecture et remise à zéro : portail, Gestion > Statistiques.
 
 ## Calendrier de l'Avent (Avent.gs)
 
+**Caché aux clients au départ** : l'interrupteur « Visible par les clients » de Gestion >
+Calendrier de l'Avent l'ouvre (propriété `ADVENT_PUBLIC:<année>`). L'équipe le voit toujours.
+
 Du 1er au 24 décembre, les clients de Bordeaux (comptes validés « coworking » ou « salle »,
 ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau de bord).
 - Une case s'ouvre à partir de son jour, heure de Paris ; les cases manquées restent
   ouvrables jusqu'au 31 décembre. Le bandeau reste visible jusqu'au 6 janvier (gains).
 - Le lot est tiré au hasard parmi ceux qui restent. Le stock de chaque lot est réparti sur
   les 24 jours ; un lot de quantité 0 est illimité et ne sort que s'il ne reste rien d'autre.
+  Un lot peut avoir un % de chance (ex. cinéma 10 %) : il sort avec cette chance à chaque case,
+  dans la limite de son stock du jour ; les autres lots sont tirés selon leur stock.
 - Lots « crédits » : clients coworking seulement, ajoutés aux crédits de leur entreprise pour
   le mois en cours (`adventBonusCredits`, lu par `getCreditBalance` dans `Coworking.gs`).
 - Lots « cadeau » en quantité limitée : e-mail à l'équipe de la ville, et le gagnant apparaît
