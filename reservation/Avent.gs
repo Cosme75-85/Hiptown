@@ -240,7 +240,18 @@ function adventRarity(prize) {
 }
 
 function adventPrizeView(day, prize) {
-  return { day: day, label: prize.label, kind: prize.kind, credits: prize.credits || 0, detail: adventPrizeDetail(prize), rarity: adventRarity(prize) };
+  const partner = prize.partnerId ? adventPartners(false).filter(p => p.id === prize.partnerId)[0] : null;
+  return { day: day, label: prize.label, kind: prize.kind, credits: prize.credits || 0, detail: adventPrizeDetail(prize),
+    rarity: adventRarity(prize), partner: partner ? partner.name : '' };
+}
+
+/** Partenaires pour l'intro du portail, chacun avec les lots qu'on peut gagner chez lui. */
+function adventPartnersWithPrizes() {
+  const prizes = adventPrizes();
+  return adventPartners(true).map(p => Object.assign(p, {
+    prizes: prizes.filter(x => x.partnerId === p.id)
+      .map(x => ({ label: x.label, quantity: x.quantity || 0, rarity: adventRarity(x) }))
+  }));
 }
 
 /** Case ouverte telle que le portail l'affiche. */
@@ -272,7 +283,7 @@ function getAdvent(idToken) {
       today: today === 99 ? ADVENT.lastOpenDay + 1 : today,
       lastOpenDay: ADVENT.lastOpenDay,
       catchUp: ADVENT.catchUp,
-      partners: adventPartners(true),
+      partners: adventPartnersWithPrizes(),
       opened: opened
     };
   } catch (err) {
@@ -482,8 +493,9 @@ function saveAdventPrizes(idToken, raw) {
     if (!(chance >= 0 && chance <= 100)) return { success: false, message: '« ' + label + ' » : pourcentage de chance entre 0 et 100.' };
     ids[id] = true;
     const rarity = ['commun', 'rare', 'legendaire'].indexOf(p.rarity) !== -1 ? p.rarity : '';
+    const partnerId = /^[a-z0-9]{1,24}$/i.test(String(p.partnerId || '')) ? String(p.partnerId) : '';
     prizes.push({ id: id, label: label, kind: kind, credits: credits, quantity: quantity, chance: Math.round(chance * 10) / 10, rarity: rarity,
-      days: days, detail: cleanText(p.detail, 140) });
+      days: days, detail: cleanText(p.detail, 140), partnerId: partnerId });
   }
   const removedWithWins = Object.keys(given).filter(id => given[id] > 0 && !ids[id]);
   if (removedWithWins.length) {
@@ -540,6 +552,7 @@ function adventPartners(withLogos) {
   const props = PropertiesService.getScriptProperties();
   let list = [];
   try { list = JSON.parse(props.getProperty('ADVENT_PARTNERS:' + ADVENT.year) || '[]') || []; } catch (err) { list = []; }
+  if (!Array.isArray(list)) list = [];
   return list.map(p => Object.assign({}, p, withLogos ? { logo: props.getProperty('ADVENT_PLOGO:' + ADVENT.year + ':' + p.id) || '' } : {}));
 }
 
@@ -556,7 +569,7 @@ function getAdventPartners(idToken) {
   } catch (err) {
     return { success: false, message: err.message };
   }
-  return { success: true, partners: adventPartners(true) };
+  return { success: true, partners: adventPartnersWithPrizes() };
 }
 
 /**
@@ -598,5 +611,5 @@ function saveAdventPartners(idToken, raw) {
     else props.deleteProperty(prefix + id);
   });
   props.setProperties(toSave);
-  return { success: true, partners: adventPartners(true) };
+  return { success: true, partners: adventPartnersWithPrizes() };
 }
