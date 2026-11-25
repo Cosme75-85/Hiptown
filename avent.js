@@ -16,7 +16,7 @@ const $ = id => document.getElementById(id);
 // Ordre mélangé des portes, comme sur un vrai calendrier
 const ORDER = [7, 15, 1, 22, 10, 18, 3, 12, 24, 5, 20, 9, 14, 2, 17, 11, 6, 21, 13, 4, 19, 8, 16, 23];
 const ICONS = {
-  credits: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="22" fill="#e6c800"/><circle cx="32" cy="30" r="22" fill="#ffe700" stroke="#1e1847" stroke-width="3"/><circle cx="32" cy="30" r="15" fill="none" stroke="#1e1847" stroke-width="2" stroke-dasharray="3 4"/><path d="M38 23a9 9 0 1 0 0 14" fill="none" stroke="#1e1847" stroke-width="5" stroke-linecap="round"/></svg>',
+  credits: '<svg class="av-coin" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="22" fill="#e6c800"/><circle cx="32" cy="30" r="22" fill="#ffe700" stroke="#1e1847" stroke-width="3"/><circle cx="32" cy="30" r="15" fill="none" stroke="#1e1847" stroke-width="2" stroke-dasharray="3 4"/><path d="M38 23a9 9 0 1 0 0 14" fill="none" stroke="#1e1847" stroke-width="5" stroke-linecap="round"/></svg>',
   cinema: '<svg viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-12 32 32)"><path d="M6 20h52v8a4 4 0 0 0 0 8v8H6v-8a4 4 0 0 0 0-8z" fill="#67dfcb" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/><path d="M44 21v22" stroke="#1e1847" stroke-width="2" stroke-dasharray="3 3"/><path d="M22 26l10 6-10 6z" fill="#1e1847"/></g></svg>',
   gift: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="26" width="44" height="30" rx="4" fill="#ff4d6d" stroke="#1e1847" stroke-width="3"/><rect x="7" y="18" width="50" height="11" rx="3" fill="#ff6f88" stroke="#1e1847" stroke-width="3"/><path d="M32 18v38" stroke="#ffe700" stroke-width="7"/><path d="M32 18c-6-10-18-8-14 0zM32 18c6-10 18-8 14 0z" fill="#ffe700" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/></svg>',
   coffee: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M24 8c-3 4 3 6 0 10M34 8c-3 4 3 6 0 10" stroke="#b7b0ff" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M12 24h34v14a14 14 0 0 1-14 14h-6a14 14 0 0 1-14-14z" fill="#fff" stroke="#1e1847" stroke-width="3"/><path d="M46 28h4a6 6 0 0 1 0 12h-5" fill="none" stroke="#1e1847" stroke-width="3"/><path d="M8 56h44" stroke="#1e1847" stroke-width="3" stroke-linecap="round"/></svg>',
@@ -255,7 +255,10 @@ async function openDay(cell) {
     const rarity = rarityOf(res.prize);
     setTimeout(() => {
       burst(r.left + r.width / 2, r.top + r.height / 2, RARITY[rarity].confetti, RARITY[rarity].colors);
-      playRarity(rarity);
+      if (res.prize.kind === "credits") {
+        playCash();
+        if (rarity !== "commun") setTimeout(() => playRarity(rarity), 650);
+      } else playRarity(rarity);
       showPrize(res.prize, !res.already);
     }, 900);
     if (res.prize.kind === "credits" && state.mode !== "test") document.dispatchEvent(new CustomEvent("hiptown-credits-changed"));
@@ -385,6 +388,17 @@ function playLocked() {
   if (!canPlay()) return;
   tone(160, 0, 0.08, "square", 0.08);
   tone(140, 0.1, 0.1, "square", 0.08);
+}
+
+/** « Ka-ching » de caisse enregistreuse : déclic, tiroir, clochette et pièces qui tintent. */
+function playCash() {
+  if (!canPlay()) return;
+  noise(0, 0.03, "bandpass", 2500, 0.5);            // touche de la caisse
+  noise(0.05, 0.03, "bandpass", 1800, 0.4);
+  noise(0.1, 0.22, "bandpass", 700, 0.25, 300);     // tiroir qui s'ouvre
+  [[2637, 0.18], [3951, 0.16], [5274, 0.07]].forEach(([f, v]) => tone(f, 0.16, 1.1, "sine", v)); // clochette « ching »
+  [[3136, 0.12], [4699, 0.06]].forEach(([f, v]) => tone(f, 0.24, 0.9, "sine", v));
+  [4186, 3520, 4978, 3729, 4435, 5588].forEach((f, i) => tone(f, 0.38 + i * 0.055 + Math.random() * 0.02, 0.12, "triangle", 0.05)); // pièces
 }
 
 function playRarity(r) {

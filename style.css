@@ -1773,11 +1773,15 @@ body.av-noscroll { overflow: hidden; }
 .av-card { position: relative; width: min(420px, 100%); background: #fff; color: var(--navy); border-radius: 22px; padding: 28px 24px 22px; text-align: center; animation: av-pop .55s cubic-bezier(.2,1.5,.4,1); }
 .av-ico { position: relative; width: 110px; height: 110px; margin: -78px auto 6px; border-radius: 50%; background: var(--yellow); display: grid; place-items: center; box-shadow: 0 0 0 8px #fff; animation: av-bob 1.6s ease-in-out infinite; }
 .av-ico svg { width: 62px; height: 62px; }
+/* Pièce de crédits qui tourne sur elle-même (fenêtre du gain et case ouverte) */
+.av-coin { transform-origin: 50% 50%; animation: av-coin-spin 2.6s cubic-bezier(.45,.05,.35,1) infinite; }
+.av-ico .av-coin { animation-duration: 2s; }
+@keyframes av-coin-spin { 0% { transform: perspective(200px) rotateY(0deg); } 55% { transform: perspective(200px) rotateY(720deg); } 100% { transform: perspective(200px) rotateY(720deg); } }
 .av-mday { font-size: 13px; font-weight: 700; color: #7c74c9; }
 .av-card h3 { margin: 2px 0 8px; font-size: 28px; line-height: 1.1; letter-spacing: -.02em; }
 .av-card p { margin: 0 0 18px; color: #475569; }
 .av-toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 25; background: #fff; color: var(--navy); font-weight: 650; padding: 10px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.3); max-width: calc(100% - 32px); text-align: center; }
-@media (prefers-reduced-motion: reduce) { .av-today .av-face, .av-card, .av-ico, .av-shake, .av-wait .av-leaf, .av-inside, .av-rays, .av-banner-new .av-banner-gift { animation: none; } .av-leaf, .av-board { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .av-today .av-face, .av-card, .av-ico, .av-shake, .av-wait .av-leaf, .av-inside, .av-rays, .av-coin, .av-banner-new .av-banner-gift { animation: none; } .av-leaf, .av-board { transition: none; } }
 .av-switch { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,231,0,.12); border: 1px solid rgba(255,231,0,.35); font-weight: 650; cursor: pointer; }
 .av-switch input { width: 22px; height: 22px; accent-color: var(--yellow); flex: none; }
 .av-odds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(103,223,203,.1); border: 1px solid rgba(103,223,203,.35); }
