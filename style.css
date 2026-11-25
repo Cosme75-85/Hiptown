@@ -1780,10 +1780,11 @@ body.av-noscroll { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .av-today .av-face, .av-card, .av-ico, .av-shake, .av-wait .av-leaf, .av-inside, .av-rays, .av-banner-new .av-banner-gift { animation: none; } .av-leaf, .av-board { transition: none; } }
 .av-switch { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,231,0,.12); border: 1px solid rgba(255,231,0,.35); font-weight: 650; cursor: pointer; }
 .av-switch input { width: 22px; height: 22px; accent-color: var(--yellow); flex: none; }
-.av-lose-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); }
-.av-lose-row label { font-weight: 650; }
-.av-lose-row input { width: 72px; padding: 7px 9px; border-radius: 9px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.25); color: inherit; font: inherit; }
-.av-lose-row span { flex: 1 1 180px; font-size: .9em; opacity: .8; }
+.av-odds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(103,223,203,.1); border: 1px solid rgba(103,223,203,.35); }
+.av-odds b { font-size: 1.1em; color: var(--yellow); }
+.av-odds em { flex: 1 1 100%; font-style: normal; font-size: .88em; opacity: .8; }
+.av-odds-bad { background: rgba(255,77,109,.14); border-color: rgba(255,77,109,.55); }
+.av-odds-bad b, .av-odds-bad em { color: #ff8da1; opacity: 1; }
 
 /* Intro animée du calendrier et partenaires */
 .av-bar-r { display: flex; gap: 8px; }
