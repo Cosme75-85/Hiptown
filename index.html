@@ -1547,7 +1547,7 @@
 <div class="av-overlay" id="avent" hidden>
   <canvas class="av-snow" id="av-snow"></canvas>
   <div class="av-wrap">
-    <button class="av-close" id="av-close" type="button">← Retour</button>
+    <div class="av-bar"><button class="av-close" id="av-close" type="button">← Retour</button><button class="av-close" id="av-sound" type="button">🔊 Son</button></div>
     <div class="av-top">
       <div>
         <div class="av-brand"><b>H</b>Hiptown Bordeaux</div>
@@ -1557,7 +1557,13 @@
       <div class="av-countbox"><strong id="av-count">0 / 24</strong><span>cases ouvertes</span></div>
     </div>
     <p class="av-test-note" id="av-test-note" hidden>Mode test de l'équipe : toutes les cases s'ouvrent, le tirage est simulé et rien n'est enregistré.</p>
-    <div class="av-board"><div class="av-grid" id="av-grid"></div></div>
+    <div class="av-stage" id="av-stage">
+      <div class="av-board">
+        <div class="av-grid" id="av-grid"></div>
+        <span class="av-slab av-slab-bot" aria-hidden="true"></span><span class="av-slab av-slab-l" aria-hidden="true"></span><span class="av-slab av-slab-r" aria-hidden="true"></span>
+      </div>
+      <div class="av-floor" aria-hidden="true"></div>
+    </div>
     <section class="av-panel av-gains-panel">
       <h3 id="av-gains-title">Mes gains</h3>
       <ul class="av-gains" id="av-gains"></ul>
@@ -1582,7 +1588,9 @@
   </div>
   <div class="av-modal" id="av-modal" hidden>
     <div class="av-card" role="dialog" aria-modal="true" aria-labelledby="av-m-title">
+      <div class="av-rays" aria-hidden="true"></div>
       <div class="av-ico" id="av-m-ico"></div>
+      <div class="av-rarity" id="av-m-rarity" hidden></div>
       <div class="av-mday" id="av-m-day"></div>
       <h3 id="av-m-title"></h3>
       <p id="av-m-text"></p>

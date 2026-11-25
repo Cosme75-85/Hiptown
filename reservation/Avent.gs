@@ -3,8 +3,9 @@
  *
  * Ouvert aux comptes validés de la ville ADVENT.city (Bordeaux) : clients Hiptown
  * (coworking) et clients salle de réunion. Chaque compte a son propre calendrier.
- *  - Une case s'ouvre à partir de son jour (heure de Paris) ; les jours manqués restent
- *    rattrapables jusqu'à ADVENT.lastOpenDay.
+ *  - Les cases s'ouvrent dans l'ordre, au jour le jour, du 1er au 24 décembre (heure de Paris).
+ *    ADVENT.catchUp = false : une case ne s'ouvre que le jour même (le lendemain, elle est
+ *    « manquée ») ; true : les cases manquées se rattrapent plus tard, toujours dans l'ordre.
  *  - Le lot est tiré au hasard parmi les lots qui restent. Le stock de chaque lot est
  *    réparti sur les 24 jours (au jour J, au plus quantité × J / 24 ont été donnés),
  *    pour qu'il reste des lots jusqu'au bout. Plus un lot a de stock, plus il sort souvent.
@@ -35,7 +36,8 @@ const ADVENT = {
   city: 'bordeaux',                 // ville des comptes qui ont le calendrier (users.site)
   roles: ['coworking', 'salle'],    // rôles qui jouent ; l'équipe (admin) ouvre en mode test
   days: 24,
-  lastOpenDay: 31,                  // jusqu'au 31 décembre, on peut encore ouvrir les cases manquées
+  lastOpenDay: 24,                  // dernier jour où l'on peut ouvrir une case
+  catchUp: false,                   // false : chaque case seulement le jour même ; true : rattrapage dans l'ordre
   showUntil: '2027-01-06',          // le bandeau du portail disparaît après cette date (gains visibles jusque-là)
   timeZone: 'Europe/Paris',
   maxPrizes: 30,
@@ -220,11 +222,29 @@ function adventPrizeMap() {
   return map;
 }
 
+/**
+ * Rareté d'un lot (son et animation du portail) : choisie dans la gestion, sinon déduite
+ * du lot : 2 exemplaires ou moins, ou 5 % de chance ou moins = légendaire ; 10 exemplaires
+ * ou moins, ou un % de chance = rare ; le reste = commun.
+ */
+function adventRarity(prize) {
+  if (!prize) return 'none';
+  if (['commun', 'rare', 'legendaire'].indexOf(prize.rarity) !== -1) return prize.rarity;
+  const q = prize.quantity > 0 ? prize.quantity : Infinity;
+  if (q <= 2 || (prize.chance > 0 && prize.chance <= 5)) return 'legendaire';
+  if (q <= 10 || prize.chance > 0) return 'rare';
+  return 'commun';
+}
+
+function adventPrizeView(day, prize) {
+  return { day: day, label: prize.label, kind: prize.kind, credits: prize.credits || 0, detail: adventPrizeDetail(prize), rarity: adventRarity(prize) };
+}
+
 /** Case ouverte telle que le portail l'affiche. */
 function adventDayView(day, text, prizeMap) {
   const prize = prizeMap[adventEntry(text).p];
-  if (!prize) return { day: day, label: 'Merci d\'avoir ouvert la case !', kind: 'none', credits: 0, detail: 'Tous les lots du jour étaient partis.' };
-  return { day: day, label: prize.label, kind: prize.kind, credits: prize.credits || 0, detail: adventPrizeDetail(prize) };
+  if (!prize) return { day: day, label: 'Merci d\'avoir ouvert la case !', kind: 'none', credits: 0, detail: 'Tous les lots du jour étaient partis.', rarity: 'none' };
+  return adventPrizeView(day, prize);
 }
 
 // ==================== POINTS D'ENTRÉE DU PORTAIL ====================
@@ -248,6 +268,7 @@ function getAdvent(idToken) {
       days: ADVENT.days,
       today: today === 99 ? ADVENT.lastOpenDay + 1 : today,
       lastOpenDay: ADVENT.lastOpenDay,
+      catchUp: ADVENT.catchUp,
       opened: opened
     };
   } catch (err) {
@@ -272,13 +293,16 @@ function openAdventDay(idToken, raw) {
   if (player.mode === 'test') {
     const drawDay = today >= 1 && today <= ADVENT.days ? today : day;
     const prize = adventDraw(adventPrizes(), adventGiven(), drawDay, player);
-    if (!prize) return { success: true, test: true, prize: { day: day, label: 'Plus aucun lot disponible', kind: 'none', credits: 0, detail: 'Ajoutez du stock dans la gestion du calendrier.' } };
-    return { success: true, test: true, prize: { day: day, label: prize.label, kind: prize.kind, credits: prize.credits || 0, detail: adventPrizeDetail(prize) } };
+    if (!prize) return { success: true, test: true, prize: { day: day, label: 'Plus aucun lot disponible', kind: 'none', credits: 0, detail: 'Ajoutez du stock dans la gestion du calendrier.', rarity: 'none' } };
+    return { success: true, test: true, prize: adventPrizeView(day, prize) };
   }
 
   if (!adventIsPublic()) return { success: false, message: 'Le calendrier de l\'Avent n\'est pas encore ouvert.' };
   if (today < day) return { success: false, message: 'Patience ! Cette case s\'ouvre le ' + day + (day === 1 ? 'er' : '') + ' décembre.' };
   if (today > ADVENT.lastOpenDay) return { success: false, message: 'Le calendrier de l\'Avent est terminé. Merci d\'avoir joué !' };
+  if (!ADVENT.catchUp && day < today) {
+    return { success: false, message: 'Cette case était à ouvrir le ' + day + (day === 1 ? 'er' : '') + ' décembre. Rendez-vous sur la case du jour !' };
+  }
 
   const lock = LockService.getScriptLock();
   try {
@@ -294,6 +318,12 @@ function openAdventDay(idToken, raw) {
     const prizeMap = {};
     prizes.forEach(p => { prizeMap[p.id] = p; });
     if (record.d[day]) return { success: true, already: true, prize: adventDayView(day, record.d[day], prizeMap) };
+    if (ADVENT.catchUp) {
+      // Rattrapage dans l'ordre : toutes les cases d'avant doivent être ouvertes
+      for (let d = 1; d < day; d++) {
+        if (!record.d[d]) return { success: false, message: 'Ouvrez d\'abord la case du ' + d + (d === 1 ? 'er' : '') + ' décembre.' };
+      }
+    }
 
     const given = adventGiven();
     prize = adventDraw(prizes, given, Math.min(today, ADVENT.days), player);
@@ -402,6 +432,7 @@ function getAdventAdmin(idToken) {
     public: adventIsPublic(),
     prizes: adventPrizes().map(p => Object.assign({}, p, {
       given: Number(given[p.id]) || 0,
+      autoRarity: adventRarity(Object.assign({}, p, { rarity: '' })),
       // Encore disponibles aujourd'hui avec la répartition sur 24 jours (null = illimité)
       availableToday: p.quantity > 0 ? ((adventAvailable([p], given, Math.max(today, 1), { canWinCredits: true })[0] || {}).weight || 0) : null
     })),
@@ -446,7 +477,8 @@ function saveAdventPrizes(idToken, raw) {
     const chance = p.chance === '' || p.chance == null ? 0 : Number(p.chance);
     if (!(chance >= 0 && chance <= 100)) return { success: false, message: '« ' + label + ' » : pourcentage de chance entre 0 et 100.' };
     ids[id] = true;
-    prizes.push({ id: id, label: label, kind: kind, credits: credits, quantity: quantity, chance: Math.round(chance * 10) / 10,
+    const rarity = ['commun', 'rare', 'legendaire'].indexOf(p.rarity) !== -1 ? p.rarity : '';
+    prizes.push({ id: id, label: label, kind: kind, credits: credits, quantity: quantity, chance: Math.round(chance * 10) / 10, rarity: rarity,
       days: days, detail: cleanText(p.detail, 140) });
   }
   const removedWithWins = Object.keys(given).filter(id => given[id] > 0 && !ids[id]);
