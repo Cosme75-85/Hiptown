@@ -500,11 +500,11 @@ function renderAdmin() {
   $("av-admin-stats").textContent = admin.players + " participant" + (admin.players > 1 ? "s" : "") + " · "
     + admin.openings + " case" + (admin.openings > 1 ? "s" : "") + " ouverte" + (admin.openings > 1 ? "s" : "")
     + " · " + (admin.lost || 0) + " perdue" + (admin.lost > 1 ? "s" : "");
-  if (document.activeElement !== $("av-lose")) $("av-lose").value = admin.loseChance ?? 30;
+  renderOdds();
   $("av-prizes").innerHTML = editPrizes.map((p, i) => {
     const stock = p.quantity > 0
-      ? (p.given || 0) + " gagné(s) sur " + p.quantity + (p.chance > 0 ? " · " + p.chance + " % de chance par case" : "") + (p.availableToday != null && admin.today ? " · " + p.availableToday + " dispo aujourd'hui" : "")
-      : (p.given || 0) + " gagné(s) · illimité (lot de consolation)";
+      ? (p.given || 0) + " gagné(s) sur " + p.quantity + (p.availableToday != null && admin.today ? " · " + p.availableToday + " dispo aujourd'hui" : "")
+      : (p.given || 0) + " gagné(s) · sans limite de stock";
     return '<div class="av-prize" data-i="' + i + '">'
       + '<label class="av-f av-f-wide">Nom du lot<input data-k="label" maxlength="60" value="' + escapeHtml(p.label) + '"></label>'
       + '<label class="av-f">Type<select data-k="kind"><option value="credits"' + (p.kind === "credits" ? " selected" : "") + '>Crédits de salle</option>'
@@ -517,7 +517,7 @@ function renderAdmin() {
       + '<label class="av-f">Partenaire<select data-k="partnerId"><option value="">Aucun (Hiptown)</option>'
       + editPartners.filter(x => x.id).map(x => '<option value="' + escapeHtml(x.id) + '"' + (p.partnerId === x.id ? " selected" : "") + ">" + escapeHtml(x.name) + "</option>").join("")
       + "</select></label>"
-      + '<label class="av-f av-f-num">Chance %<input data-k="chance" type="number" min="0" max="100" step="0.5" placeholder="stock" value="' + (p.chance || "") + '"></label>'
+      + '<label class="av-f av-f-num">Chance %<input data-k="chance" type="number" min="0" max="100" step="0.5" placeholder="0" value="' + (p.chance || "") + '"></label>'
       + '<label class="av-f">Jours (vide = tous)<input data-k="days" placeholder="ex. 24 ou 6, 13, 20" value="' + escapeHtml(p.days) + '"></label>'
       + '<label class="av-f av-f-wide">Texte au gagnant<input data-k="detail" maxlength="140" placeholder="' + (p.kind === "credits" ? "Ajoutés aux crédits de votre entreprise pour ce mois-ci." : "L'équipe Hiptown vous contacte pour vous le remettre.") + '" value="' + escapeHtml(p.detail || "") + '"></label>'
       + '<div class="av-prize-foot"><span>' + stock + "</span>"
@@ -541,6 +541,7 @@ $("av-prizes")?.addEventListener("input", e => {
   const k = e.target.dataset.k;
   p[k] = ["credits", "quantity", "chance"].includes(k) ? Number(e.target.value) : e.target.value;
   if (k === "kind") renderAdmin();
+  else if (k === "chance") renderOdds();
 });
 $("av-prizes")?.addEventListener("click", e => {
   const del = e.target.closest("[data-del]");
@@ -588,21 +589,16 @@ $("av-winners")?.addEventListener("change", async e => {
   }
 });
 
-$("av-save-lose")?.addEventListener("click", async e => {
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  try {
-    const res = await call("setAdventLoseChance", { percent: $("av-lose").value });
-    if (!res.success) return adminMessage(res.message, true);
-    admin.loseChance = res.loseChance;
-    renderAdmin();
-    adminMessage(res.loseChance > 0 ? res.loseChance + " % des cases seront perdues." : "Toutes les cases ont maintenant un lot (s'il en reste).");
-  } catch (err) {
-    adminMessage("Connexion impossible, merci de réessayer.", true);
-  } finally {
-    btn.disabled = false;
-  }
-});
+/** Total des % des lots et % de cases perdues (le reste jusqu'à 100 %). */
+function renderOdds() {
+  const total = Math.round(editPrizes.reduce((sum, p) => sum + (Number(p.chance) || 0), 0) * 10) / 10;
+  const lost = Math.max(0, Math.round((100 - total) * 10) / 10);
+  const box = $("av-odds");
+  box.classList.toggle("av-odds-bad", total > 100);
+  box.innerHTML = '<span><b>' + total + ' %</b> lots</span><span>+</span><span><b>' + lost + ' %</b> perdu</span><span>=</span><span><b>'
+    + Math.max(100, total) + ' %</b></span>'
+    + (total > 100 ? '<em>Le total des lots dépasse 100 % : baissez des pourcentages.</em>' : '<em>Le % « perdu » se calcule tout seul.</em>');
+}
 
 $("av-public")?.addEventListener("change", async e => {
   const box = e.target;

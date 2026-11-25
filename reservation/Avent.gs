@@ -6,13 +6,12 @@
  *  - Les cases s'ouvrent dans l'ordre, au jour le jour, du 1er au 24 décembre (heure de Paris).
  *    ADVENT.catchUp = false : une case ne s'ouvre que le jour même (le lendemain, elle est
  *    « manquée ») ; true : les cases manquées se rattrapent plus tard, toujours dans l'ordre.
- *  - Le lot est tiré au hasard parmi les lots qui restent. Le stock de chaque lot est
- *    réparti sur les 24 jours (au jour J, au plus quantité × J / 24 ont été donnés),
- *    pour qu'il reste des lots jusqu'au bout. Plus un lot a de stock, plus il sort souvent.
- *    Un lot peut aussi avoir un pourcentage (ex. cinéma 10 %) : à chaque case, il a cette
- *    chance de sortir (toujours dans la limite de son stock du jour), sinon le tirage se fait
- *    parmi les autres lots. Quand plus rien n'est disponible ce jour-là, c'est un lot
- *    « illimité » (quantité 0) qui sort : le lot de consolation ; sans lui, la case dit merci.
+ *  - Tirage au pourcentage : chaque lot a son % de chance de sortir à chaque case, et la case
+ *    est « perdue » le reste du temps (100 % moins la somme des lots). Le total des lots ne
+ *    peut pas dépasser 100 %. Rien n'oblige à donner tout le stock : un lot peut ne jamais sortir.
+ *    Le stock reste un plafond, réparti sur les 24 jours (au jour J, au plus quantité × J / 24
+ *    ont été donnés) : un lot tiré mais épuisé ce jour-là, ou un lot crédits tiré par un client
+ *    salle de réunion, donne une case perdue. Quantité 0 = sans limite.
  *  - Lot « crédits » : réservé aux clients coworking. Les crédits sont ajoutés tout de suite
  *    à ceux de leur entreprise pour le mois en cours (voir adventBonusCredits, utilisé par
  *    getCreditBalance dans Coworking.gs).
@@ -40,7 +39,6 @@ const ADVENT = {
   days: 24,
   lastOpenDay: 24,                  // dernier jour où l'on peut ouvrir une case
   catchUp: false,                   // false : chaque case seulement le jour même ; true : rattrapage dans l'ordre
-  loseChance: 30,                   // % de chance par défaut qu'une case soit perdue (modifiable dans la gestion)
   showUntil: '2027-01-06',          // le bandeau du portail disparaît après cette date (gains visibles jusque-là)
   timeZone: 'Europe/Paris',
   maxPrizes: 30,
@@ -49,19 +47,19 @@ const ADVENT = {
   // kind : 'credits' (ajoutés à l'entreprise, coworking seulement) ou 'gift' (remis par l'équipe).
   // quantity : nombre de lots ; 0 = illimité (lot de consolation). days : jours où il peut sortir ([] = tous).
   defaultPrizes: [
-    // chance : % de chance de gagner ce lot à chaque case ouverte (0 = tiré selon son stock)
+    // chance : % de chance de gagner ce lot à chaque case ouverte ; le reste jusqu'à 100 % = case perdue
     { id: 'cinema', label: '2 places de cinéma', kind: 'gift', credits: 0, quantity: 6, chance: 10, days: [],
       detail: 'Une place de cinéma pour 2 personnes : l\'équipe Hiptown vous la remet à l\'accueil.' },
     { id: 'apero', label: '2 places pour un apéro', kind: 'gift', credits: 0, quantity: 2, chance: 5, days: [],
       detail: 'Un apéro pour 2 personnes : l\'équipe Hiptown vous contacte.' },
-    { id: 'jeu', label: 'Un jeu de société', kind: 'gift', credits: 0, quantity: 2, chance: 0, days: [],
+    { id: 'jeu', label: 'Un jeu de société', kind: 'gift', credits: 0, quantity: 2, chance: 1, days: [],
       detail: 'À récupérer à l\'accueil Hiptown.' },
-    { id: 'credits100', label: '100 crédits de salle', kind: 'credits', credits: 100, quantity: 40, chance: 0, days: [] },
-    { id: 'credits200', label: '200 crédits de salle', kind: 'credits', credits: 200, quantity: 20, chance: 0, days: [] },
-    { id: 'credits400', label: '400 crédits de salle', kind: 'credits', credits: 400, quantity: 5, chance: 0, days: [] },
-    { id: 'pdj', label: 'Un petit déjeuner au cowork', kind: 'gift', credits: 0, quantity: 2, chance: 0, days: [],
+    { id: 'credits100', label: '100 crédits de salle', kind: 'credits', credits: 100, quantity: 40, chance: 15, days: [] },
+    { id: 'credits200', label: '200 crédits de salle', kind: 'credits', credits: 200, quantity: 20, chance: 8, days: [] },
+    { id: 'credits400', label: '400 crédits de salle', kind: 'credits', credits: 400, quantity: 5, chance: 2, days: [] },
+    { id: 'pdj', label: 'Un petit déjeuner au cowork', kind: 'gift', credits: 0, quantity: 2, chance: 1, days: [],
       detail: 'L\'équipe Hiptown vous contacte pour choisir le jour.' },
-    { id: 'resto', label: 'Un restaurant pour 2 personnes', kind: 'gift', credits: 0, quantity: 1, chance: 0, days: [],
+    { id: 'resto', label: 'Un restaurant pour 2 personnes', kind: 'gift', credits: 0, quantity: 1, chance: 0.5, days: [],
       detail: 'L\'équipe Hiptown vous contacte pour vous le remettre.' }
   ]
 };
@@ -140,39 +138,32 @@ function adventAvailable(prizes, given, day, player) {
   return out;
 }
 
-/** % de chance qu'une case soit perdue (réglé dans la gestion, sinon ADVENT.loseChance). */
-function adventLoseChance() {
-  const saved = PropertiesService.getScriptProperties().getProperty('ADVENT_LOSE:' + ADVENT.year);
-  const n = saved === null || saved === '' ? NaN : Number(saved);
-  return isFinite(n) ? n : ADVENT.loseChance;
+/** % de cases perdues : 100 % moins la somme des % des lots. */
+function adventLoseChance(prizes) {
+  const total = (prizes || adventPrizes()).reduce((sum, p) => sum + (Number(p.chance) || 0), 0);
+  return Math.max(0, Math.round((100 - total) * 10) / 10);
 }
 
 /**
- * Tire un lot. ADVENT_LOST si la case est perdue (selon le % de cases perdues),
- * null s'il n'y a vraiment plus rien (ni stock, ni lot illimité).
+ * Tire la case : un lot selon son % de chance, sinon ADVENT_LOST (case perdue).
+ * Un lot tiré mais épuisé ce jour-là, ou pas pour ce compte, donne aussi une case perdue.
  */
-function adventDraw(prizes, given, day, player, loseChance) {
-  if (loseChance > 0 && Math.random() * 100 < loseChance) return ADVENT_LOST;
-  const all = adventAvailable(prizes, given, day, player);
-  // Lots à pourcentage (ex. cinéma 10 %) : chacun a sa chance, s'il en reste ce jour-là
-  const withChance = all.filter(x => x.prize.chance > 0);
-  for (let i = 0; i < withChance.length; i++) {
-    if (Math.random() * 100 < withChance[i].prize.chance) return withChance[i].prize;
-  }
-  // Sinon, tirage parmi les autres lots, selon leur stock du jour
-  const pool = all.filter(x => !(x.prize.chance > 0));
-  if (pool.length) {
-    const total = pool.reduce((s, x) => s + x.weight, 0);
-    let r = Math.random() * total;
-    for (let i = 0; i < pool.length; i++) {
-      r -= pool[i].weight;
-      if (r < 0) return pool[i].prize;
+function adventDraw(prizes, given, day, player) {
+  const budget = {};
+  adventAvailable(prizes, given, day, player).forEach(x => { budget[x.prize.id] = x.weight; });
+  let r = Math.random() * 100;
+  for (let i = 0; i < prizes.length; i++) {
+    const prize = prizes[i];
+    const chance = Number(prize.chance) || 0;
+    if (chance <= 0) continue;
+    if (r < chance) {
+      if (!adventPrizeFits(prize, player)) return ADVENT_LOST;
+      if (prize.quantity > 0 && !(budget[prize.id] > 0)) return ADVENT_LOST;
+      return prize;
     }
-    return pool[pool.length - 1].prize;
+    r -= chance;
   }
-  const unlimited = prizes.filter(p => !(p.quantity > 0) && adventPrizeFits(p, player));
-  if (unlimited.length) return unlimited[Math.floor(Math.random() * unlimited.length)];
-  return null;
+  return ADVENT_LOST;
 }
 
 // ==================== COMPTES ====================
@@ -246,15 +237,16 @@ function adventPrizeMap() {
 
 /**
  * Rareté d'un lot (son et animation du portail) : choisie dans la gestion, sinon déduite
- * du lot : 2 exemplaires ou moins, ou 5 % de chance ou moins = légendaire ; 10 exemplaires
- * ou moins, ou un % de chance = rare ; le reste = commun.
+ * du lot : 2 exemplaires ou moins, ou 2 % de chance ou moins = légendaire ; 10 exemplaires
+ * ou moins, ou 10 % de chance ou moins = rare ; le reste = commun.
  */
 function adventRarity(prize) {
   if (!prize) return 'none';
   if (['commun', 'rare', 'legendaire'].indexOf(prize.rarity) !== -1) return prize.rarity;
   const q = prize.quantity > 0 ? prize.quantity : Infinity;
-  if (q <= 2 || (prize.chance > 0 && prize.chance <= 5)) return 'legendaire';
-  if (q <= 10 || prize.chance > 0) return 'rare';
+  const chance = Number(prize.chance) || 0;
+  if (q <= 2 || (chance > 0 && chance <= 2)) return 'legendaire';
+  if (q <= 10 || (chance > 0 && chance <= 10)) return 'rare';
   return 'commun';
 }
 
@@ -328,7 +320,7 @@ function openAdventDay(idToken, raw) {
   // Équipe Hiptown : tirage simulé, rien n'est enregistré
   if (player.mode === 'test') {
     const drawDay = today >= 1 && today <= ADVENT.days ? today : day;
-    const prize = adventDraw(adventPrizes(), adventGiven(), drawDay, player, adventLoseChance());
+    const prize = adventDraw(adventPrizes(), adventGiven(), drawDay, player);
     if (prize === ADVENT_LOST) return { success: true, test: true, prize: adventLostView(day) };
     if (!prize) return { success: true, test: true, prize: { day: day, label: 'Plus aucun lot disponible', kind: 'none', credits: 0, detail: 'Ajoutez du stock dans la gestion du calendrier.', rarity: 'none' } };
     return { success: true, test: true, prize: adventPrizeView(day, prize) };
@@ -363,7 +355,7 @@ function openAdventDay(idToken, raw) {
     }
 
     const given = adventGiven();
-    prize = adventDraw(prizes, given, Math.min(today, ADVENT.days), player, adventLoseChance());
+    prize = adventDraw(prizes, given, Math.min(today, ADVENT.days), player);
     if (prize === ADVENT_LOST) {
       record.d[day] = adventEntryText({ p: ADVENT_LOST.id, t: Date.now() });
       Object.assign(record, { n: player.name, e: player.email, c: player.company, ci: player.companyId, r: player.role });
@@ -501,6 +493,7 @@ function saveAdventPrizes(idToken, raw) {
   if (!Array.isArray(list) || !list.length || list.length > ADVENT.maxPrizes) return { success: false, message: 'Liste de lots invalide.' };
   const given = adventGiven();
   const ids = {};
+  let totalChance = 0;
   const prizes = [];
   for (let i = 0; i < list.length; i++) {
     const p = list[i] || {};
@@ -523,11 +516,15 @@ function saveAdventPrizes(idToken, raw) {
       .filter((d, j, a) => a.indexOf(d) === j).sort((a, b) => a - b);
     const chance = p.chance === '' || p.chance == null ? 0 : Number(p.chance);
     if (!(chance >= 0 && chance <= 100)) return { success: false, message: '« ' + label + ' » : pourcentage de chance entre 0 et 100.' };
+    totalChance += chance;
     ids[id] = true;
     const rarity = ['commun', 'rare', 'legendaire'].indexOf(p.rarity) !== -1 ? p.rarity : '';
     const partnerId = /^[a-z0-9]{1,24}$/i.test(String(p.partnerId || '')) ? String(p.partnerId) : '';
     prizes.push({ id: id, label: label, kind: kind, credits: credits, quantity: quantity, chance: Math.round(chance * 10) / 10, rarity: rarity,
       days: days, detail: cleanText(p.detail, 140), partnerId: partnerId });
+  }
+  if (totalChance > 100.001) {
+    return { success: false, message: 'Le total des % de chance des lots fait ' + (Math.round(totalChance * 10) / 10) + ' % : il doit rester à 100 % ou moins (le reste = cases perdues).' };
   }
   const removedWithWins = Object.keys(given).filter(id => given[id] > 0 && !ids[id]);
   if (removedWithWins.length) {
@@ -573,20 +570,6 @@ function setAdventPublic(idToken, raw) {
   if (raw && raw.public) props.setProperty('ADVENT_PUBLIC:' + ADVENT.year, '1');
   else props.deleteProperty('ADVENT_PUBLIC:' + ADVENT.year);
   return { success: true, public: adventIsPublic() };
-}
-
-/** doPost setAdventLoseChance : % de chance qu'une case soit perdue (0 à 90). */
-function setAdventLoseChance(idToken, raw) {
-  try {
-    adventAdmin(idToken);
-  } catch (err) {
-    return { success: false, message: err.message };
-  }
-  const n = Number(raw && raw.percent);
-  if (!isFinite(n) || n < 0 || n > 90) return { success: false, message: 'Le pourcentage de cases perdues doit être entre 0 et 90.' };
-  const value = Math.round(n * 10) / 10;
-  PropertiesService.getScriptProperties().setProperty('ADVENT_LOSE:' + ADVENT.year, String(value));
-  return { success: true, loseChance: value };
 }
 
 // ==================== PARTENAIRES (intro du calendrier) ====================
