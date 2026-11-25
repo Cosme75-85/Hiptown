@@ -387,37 +387,47 @@ function playDoor() {
 }
 
 /**
- * Léger grincement de charnière, à chaque tentative d'ouverture d'une porte.
- * Une dent de scie dont la hauteur hésite (frottement qui accroche puis glisse),
- * hachée à 25-40 Hz et filtrée : jamais tout à fait le même d'un clic à l'autre.
+ * Léger grincement de porte en bois, à chaque tentative d'ouverture.
+ * Comme une vraie charnière : une suite de petits à-coups (le métal accroche puis glisse),
+ * de plus en plus rapprochés puis qui ralentissent, et qui font résonner le bois de la porte
+ * (trois résonances filtrées). Jamais tout à fait le même d'un clic à l'autre.
  */
 function playCreak() {
   unlockAudio();
   if (!canPlay()) return;
-  const t = actx.currentTime + 0.01, len = 0.45 + Math.random() * 0.25;
-  const o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain();
-  const lfo = actx.createOscillator(), depth = actx.createGain();
-  o.type = "sawtooth";
-  let freq = 260 + Math.random() * 120;
-  o.frequency.setValueAtTime(freq, t);
-  for (let x = 0.06; x < len; x += 0.05 + Math.random() * 0.05) {
-    freq = Math.max(180, Math.min(620, freq * (0.88 + Math.random() * 0.34)));
-    o.frequency.linearRampToValueAtTime(freq, t + x);
+  const sr = actx.sampleRate, len = 0.5 + Math.random() * 0.3, n = Math.ceil(sr * len);
+  const buf = actx.createBuffer(1, n, sr), data = buf.getChannelData(0);
+  const r0 = 18 + Math.random() * 10, peak = 70 + Math.random() * 70, top = 0.35 + Math.random() * 0.3;
+  let phase = 0, wobble = 0;
+  for (let i = 0; i < n; i++) {
+    const x = i / n;
+    // Cadence des à-coups : monte jusqu'au milieu puis redescend, avec une légère hésitation
+    const shape = x < top ? x / top : 1 - (x - top) / (1 - top);
+    if (i % 256 === 0) wobble = wobble * 0.7 + (Math.random() - 0.5) * 0.6;
+    const rate = r0 + (peak - r0) * Math.sin(shape * Math.PI / 2) * (1 + wobble * 0.25);
+    phase += rate / sr;
+    if (phase >= 1) {
+      phase -= 1;
+      const env = Math.min(1, x / 0.06) * Math.min(1, (1 - x) / 0.2);
+      const amp = env * (0.55 + Math.random() * 0.45);
+      for (let k = 0; k < 24 && i + k < n; k++) data[i + k] += amp * Math.exp(-k / 4) * (k ? (Math.random() - 0.5) : 1);
+    }
   }
-  f.type = "bandpass"; f.frequency.value = 1100 + Math.random() * 500; f.Q.value = 2.5;
-  // Hachage du son : le « crr » de la charnière
-  const trem = actx.createGain();
-  trem.gain.value = 0.6;
-  lfo.frequency.value = 25 + Math.random() * 15;
-  depth.gain.value = 0.4;
-  lfo.connect(depth); depth.connect(trem.gain);   // volume qui oscille entre 0,2 et 1
-  // Enveloppe séparée : le son est bien à zéro avant et après
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.11, t + 0.08);  // léger
-  g.gain.linearRampToValueAtTime(0.08, t + len * 0.7);
-  g.gain.linearRampToValueAtTime(0, t + len);
-  o.connect(f); f.connect(trem); trem.connect(g); g.connect(actx.destination);
-  o.start(t); lfo.start(t); o.stop(t + len + 0.05); lfo.stop(t + len + 0.05);
+  const src = actx.createBufferSource();
+  src.buffer = buf;
+  const out = actx.createGain();
+  out.gain.value = 1.1; // léger
+  // Résonances du bois (grave, médium, aigu)
+  [[420 + Math.random() * 160, 9, 1], [1050 + Math.random() * 300, 7, 0.7], [2300 + Math.random() * 500, 6, 0.35]].forEach(([fr, q, v]) => {
+    const f = actx.createBiquadFilter(), g = actx.createGain();
+    f.type = "bandpass"; f.frequency.value = fr; f.Q.value = q;
+    g.gain.value = v;
+    src.connect(f); f.connect(g); g.connect(out);
+  });
+  const soft = actx.createBiquadFilter(); // adoucit les clics trop secs
+  soft.type = "lowpass"; soft.frequency.value = 3200; soft.Q.value = 0.5;
+  out.connect(soft); soft.connect(actx.destination);
+  src.start(actx.currentTime + 0.01);
 }
 
 function playLocked() {
