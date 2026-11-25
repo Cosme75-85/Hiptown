@@ -193,6 +193,9 @@ function doPost(e) {
     if (body.action === 'setAdventPublic') {
       return jsonResponse(setAdventPublic(body.idToken, body.payload));
     }
+    if (body.action === 'setAdventLoseChance') {
+      return jsonResponse(setAdventLoseChance(body.idToken, body.payload));
+    }
     if (body.action === 'getAdventPartners') {
       return jsonResponse(getAdventPartners(body.idToken));
     }

@@ -230,7 +230,10 @@ Du 1er au 24 décembre, les clients de Bordeaux (comptes validés « coworking �
 ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau de bord).
 - Une case s'ouvre à partir de son jour, heure de Paris ; les cases manquées restent
   ouvrables jusqu'au 31 décembre. Le bandeau reste visible jusqu'au 6 janvier (gains).
-- Le lot est tiré au hasard parmi ceux qui restent. Le stock de chaque lot est réparti sur
+- Cases perdues : chaque case a d'abord un % de chance d'être perdue (« Perdu ! Retentez
+  votre chance demain »), 30 % par défaut (`ADVENT.loseChance`), réglable dans Gestion >
+  Calendrier de l'Avent (propriété `ADVENT_LOSE:<année>`). Une case perdue ne consomme aucun lot.
+- Sinon, le lot est tiré au hasard parmi ceux qui restent. Le stock de chaque lot est réparti sur
   les 24 jours ; un lot de quantité 0 est illimité et ne sort que s'il ne reste rien d'autre.
   Un lot peut avoir un % de chance (ex. cinéma 10 %) : il sort avec cette chance à chaque case,
   dans la limite de son stock du jour ; les autres lots sont tirés selon leur stock.

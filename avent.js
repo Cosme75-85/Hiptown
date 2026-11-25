@@ -20,7 +20,8 @@ const ICONS = {
   cinema: '<svg viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-12 32 32)"><path d="M6 20h52v8a4 4 0 0 0 0 8v8H6v-8a4 4 0 0 0 0-8z" fill="#67dfcb" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/><path d="M44 21v22" stroke="#1e1847" stroke-width="2" stroke-dasharray="3 3"/><path d="M22 26l10 6-10 6z" fill="#1e1847"/></g></svg>',
   gift: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="26" width="44" height="30" rx="4" fill="#ff4d6d" stroke="#1e1847" stroke-width="3"/><rect x="7" y="18" width="50" height="11" rx="3" fill="#ff6f88" stroke="#1e1847" stroke-width="3"/><path d="M32 18v38" stroke="#ffe700" stroke-width="7"/><path d="M32 18c-6-10-18-8-14 0zM32 18c6-10 18-8 14 0z" fill="#ffe700" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/></svg>',
   coffee: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M24 8c-3 4 3 6 0 10M34 8c-3 4 3 6 0 10" stroke="#b7b0ff" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M12 24h34v14a14 14 0 0 1-14 14h-6a14 14 0 0 1-14-14z" fill="#fff" stroke="#1e1847" stroke-width="3"/><path d="M46 28h4a6 6 0 0 1 0 12h-5" fill="none" stroke="#1e1847" stroke-width="3"/><path d="M8 56h44" stroke="#1e1847" stroke-width="3" stroke-linecap="round"/></svg>',
-  star: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6l7 17h18l-14 11 5 18-16-10-16 10 5-18L7 23h18z" fill="#b7b0ff" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/></svg>'
+  star: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6l7 17h18l-14 11 5 18-16-10-16 10 5-18L7 23h18z" fill="#b7b0ff" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/></svg>',
+  lost: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 30h44v24a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4z" fill="#3a3270" stroke="#1e1847" stroke-width="3"/><path d="M8 22l40-10 3 10-40 10z" fill="#4b4290" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/><circle cx="25" cy="42" r="2.6" fill="#b7b0ff"/><circle cx="39" cy="42" r="2.6" fill="#b7b0ff"/><path d="M25 51q7-5 14 0" fill="none" stroke="#b7b0ff" stroke-width="3" stroke-linecap="round"/></svg>'
 };
 const DECO = [
   '<svg viewBox="0 0 40 40"><path d="M20 2l4 12h12l-10 8 4 13-10-8-10 8 4-13L4 14h12z" fill="currentColor"/></svg>',
@@ -57,6 +58,7 @@ async function call(action, payload) {
 function iconFor(p) {
   if (p.kind === "credits") return ICONS.credits;
   if (p.kind === "none") return ICONS.star;
+  if (p.kind === "lost") return ICONS.lost;
   const l = (p.label || "").toLowerCase();
   if (/cin[ée]ma|place|ticket|billet/.test(l)) return ICONS.cinema;
   if (/caf[ée]|th[ée]|d[ée]jeuner|boisson|chocolat/.test(l)) return ICONS.coffee;
@@ -124,7 +126,8 @@ const RARITY = {
   legendaire: { label: "Légendaire", confetti: 320, colors: ["#ffe700", "#ffd000", "#fff6a8", "#ffffff", "#ff4d6d"] },
   none:       { label: "",           confetti: 0,   colors: COLORS }
 };
-const rarityOf = p => (p && RARITY[p.rarity]) ? p.rarity : (p && p.kind === "none" ? "none" : "commun");
+const noGain = p => !p || p.kind === "none" || p.kind === "lost";
+const rarityOf = p => (p && RARITY[p.rarity]) ? p.rarity : (noGain(p) ? "none" : "commun");
 
 /** Un battant de porte (gauche ou droite) : la face porte la moitié du décor commun aux deux. */
 function leaf(side, d) {
@@ -177,7 +180,7 @@ function render() {
   });
   const days = Object.keys(opened).map(Number).sort((a, b) => a - b);
   $("av-count").textContent = days.length + " / 24";
-  const wins = days.filter(d => opened[d].kind !== "none");
+  const wins = days.filter(d => !noGain(opened[d]));
   $("av-gains").innerHTML = wins.map(d => {
     const p = opened[d], r = rarityOf(p);
     return '<li><span class="av-gd">' + d + '</span><span><span class="av-gt">' + escapeHtml(p.label) + "</span>"
@@ -271,8 +274,9 @@ function showPrize(p, fresh) {
   $("av-m-rarity").textContent = RARITY[r].label;
   $("av-m-rarity").hidden = !RARITY[r].label;
   $("av-m-day").textContent = "Case du " + dayLabel(p.day) + (state.mode === "test" ? " · test" : "");
-  $("av-m-title").textContent = (fresh && p.kind !== "none" ? (r === "legendaire" ? "Incroyable ! " : "Bravo ! ") : "") + p.label;
+  $("av-m-title").textContent = (fresh && !noGain(p) ? (r === "legendaire" ? "Incroyable ! " : "Bravo ! ") : "") + p.label;
   $("av-m-text").textContent = p.detail || "";
+  $("av-m-close").textContent = p.kind === "lost" ? "À demain !" : "Super, merci !";
   $("av-m-partner").textContent = p.partner ? "Offert par " + p.partner : "";
   $("av-m-partner").hidden = !p.partner;
   $("av-modal").hidden = false;
@@ -494,7 +498,9 @@ function renderAdmin() {
     ? "Visible par les clients de Bordeaux" + (admin.today ? "" : " (à partir du 1er décembre)")
     : "Caché aux clients : seule l'équipe Hiptown voit le calendrier";
   $("av-admin-stats").textContent = admin.players + " participant" + (admin.players > 1 ? "s" : "") + " · "
-    + admin.openings + " case" + (admin.openings > 1 ? "s" : "") + " ouverte" + (admin.openings > 1 ? "s" : "");
+    + admin.openings + " case" + (admin.openings > 1 ? "s" : "") + " ouverte" + (admin.openings > 1 ? "s" : "")
+    + " · " + (admin.lost || 0) + " perdue" + (admin.lost > 1 ? "s" : "");
+  if (document.activeElement !== $("av-lose")) $("av-lose").value = admin.loseChance ?? 30;
   $("av-prizes").innerHTML = editPrizes.map((p, i) => {
     const stock = p.quantity > 0
       ? (p.given || 0) + " gagné(s) sur " + p.quantity + (p.chance > 0 ? " · " + p.chance + " % de chance par case" : "") + (p.availableToday != null && admin.today ? " · " + p.availableToday + " dispo aujourd'hui" : "")
@@ -579,6 +585,22 @@ $("av-winners")?.addEventListener("change", async e => {
     adminMessage("Connexion impossible, merci de réessayer.", true);
   } finally {
     box.disabled = false;
+  }
+});
+
+$("av-save-lose")?.addEventListener("click", async e => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  try {
+    const res = await call("setAdventLoseChance", { percent: $("av-lose").value });
+    if (!res.success) return adminMessage(res.message, true);
+    admin.loseChance = res.loseChance;
+    renderAdmin();
+    adminMessage(res.loseChance > 0 ? res.loseChance + " % des cases seront perdues." : "Toutes les cases ont maintenant un lot (s'il en reste).");
+  } catch (err) {
+    adminMessage("Connexion impossible, merci de réessayer.", true);
+  } finally {
+    btn.disabled = false;
   }
 });
 
