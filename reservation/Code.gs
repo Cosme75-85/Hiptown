@@ -174,6 +174,22 @@ function doPost(e) {
     if (body.action === 'revealAccueilPhone') {
       return jsonResponse(revealAccueilPhone(body.payload));
     }
+    // Calendrier de l'Avent des clients de Bordeaux (voir Avent.gs)
+    if (body.action === 'getAdvent') {
+      return jsonResponse(getAdvent(body.idToken));
+    }
+    if (body.action === 'openAdventDay') {
+      return jsonResponse(openAdventDay(body.idToken, body.payload));
+    }
+    if (body.action === 'getAdventAdmin') {
+      return jsonResponse(getAdventAdmin(body.idToken));
+    }
+    if (body.action === 'saveAdventPrizes') {
+      return jsonResponse(saveAdventPrizes(body.idToken, body.payload));
+    }
+    if (body.action === 'setAdventDelivered') {
+      return jsonResponse(setAdventDelivered(body.idToken, body.payload));
+    }
     // Statistiques de la phase de test : clics sur la réservation des salles (voir Stats.gs)
     if (body.action === 'trackBookingStat') {
       return jsonResponse(trackBookingStat(body.payload));

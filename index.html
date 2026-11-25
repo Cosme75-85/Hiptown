@@ -253,6 +253,10 @@
         <div class="outil-logo">📊</div>
         <div class="outil-name">Statistiques</div>
       </a>
+      <a class="outil-card" href="#" id="open-gestion-avent">
+        <div class="outil-logo">🎄</div>
+        <div class="outil-name">Calendrier de l'Avent</div>
+      </a>
       <a class="outil-card" href="#" id="open-gestion-apercu" hidden>
         <div class="outil-logo">👁️</div>
         <div class="outil-name">Voir comme une ville ou un client</div>
@@ -950,6 +954,12 @@
         <div id="notif-dropdown" style="display:none;position:absolute;right:0;top:38px;width:300px;max-height:420px;overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-md);box-shadow:0 8px 28px rgba(30,24,71,0.15);z-index:20;padding:8px;"></div>
       </div>
     </div>
+    <!-- Calendrier de l'Avent des clients de Bordeaux (avent.js), en décembre -->
+    <button class="av-banner" id="avent-banner" type="button" hidden>
+      <span class="av-banner-gift" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="10" y="26" width="44" height="30" rx="4" fill="#ff4d6d" stroke="#1e1847" stroke-width="3"/><rect x="7" y="18" width="50" height="11" rx="3" fill="#ff6f88" stroke="#1e1847" stroke-width="3"/><path d="M32 18v38" stroke="#ffe700" stroke-width="7"/><path d="M32 18c-6-10-18-8-14 0zM32 18c6-10 18-8 14 0z" fill="#ffe700" stroke="#1e1847" stroke-width="3" stroke-linejoin="round"/></svg></span>
+      <span class="av-banner-text"><b>Calendrier de l'Avent</b><span id="avent-banner-sub"></span></span>
+      <span class="av-banner-go" aria-hidden="true">Ouvrir</span>
+    </button>
     <!-- Agenda des réunions à venir (agenda.js) -->
     <div class="agenda" id="agenda" hidden>
       <div class="agenda-head">
@@ -1512,6 +1522,55 @@
   <p>HIPTOWN BUREAUX FLEXIBLES &copy; <span id="year"></span></p>
 </footer>
 
+<!-- CALENDRIER DE L'AVENT (avent.js) : plein écran par-dessus le portail -->
+<div class="av-overlay" id="avent" hidden>
+  <canvas class="av-snow" id="av-snow"></canvas>
+  <div class="av-wrap">
+    <button class="av-close" id="av-close" type="button">← Retour</button>
+    <div class="av-top">
+      <div>
+        <div class="av-brand"><b>H</b>Hiptown Bordeaux</div>
+        <h2 class="av-title">Calendrier de l'Avent</h2>
+        <p class="av-sub">Une case à ouvrir chaque jour jusqu'au 24 décembre : crédits de salle, places de cinéma et petits cadeaux à gagner.</p>
+      </div>
+      <div class="av-countbox"><strong id="av-count">0 / 24</strong><span>cases ouvertes</span></div>
+    </div>
+    <p class="av-test-note" id="av-test-note" hidden>Mode test de l'équipe : toutes les cases s'ouvrent, le tirage est simulé et rien n'est enregistré.</p>
+    <div class="av-board"><div class="av-grid" id="av-grid"></div></div>
+    <section class="av-panel av-gains-panel">
+      <h3 id="av-gains-title">Mes gains</h3>
+      <ul class="av-gains" id="av-gains"></ul>
+      <p class="av-empty" id="av-nogain">Ouvrez la case du jour pour découvrir votre premier cadeau.</p>
+    </section>
+    <section class="av-panel av-admin" id="av-admin" hidden>
+      <h3>Gestion du calendrier</h3>
+      <p class="av-admin-stats" id="av-admin-stats"></p>
+      <p class="av-help">À chaque case ouverte, un lot est tiré au hasard parmi ceux qui restent. Le stock est réparti sur les 24 jours, et un lot de quantité 0 est illimité : il ne sort que quand il n'y a plus rien d'autre ce jour-là. Les crédits ne vont qu'aux clients coworking, ajoutés aux crédits de leur entreprise pour le mois.</p>
+      <div id="av-prizes"></div>
+      <div class="av-admin-actions">
+        <button type="button" class="av-btn av-btn-ghost" id="av-add-prize">+ Ajouter un lot</button>
+        <button type="button" class="av-btn" id="av-save-prizes">Enregistrer les lots</button>
+      </div>
+      <p class="av-admin-msg" id="av-admin-msg" role="status" hidden></p>
+      <div class="av-admin-cols">
+        <div><h4>Cadeaux gagnés</h4><ul class="av-winners" id="av-winners"></ul></div>
+        <div><h4>Crédits gagnés par entreprise</h4><ul class="av-credits" id="av-credits"></ul></div>
+      </div>
+    </section>
+  </div>
+  <div class="av-modal" id="av-modal" hidden>
+    <div class="av-card" role="dialog" aria-modal="true" aria-labelledby="av-m-title">
+      <div class="av-ico" id="av-m-ico"></div>
+      <div class="av-mday" id="av-m-day"></div>
+      <h3 id="av-m-title"></h3>
+      <p id="av-m-text"></p>
+      <button class="av-btn" id="av-m-close" type="button">Super, merci !</button>
+    </div>
+  </div>
+  <div class="av-toast" id="av-toast" role="status" hidden></div>
+  <canvas class="av-confetti" id="av-confetti"></canvas>
+</div>
+
 <script src="install.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
@@ -1526,6 +1585,7 @@
 <script type="module" src="messagerie.js"></script>
 <script type="module" src="communications.js"></script>
 <script type="module" src="accueil-visites.js"></script>
+<script type="module" src="avent.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js"); });

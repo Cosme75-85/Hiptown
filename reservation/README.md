@@ -19,6 +19,7 @@ Il sert aussi la tuile « Réserver une salle de réunion » de l'espace coworki
 | `Messagerie.gs` | Emails et notifications de la messagerie du portail (voir « Notifications de la messagerie ») | ✅ |
 | `Accueil.gs` | Email à l'entreprise quand un visiteur se présente à l'accueil (page Hiptown-Accueil-1) | ✅ |
 | `Stats.gs` | Compteurs de clics sur la réservation (phase de test), lus dans Gestion > Statistiques | ✅ |
+| `Avent.gs` | Calendrier de l'Avent des clients de Bordeaux : tirage des lots, crédits gagnés, gestion des lots et des gagnants | ✅ |
 | `Tests.gs` | Fonctions de diagnostic à lancer à la main (dont `testDevis`) | ✅ |
 | `Index.html` | La page affichée au client | ✅ |
 | `appsscript.json` | Réglages du projet (fuseau horaire, accès) — déjà en place | ❌ |
@@ -219,3 +220,19 @@ portail ou du lien public. Rien n'est enregistré chez le visiteur (ni cookie, n
 local) et aucune donnée personnelle n'est envoyée : seuls des totaux par jour sont gardés
 dans les propriétés du script (`STATS:AAAA-MM-JJ`), 13 mois au plus.
 Lecture et remise à zéro : portail, Gestion > Statistiques.
+
+## Calendrier de l'Avent (Avent.gs)
+
+Du 1er au 24 décembre, les clients de Bordeaux (comptes validés « coworking » ou « salle »,
+ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau de bord).
+- Une case s'ouvre à partir de son jour, heure de Paris ; les cases manquées restent
+  ouvrables jusqu'au 31 décembre. Le bandeau reste visible jusqu'au 6 janvier (gains).
+- Le lot est tiré au hasard parmi ceux qui restent. Le stock de chaque lot est réparti sur
+  les 24 jours ; un lot de quantité 0 est illimité et ne sort que s'il ne reste rien d'autre.
+- Lots « crédits » : clients coworking seulement, ajoutés aux crédits de leur entreprise pour
+  le mois en cours (`adventBonusCredits`, lu par `getCreditBalance` dans `Coworking.gs`).
+- Lots « cadeau » en quantité limitée : e-mail à l'équipe de la ville, et le gagnant apparaît
+  dans Gestion > Calendrier de l'Avent pour être coché « remis ».
+- L'équipe Hiptown ouvre les cases en mode test (rien n'est enregistré) et modifie les lots
+  depuis la même page. Les lots de départ sont dans `ADVENT.defaultPrizes`.
+- Rangement : propriétés du script (`ADVENT_*`). Pour une autre année, changer `ADVENT.year`.
