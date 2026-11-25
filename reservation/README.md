@@ -247,4 +247,7 @@ ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau 
   Le bouton « Partenaires fictifs (test) » ajoute des logos inventés pour essayer l'intro.
   Les partenaires défilent en bandeau (intro et sous le calendrier), chacun avec les lots
   qui lui sont liés (champ « Partenaire » du lot) ; le gagnant voit « Offert par … ».
+- Musique d'ambiance : « Jingle Bells » (domaine public) en boîte à musique synthétisée dans
+  le portail (aucun fichier), à faible volume, pendant qu'on est sur le calendrier ; bouton
+  « Musique » pour la couper (mémorisé sur l'appareil).
 - Rangement : propriétés du script (`ADVENT_*`). Pour une autre année, changer `ADVENT.year`.

@@ -202,6 +202,7 @@ function open(withAdmin) {
   renderPartnersBand();
   document.body.classList.add("av-noscroll");
   startSnow();
+  startMusic();
   $("av-admin").hidden = !(state && state.mode === "test");
   if (state && state.mode === "test") { loadAdmin(); loadPartnersAdmin(); }
   if (withAdmin) setTimeout(() => $("av-admin").scrollIntoView({ behavior: "smooth" }), 50);
@@ -216,6 +217,7 @@ function close() {
   $("av-modal").hidden = true;
   document.body.classList.remove("av-noscroll");
   stopSnow();
+  stopMusic();
   if (state) showBanner();
 }
 
@@ -899,3 +901,108 @@ addEventListener("deviceorientation", e => {
   stage.style.setProperty("--ry", ry.toFixed(2) + "deg");
   stage.style.setProperty("--rx", rx.toFixed(2) + "deg");
 });
+
+// ==================== MUSIQUE DE NOËL (boîte à musique synthétisée) ====================
+// « Jingle Bells » (James Lord Pierpont, 1857 : domaine public), jouée par le navigateur,
+// sans fichier ni droits. Elle démarre à l'ouverture du calendrier, s'arrête en le quittant
+// ou quand l'onglet est caché, et le bouton « Musique » la coupe (choix mémorisé).
+
+let musicOn = true;
+try { musicOn = localStorage.getItem("avent-musique") !== "0"; } catch (err) { /* musique par défaut */ }
+let music = null; // { gain, timer, next, step }
+
+const N = { C3: 131, F3: 175, G3: 196, C5: 523, D5: 587, E5: 659, F5: 698, G5: 784 };
+// [note, temps] ; 1 temps = une noire
+const JINGLE = [
+  ["E5", 1], ["E5", 1], ["E5", 2], ["E5", 1], ["E5", 1], ["E5", 2], ["E5", 1], ["G5", 1], ["C5", 1.5], ["D5", 0.5], ["E5", 4],
+  ["F5", 1], ["F5", 1], ["F5", 1.5], ["F5", 0.5], ["F5", 1], ["E5", 1], ["E5", 1], ["E5", 0.5], ["E5", 0.5], ["E5", 1], ["D5", 1], ["D5", 1], ["E5", 1], ["D5", 2], ["G5", 2],
+  ["E5", 1], ["E5", 1], ["E5", 2], ["E5", 1], ["E5", 1], ["E5", 2], ["E5", 1], ["G5", 1], ["C5", 1.5], ["D5", 0.5], ["E5", 4],
+  ["F5", 1], ["F5", 1], ["F5", 1.5], ["F5", 0.5], ["F5", 1], ["E5", 1], ["E5", 1], ["E5", 0.5], ["E5", 0.5], ["G5", 1], ["G5", 1], ["F5", 1], ["D5", 1], ["C5", 4],
+  [null, 4]
+];
+// Basse : une note par mesure de 4 temps
+const JINGLE_BASS = ["C3", "C3", "C3", "C3", "F3", "C3", "G3", "G3", "C3", "C3", "C3", "C3", "F3", "C3", "G3", "C3", null];
+const BEAT = 60 / 108;          // tempo calme
+const MUSIC_VOLUME = 0.2;       // en fond : bien plus bas que les sons des cases
+
+function ensureAudio() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    return true;
+  } catch (err) { actx = null; return false; }
+}
+
+/** Note de boîte à musique : attaque nette, extinction lente, une harmonique claire. */
+function musicNote(freq, t, len, vol) {
+  [[1, vol], [2, vol * 0.25], [3.01, vol * 0.08]].forEach(([mult, v]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "sine";
+    o.frequency.value = freq * mult;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(v, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(music.gain);
+    o.start(t); o.stop(t + len + 0.05);
+  });
+}
+
+function scheduleMusic() {
+  if (!music) return;
+  const ahead = actx.currentTime + 0.6;
+  while (music.next < ahead) {
+    const [note, beats] = JINGLE[music.step];
+    if (music.beat % 4 === 0) {
+      const bass = JINGLE_BASS[(music.beat / 4) % JINGLE_BASS.length];
+      if (bass) musicNote(N[bass], music.next, BEAT * 3.5, 0.05);
+    }
+    if (note) musicNote(N[note], music.next, Math.max(0.6, beats * BEAT * 1.4), 0.07);
+    music.next += beats * BEAT;
+    music.beat = (music.beat + beats) % 68;
+    music.step = (music.step + 1) % JINGLE.length;
+    if (music.step === 0) music.beat = 0;
+  }
+}
+
+function startMusic() {
+  if (music || !musicOn || !ensureAudio()) return;
+  const gain = actx.createGain();
+  gain.gain.setValueAtTime(0.0001, actx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(MUSIC_VOLUME, actx.currentTime + 2.5); // fondu d'entrée doux
+  gain.connect(actx.destination);
+  music = { gain, next: actx.currentTime + 0.3, step: 0, beat: 0, timer: 0 };
+  scheduleMusic();
+  music.timer = setInterval(scheduleMusic, 200);
+}
+
+function stopMusic() {
+  if (!music) return;
+  const m = music;
+  music = null;
+  clearInterval(m.timer);
+  try {
+    m.gain.gain.cancelScheduledValues(actx.currentTime);
+    m.gain.gain.setValueAtTime(m.gain.gain.value || MUSIC_VOLUME, actx.currentTime);
+    m.gain.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.4);
+    setTimeout(() => m.gain.disconnect(), 600);
+  } catch (err) { /* déjà arrêtée */ }
+}
+
+function renderMusicButton() {
+  const b = $("av-music");
+  if (!b) return;
+  b.textContent = musicOn ? "🎵 Musique" : "🎵 Musique coupée";
+  b.setAttribute("aria-pressed", musicOn ? "true" : "false");
+}
+
+$("av-music")?.addEventListener("click", () => {
+  musicOn = !musicOn;
+  try { localStorage.setItem("avent-musique", musicOn ? "1" : "0"); } catch (err) { /* réglage non mémorisé */ }
+  renderMusicButton();
+  if (musicOn) startMusic(); else stopMusic();
+});
+document.addEventListener("visibilitychange", () => {
+  if (!$("avent") || $("avent").hidden) return;
+  if (document.hidden) stopMusic(); else startMusic();
+});
+renderMusicButton();
