@@ -203,6 +203,7 @@ function open(withAdmin) {
   document.body.classList.add("av-noscroll");
   startSnow();
   startMusic();
+  unlockAudio(); loadCreaks();
   $("av-admin").hidden = !(state && state.mode === "test");
   if (state && state.mode === "test") { loadAdmin(); loadPartnersAdmin(); }
   if (withAdmin) setTimeout(() => $("av-admin").scrollIntoView({ behavior: "smooth" }), 50);
@@ -231,6 +232,8 @@ function shake(cell) {
 async function openDay(cell) {
   const d = +cell.dataset.d;
   if (opened[d]) return showPrize(opened[d], false);
+  if (busy) return;
+  playCreak(); // à chaque tentative, même sur une case fermée
   const st = cellState(d);
   if (st === "locked") {
     shake(cell);
@@ -382,7 +385,81 @@ const canPlay = () => soundOn && actx && actx.state !== "closed";
 function playDoor() {
   if (!canPlay()) return;
   noise(0, 0.45, "bandpass", 500, 0.25, 1400);           // battants qui glissent
-  tone(180, 0.02, 0.35, "sawtooth", 0.05, 120);          // petit grincement
+}
+
+// Grincements enregistrés (La Sonothèque, remixés : trois extraits courts, égalisés et normalisés)
+const CREAK_FILES = ["sons/avent-grincement-1.mp3", "sons/avent-grincement-2.mp3", "sons/avent-grincement-3.mp3"];
+let creakBuffers = [], creakLoading = false, lastCreak = -1;
+
+function loadCreaks() {
+  if (creakLoading || !actx) return;
+  creakLoading = true;
+  CREAK_FILES.forEach(url => fetch(url)
+    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(url)))
+    .then(data => new Promise((ok, ko) => actx.decodeAudioData(data, ok, ko)))
+    .then(buf => creakBuffers.push(buf))
+    .catch(() => { /* le grincement synthétisé prend le relais */ }));
+}
+
+/** Un des extraits, jamais deux fois le même de suite, un peu plus aigu ou plus grave à chaque fois. */
+function playCreakSample() {
+  let i = Math.floor(Math.random() * creakBuffers.length);
+  if (creakBuffers.length > 1 && i === lastCreak) i = (i + 1) % creakBuffers.length;
+  lastCreak = i;
+  const src = actx.createBufferSource(), g = actx.createGain();
+  src.buffer = creakBuffers[i];
+  src.playbackRate.value = 0.88 + Math.random() * 0.24;
+  g.gain.value = 0.11 + Math.random() * 0.04; // léger : environ moitié moins fort que les sons de gain
+  src.connect(g); g.connect(actx.destination);
+  src.start(actx.currentTime + 0.005);
+}
+
+/**
+ * Léger grincement de porte en bois, à chaque tentative d'ouverture : un vrai enregistrement
+ * (sons/avent-grincement-*.mp3, varié à chaque clic), ou à défaut, tant qu'il n'est pas chargé,
+ * ce grincement synthétisé.
+ * Comme une vraie charnière : une suite de petits à-coups (le métal accroche puis glisse),
+ * de plus en plus rapprochés puis qui ralentissent, et qui font résonner le bois de la porte
+ * (trois résonances filtrées). Jamais tout à fait le même d'un clic à l'autre.
+ */
+function playCreak() {
+  unlockAudio();
+  if (!canPlay()) return;
+  loadCreaks();
+  if (creakBuffers.length) return playCreakSample();
+  const sr = actx.sampleRate, len = 0.5 + Math.random() * 0.3, n = Math.ceil(sr * len);
+  const buf = actx.createBuffer(1, n, sr), data = buf.getChannelData(0);
+  const r0 = 18 + Math.random() * 10, peak = 70 + Math.random() * 70, top = 0.35 + Math.random() * 0.3;
+  let phase = 0, wobble = 0;
+  for (let i = 0; i < n; i++) {
+    const x = i / n;
+    // Cadence des à-coups : monte jusqu'au milieu puis redescend, avec une légère hésitation
+    const shape = x < top ? x / top : 1 - (x - top) / (1 - top);
+    if (i % 256 === 0) wobble = wobble * 0.7 + (Math.random() - 0.5) * 0.6;
+    const rate = r0 + (peak - r0) * Math.sin(shape * Math.PI / 2) * (1 + wobble * 0.25);
+    phase += rate / sr;
+    if (phase >= 1) {
+      phase -= 1;
+      const env = Math.min(1, x / 0.06) * Math.min(1, (1 - x) / 0.2);
+      const amp = env * (0.55 + Math.random() * 0.45);
+      for (let k = 0; k < 24 && i + k < n; k++) data[i + k] += amp * Math.exp(-k / 4) * (k ? (Math.random() - 0.5) : 1);
+    }
+  }
+  const src = actx.createBufferSource();
+  src.buffer = buf;
+  const out = actx.createGain();
+  out.gain.value = 1.1; // léger
+  // Résonances du bois (grave, médium, aigu)
+  [[420 + Math.random() * 160, 9, 1], [1050 + Math.random() * 300, 7, 0.7], [2300 + Math.random() * 500, 6, 0.35]].forEach(([fr, q, v]) => {
+    const f = actx.createBiquadFilter(), g = actx.createGain();
+    f.type = "bandpass"; f.frequency.value = fr; f.Q.value = q;
+    g.gain.value = v;
+    src.connect(f); f.connect(g); g.connect(out);
+  });
+  const soft = actx.createBiquadFilter(); // adoucit les clics trop secs
+  soft.type = "lowpass"; soft.frequency.value = 3200; soft.Q.value = 0.5;
+  out.connect(soft); soft.connect(actx.destination);
+  src.start(actx.currentTime + 0.01);
 }
 
 function playLocked() {

@@ -250,4 +250,6 @@ ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau 
 - Musique d'ambiance : « Jingle Bells » (domaine public) en boîte à musique synthétisée dans
   le portail (aucun fichier), à faible volume, pendant qu'on est sur le calendrier ; bouton
   « Musique » pour la couper (mémorisé sur l'appareil).
+- Grincement des portes : extraits remixés d'un enregistrement de La Sonothèque
+  (`sons/avent-grincement-*.mp3`), joués un peu plus aigus ou graves à chaque clic.
 - Rangement : propriétés du script (`ADVENT_*`). Pour une autre année, changer `ADVENT.year`.
