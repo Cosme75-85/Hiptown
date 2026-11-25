@@ -1590,7 +1590,12 @@ body[data-cases] .tile-desc { color: #4a4568; } /* gris plus foncé : reste lisi
 
 /* Gestion des comptes : nom de l'entreprise au-dessus de ses comptes, dans une case de site */
 .account-company-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--navy); margin: 12px 4px 2px; }
-.account-company-title span { font-weight: 400; color: #94a3b8; }
+.account-company-title { display: flex; align-items: center; gap: 6px; }
+.account-company-title > span:last-child { font-weight: 400; color: #94a3b8; }
+.account-company-title .company-badge { font-weight: 700; letter-spacing: 0; }
+/* Gestion des comptes : titre de colonne (salles de réunion / clients coworking) */
+.account-col-title { font-size: 13px; font-weight: 700; color: var(--navy); margin: 8px 4px 4px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+.account-col-title span { font-weight: 400; color: #94a3b8; }
 
 /* Gestion des entreprises : salles de réunion d'un côté, clients coworking de l'autre */
 .companies-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
