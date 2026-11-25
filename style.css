@@ -1654,7 +1654,7 @@ body.av-noscroll { overflow: hidden; }
 .av-slab-l { right: 100%; transform-origin: right; transform: rotateY(90deg); }
 .av-slab-r { left: 100%; transform-origin: left; transform: rotateY(-90deg); }
 .av-floor { position: absolute; left: 6%; right: 6%; bottom: 8px; height: 40px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); filter: blur(6px); pointer-events: none; }
-.av-grid { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(8px, 1.4vw, 14px); transform-style: preserve-3d; }
+.av-grid { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: clamp(10px, 2.2vw, 24px); transform-style: preserve-3d; }
 @media (max-width: 640px) { .av-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .av-stage { --rx: 8deg; } }
 .av-cell { position: relative; aspect-ratio: 1 / 1.08; border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; transform-style: preserve-3d; perspective: 500px; }
 .av-cell:focus-visible .av-niche { box-shadow: 0 0 0 3px var(--yellow); }
@@ -1703,9 +1703,10 @@ body.av-noscroll { overflow: hidden; }
 .av-c2 .av-face { background: #b7b0ff; color: var(--navy); }
 .av-c3 .av-face { background: #fff; color: var(--navy); }
 .av-c4 .av-face { background: #3a3192; color: #fff; }
-/* Ouverts, les battants restent presque de profil : ils ne cachent pas les cases voisines */
-.av-open .av-leaf-l { transform: translateZ(7px) rotateY(-86deg); }
-.av-open .av-leaf-r { transform: translateZ(7px) rotateY(86deg); }
+/* Ouverts, les battants passent un peu au-delà du profil : ils s'ouvrent grand mais restent
+   dans l'espace entre les cases, sans cacher les cases voisines */
+.av-open .av-leaf-l { transform: translateZ(7px) rotateY(-108deg); }
+.av-open .av-leaf-r { transform: translateZ(7px) rotateY(108deg); }
 .av-open .av-leaf { pointer-events: none; }
 .av-today .av-face { animation: av-glow 1.8s ease-in-out infinite; }
 .av-tag { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%) translateZ(12px); z-index: 3; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; white-space: nowrap; pointer-events: none; }
@@ -1852,3 +1853,11 @@ body.av-noscroll { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .av-band-move .av-band-track { animation: none; } .av-band-move { overflow-x: auto; } }
 .av-band-card .av-pa-name { color: var(--navy); margin: 0; }
 @media (max-width: 640px) { .av-band-card { width: 168px; padding: 12px 10px; } .av-band-card .av-pa-logo { width: 64px; height: 64px; } .av-band-card .av-pa-name { font-size: 16px; } .av-band-prize { font-size: 12px; } }
+
+/* Mouvement du plateau : balancement continu (sous l'inclinaison souris ou téléphone) */
+.av-sway { transform-style: preserve-3d; transform-origin: 50% 100%; animation: av-sway 7s ease-in-out infinite; }
+.av-stage:hover .av-sway, .av-tilting .av-sway { animation-play-state: paused; }
+.av-board { transition: transform .25s ease-out; }
+@keyframes av-sway { 0%, 100% { transform: rotateY(-7deg) rotateX(-2deg); } 25% { transform: rotateY(0deg) rotateX(3deg); } 50% { transform: rotateY(7deg) rotateX(-2deg); } 75% { transform: rotateY(0deg) rotateX(4deg); } }
+.av-ribbon-v, .av-ribbon-h { display: none; }
+@media (prefers-reduced-motion: reduce) { .av-sway { animation: none; } }
