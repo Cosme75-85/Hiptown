@@ -794,6 +794,14 @@ footer {
   gap: 12px;
 }
 
+.sites-city { margin-bottom: 20px; }
+.sites-city-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--navy);
+  margin: 0 0 10px;
+}
+
 .site-card {
   background: var(--white);
   border: 1.5px solid var(--border);

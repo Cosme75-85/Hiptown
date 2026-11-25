@@ -213,6 +213,20 @@
         ]},
       ]
     },
+    // Marseille : outils à ajouter site par site (comme Bordeaux)
+    pama01: { name: "PAMA01", tools: [] },
+    pama02: { name: "PAMA02 — Coworking", tools: [] },
+    pama03: { name: "PAMA03", tools: [] },
+    pama04: { name: "PAMA04", tools: [] },
+    pama05: { name: "PAMA05", tools: [] },
+    pama06: { name: "PAMA06", tools: [] },
+    pama07: { name: "PAMA07", tools: [] },
+    pama08: { name: "PAMA08", tools: [] },
+    pama09: { name: "PAMA09", tools: [] },
+    pama10: { name: "PAMA10", tools: [] },
+    pama11: { name: "PAMA11", tools: [] },
+    pama12: { name: "PAMA12", tools: [] },
+    pama13: { name: "PAMA13", tools: [] },
   };
 
   // ── État ──────────────────────────────────────────────
@@ -348,6 +362,16 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  /** Texte de la tuile « Sites » : les sites de la ville du compte (ex. « PAMA01 à PAMA13 »). */
+  function sitesTileDesc() {
+    const cities = currentCity ? [currentCity] : Object.keys(PORTAIL.cities || {});
+    const ranges = cities.map(function (c) {
+      const ids = Object.keys((PORTAIL.cities[c] || {}).sites || {});
+      return ids.length ? ids[0].toUpperCase() + " à " + ids[ids.length - 1].toUpperCase() : "";
+    }).filter(Boolean);
+    return ranges.join(", ") || TILE_DEFS.hipespaces.desc;
+  }
+
   function buildTiles(space, clientId) {
     tilesGrid.innerHTML = "";
     const baseIds = SPACE_TILES[space] || [];
@@ -392,7 +416,7 @@
         '<div class="tile-drag-hint">⠿</div>' +
         '<div class="tile-icon" style="background:' + tile.bg + ';color:' + tile.color + ';">' + tile.icon + '</div>' +
         '<div class="tile-title">' + tile.title + '</div>' +
-        '<div class="tile-desc">' + tile.desc + '</div>';
+        '<div class="tile-desc">' + (id === "hipespaces" ? sitesTileDesc() : tile.desc) + '</div>';
 
       if (tile.action) {
         el.addEventListener("click", function (e) {

@@ -633,7 +633,10 @@ function applySiteAccess() {
     card.hidden = !!allowed && !allowed.includes(card.dataset.site);
     if (!card.hidden) visible++;
   });
-  const grid = document.querySelector("#step-hiptown-espaces .sites-grid");
+  // Une ville sans aucun site visible (ex. Marseille pour l'équipe de Bordeaux) est masquée en entier
+  const groups = [...document.querySelectorAll("#step-hiptown-espaces .sites-city")];
+  groups.forEach(g => { g.hidden = !g.querySelector(".site-card:not([hidden])"); });
+  const grid = groups[groups.length - 1];
   let empty = document.getElementById("sites-none");
   if (!empty && grid) {
     empty = document.createElement("p");
