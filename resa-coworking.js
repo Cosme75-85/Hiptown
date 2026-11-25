@@ -254,6 +254,9 @@ function showHeaderCredits(res) {
   box.hidden = false;
 }
 
+// Crédits gagnés au calendrier de l'Avent (avent.js) : solde du bandeau mis à jour
+document.addEventListener("hiptown-credits-changed", () => refreshHeaderCredits());
+
 document.addEventListener("hiptown-dashboard", e => {
   const box = $("header-credits");
   if (box) box.hidden = true; // masqué tant que le solde n'est pas chargé (et pour les autres espaces)

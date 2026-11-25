@@ -385,10 +385,14 @@ function getCreditBalance(user, year, month, excludeEventId, withDetails) {
       });
     });
   });
+  // Crédits gagnés au calendrier de l'Avent ce mois-ci (Avent.gs ; 0 si ce fichier n'est pas installé)
+  const bonus = typeof adventBonusCredits === 'function' ? adventBonusCredits(user.companyId, year, month) : 0;
+  const allowance = user.monthlyCredits + bonus;
   const balance = {
-    allowance: user.monthlyCredits,
+    allowance: allowance,
+    bonus: bonus,
     used: used,
-    remaining: Math.max(0, user.monthlyCredits - used),
+    remaining: Math.max(0, allowance - used),
     monthLabel: frenchMonthLabel(year, month)
   };
   if (withDetails) {
