@@ -130,7 +130,6 @@ const rarityOf = p => (p && RARITY[p.rarity]) ? p.rarity : (p && p.kind === "non
 function leaf(side, d) {
   return '<div class="av-leaf av-leaf-' + side + '">'
     + '<div class="av-face"><div class="av-face-in">'
-    + '<span class="av-ribbon-v"></span><span class="av-ribbon-h"></span>'
     + '<span class="av-deco">' + DECO[d % 4] + '</span><span class="av-n">' + d + '</span>'
     + '<span class="av-lock">' + LOCK + '</span></div><span class="av-knob"></span></div>'
     + '<div class="av-back"></div><div class="av-thick av-thick-out"></div><div class="av-thick av-thick-top"></div><div class="av-thick av-thick-bot"></div></div>';
@@ -286,8 +285,8 @@ stage?.addEventListener("pointermove", e => {
   if (e.pointerType !== "mouse" || reduceMotion()) return;
   const b = stage.getBoundingClientRect();
   const x = (e.clientX - b.left) / b.width - 0.5, y = (e.clientY - b.top) / b.height - 0.5;
-  stage.style.setProperty("--ry", (x * 10).toFixed(2) + "deg");
-  stage.style.setProperty("--rx", (12 - y * 8).toFixed(2) + "deg");
+  stage.style.setProperty("--ry", (x * 26).toFixed(2) + "deg");
+  stage.style.setProperty("--rx", (14 - y * 18).toFixed(2) + "deg");
 });
 stage?.addEventListener("pointerleave", () => { stage.style.removeProperty("--ry"); stage.style.removeProperty("--rx"); });
 
@@ -856,4 +855,15 @@ $("av-test-partners")?.addEventListener("click", async () => {
   } catch (err) {
     partnersMessage(err.message, true);
   }
+});
+
+// Téléphone : le plateau suit l'inclinaison de l'appareil quand le navigateur la donne sans
+// demander d'autorisation (Android) ; sinon il se balance tout seul (animation CSS).
+addEventListener("deviceorientation", e => {
+  if (!stage || $("avent").hidden || reduceMotion() || e.gamma == null || e.beta == null) return;
+  const ry = Math.max(-20, Math.min(20, e.gamma * 0.6));
+  const rx = Math.max(0, Math.min(26, 12 + (e.beta - 45) * 0.4));
+  stage.classList.add("av-tilting");
+  stage.style.setProperty("--ry", ry.toFixed(2) + "deg");
+  stage.style.setProperty("--rx", rx.toFixed(2) + "deg");
 });
