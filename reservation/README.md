@@ -244,4 +244,6 @@ ville `bordeaux`) ouvrent une case par jour dans le portail (bandeau du tableau 
   cadeau, titre, puis les partenaires (nom, logo, phrase, lien) gérés dans la même page
   (`ADVENT_PARTNERS`, logos réduits par le portail dans `ADVENT_PLOGO:<année>:<id>`).
   Le bouton « Partenaires fictifs (test) » ajoute des logos inventés pour essayer l'intro.
+  Les partenaires défilent en bandeau (intro et sous le calendrier), chacun avec les lots
+  qui lui sont liés (champ « Partenaire » du lot) ; le gagnant voit « Offert par … ».
 - Rangement : propriétés du script (`ADVENT_*`). Pour une autre année, changer `ADVENT.year`.

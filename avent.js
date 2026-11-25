@@ -197,6 +197,7 @@ function open(withAdmin) {
   if (state && state.mode === "test") opened = {}; // le test repart de zéro à chaque ouverture
   render();
   $("avent").hidden = false;
+  renderPartnersBand();
   document.body.classList.add("av-noscroll");
   startSnow();
   $("av-admin").hidden = !(state && state.mode === "test");
@@ -273,6 +274,8 @@ function showPrize(p, fresh) {
   $("av-m-day").textContent = "Case du " + dayLabel(p.day) + (state.mode === "test" ? " · test" : "");
   $("av-m-title").textContent = (fresh && p.kind !== "none" ? (r === "legendaire" ? "Incroyable ! " : "Bravo ! ") : "") + p.label;
   $("av-m-text").textContent = p.detail || "";
+  $("av-m-partner").textContent = p.partner ? "Offert par " + p.partner : "";
+  $("av-m-partner").hidden = !p.partner;
   $("av-modal").hidden = false;
   $("av-m-close").focus();
 }
@@ -506,6 +509,9 @@ function renderAdmin() {
       + '<label class="av-f">Rareté (son)<select data-k="rarity">'
       + [["", "Auto : " + (RARITY[p.autoRarity] || RARITY.commun).label.toLowerCase()], ["commun", "Commun"], ["rare", "Rare"], ["legendaire", "Légendaire"]]
         .map(([v, l]) => '<option value="' + v + '"' + ((p.rarity || "") === v ? " selected" : "") + ">" + l + "</option>").join("") + "</select></label>"
+      + '<label class="av-f">Partenaire<select data-k="partnerId"><option value="">Aucun (Hiptown)</option>'
+      + editPartners.filter(x => x.id).map(x => '<option value="' + escapeHtml(x.id) + '"' + (p.partnerId === x.id ? " selected" : "") + ">" + escapeHtml(x.name) + "</option>").join("")
+      + "</select></label>"
       + '<label class="av-f av-f-num">Chance %<input data-k="chance" type="number" min="0" max="100" step="0.5" placeholder="stock" value="' + (p.chance || "") + '"></label>'
       + '<label class="av-f">Jours (vide = tous)<input data-k="days" placeholder="ex. 24 ou 6, 13, 20" value="' + escapeHtml(p.days) + '"></label>'
       + '<label class="av-f av-f-wide">Texte au gagnant<input data-k="detail" maxlength="140" placeholder="' + (p.kind === "credits" ? "Ajoutés aux crédits de votre entreprise pour ce mois-ci." : "L'équipe Hiptown vous contacte pour vous le remettre.") + '" value="' + escapeHtml(p.detail || "") + '"></label>'
@@ -545,7 +551,7 @@ $("av-add-prize")?.addEventListener("click", () => {
 $("av-save-prizes")?.addEventListener("click", async () => {
   const prizes = editPrizes.map(p => ({
     id: p.id, label: p.label, kind: p.kind, credits: p.kind === "credits" ? Number(p.credits) || 0 : 0,
-    quantity: Number(p.quantity) || 0, chance: Number(p.chance) || 0, rarity: p.rarity || "", detail: p.detail || "",
+    quantity: Number(p.quantity) || 0, chance: Number(p.chance) || 0, rarity: p.rarity || "", partnerId: p.partnerId || "", detail: p.detail || "",
     days: String(p.days || "").split(/[^0-9]+/).filter(Boolean).map(Number)
   }));
   adminMessage("Enregistrement…");
@@ -556,6 +562,8 @@ $("av-save-prizes")?.addEventListener("click", async () => {
     editPrizes = res.prizes.map(p => ({ ...p, days: (p.days || []).join(", ") }));
     renderAdmin();
     adminMessage("Lots enregistrés.");
+    // Lots liés aux partenaires : bandeau et intro mis à jour
+    call("getAdventPartners").then(r => { if (r.success && state) { state.partners = r.partners; renderPartnersBand(); } }).catch(() => {});
   } catch (err) {
     adminMessage("Connexion impossible, merci de réessayer.", true);
   }
@@ -645,28 +653,51 @@ async function playIntro() {
     + '</h2><p class="av-intro-sub">24 cases · 24 jours de cadeaux · du 1er au 24 décembre</p>', "av-s-title");
   await wait(2600); if (!alive()) return;
 
-  // 3. Les partenaires, un par un
-  if (partners.length) {
-    $("av-intro-dots").innerHTML = partners.map(() => "<i></i>").join("");
-    for (let i = 0; i < partners.length; i++) {
-      const p = partners[i];
-      scene('<p class="av-intro-kicker">Avec nos partenaires</p>'
-        + '<div class="av-pa-card">' + partnerLogo(p, "av-pa-logo") + '<h3 class="av-pa-name">' + escapeHtml(p.name) + "</h3>"
-        + (p.text ? '<p class="av-pa-text">' + escapeHtml(p.text) + "</p>" : "") + partnerLink(p, "Découvrir " + escapeHtml(p.name)) + "</div>", "av-s-partner");
-      [...$("av-intro-dots").children].forEach((d, j) => d.classList.toggle("on", j <= i));
-      await wait(2400); if (!alive()) return;
-    }
-  }
-
-  // 4. Écran final : merci aux partenaires, puis on ouvre le calendrier
+  // 3. Les partenaires en bandeau qui défile, chacun avec ses lots à gagner, puis on ouvre le calendrier
   scene((partners.length
-    ? '<p class="av-intro-kicker">Merci à nos partenaires</p><div class="av-pa-wall">'
-      + partners.map(p => (p.url ? '<a href="' + escapeHtml(p.url) + '" target="_blank" rel="noopener" title="' + escapeHtml(p.name) + '">' : '<span title="' + escapeHtml(p.name) + '">')
-        + partnerLogo(p, "av-pa-mini") + (p.url ? "</a>" : "</span>")).join("") + "</div>"
+    ? '<p class="av-intro-kicker">Avec nos partenaires</p><h2 class="av-intro-title av-intro-title-static av-intro-title-sm">Des cadeaux à gagner chez eux</h2>'
+      + '<div class="av-band av-band-intro"></div>'
     : '<p class="av-intro-kicker">Hiptown Bordeaux</p><h2 class="av-intro-title av-intro-title-static">À vous de jouer !</h2>')
-    + '<button type="button" class="av-btn av-intro-go" id="av-intro-go">Ouvrir mon calendrier</button>', "av-s-end");
+    + '<button type="button" class="av-btn av-intro-go" id="av-intro-go">Ouvrir mon calendrier</button>', "av-s-band");
+  if (partners.length) fillBand($("av-intro-stage").querySelector(".av-band"), partners);
   $("av-intro-go").addEventListener("click", stopIntro);
   $("av-intro-go").focus();
+}
+
+/** Carte d'un partenaire dans le bandeau : logo, nom, phrase, lots à gagner chez lui, lien. */
+function partnerCard(p) {
+  const prizes = p.prizes || [];
+  return '<div class="av-band-card">' + partnerLogo(p, "av-pa-logo") + '<h3 class="av-pa-name">' + escapeHtml(p.name) + "</h3>"
+    + (p.text ? '<p class="av-pa-text">' + escapeHtml(p.text) + "</p>" : "")
+    + (prizes.length ? '<div class="av-band-prizes"><span>À gagner</span>' + prizes.map(x =>
+        '<b class="av-band-prize av-band-' + escapeHtml(x.rarity || "commun") + '">' + escapeHtml(x.label)
+        + (x.quantity > 0 ? " <small>×" + x.quantity + "</small>" : "") + "</b>").join("") + "</div>" : "")
+    + partnerLink(p, "Découvrir") + "</div>";
+}
+
+/**
+ * Remplit un bandeau de partenaires. S'ils tiennent tous dans la largeur, ils restent immobiles,
+ * centrés ; sinon ils défilent en boucle (la liste est doublée pour un défilement sans à-coup),
+ * et le défilement s'arrête sous le doigt ou la souris.
+ */
+function fillBand(band, partners) {
+  band.classList.remove("av-band-fit", "av-band-move");
+  band.innerHTML = '<div class="av-band-track">' + partners.map(partnerCard).join("") + "</div>";
+  const track = band.firstChild;
+  requestAnimationFrame(() => {
+    if (track.scrollWidth <= band.clientWidth + 2) { band.classList.add("av-band-fit"); return; }
+    track.insertAdjacentHTML("beforeend", '<div class="av-band-copy" aria-hidden="true">' + partners.map(partnerCard).join("") + "</div>");
+    track.querySelectorAll(".av-band-copy a").forEach(a => { a.tabIndex = -1; });
+    track.style.animationDuration = Math.max(12, partners.length * 5) + "s";
+    band.classList.add("av-band-move");
+  });
+}
+
+/** Bandeau des partenaires sous le calendrier. */
+function renderPartnersBand() {
+  const partners = (state && state.partners) || [];
+  $("av-partners-section").hidden = !partners.length;
+  if (partners.length) fillBand($("av-partners-band"), partners);
 }
 
 function stopIntro() {
@@ -695,6 +726,7 @@ async function loadPartnersAdmin() {
     if (!res.success) return partnersMessage(res.message, true);
     editPartners = res.partners.map(p => ({ ...p }));
     renderPartnersAdmin();
+    if (admin) renderAdmin();
   } catch (err) {
     partnersMessage("Connexion impossible, merci de réessayer.", true);
   }
@@ -778,6 +810,8 @@ $("av-save-partners")?.addEventListener("click", async () => {
     editPartners = res.partners.map(p => ({ ...p }));
     if (state) state.partners = res.partners;
     renderPartnersAdmin();
+    if (admin) renderAdmin();
+    renderPartnersBand();
     partnersMessage("Partenaires enregistrés.");
   } catch (err) {
     partnersMessage("Connexion impossible, merci de réessayer.", true);

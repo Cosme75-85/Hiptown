@@ -1822,3 +1822,33 @@ body.av-noscroll { overflow: hidden; }
 @keyframes av-fade-up { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes av-card-in { from { transform: perspective(800px) rotateY(-70deg) translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .av-gift, .av-intro-title .av-word span, .av-intro-kicker, .av-intro-sub, .av-pa-card, .av-pa-wall > *, .av-intro-go { animation: none; } }
+
+/* Bandeau des partenaires (intro et sous le calendrier) */
+.av-intro-stage.av-s-band { width: min(1100px, 100%); }
+.av-intro-title-sm { font-size: clamp(24px, 5vw, 38px); }
+.av-band { width: 100%; overflow: hidden; padding: 10px 0 14px; -webkit-mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.av-band-fit { -webkit-mask: none; mask: none; }
+.av-band-track { display: flex; gap: 14px; width: max-content; }
+.av-band-fit .av-band-track { width: auto; flex-wrap: wrap; justify-content: center; }
+.av-band-copy { display: flex; gap: 14px; }
+.av-band-move .av-band-track { animation: av-marquee linear infinite; }
+.av-band-move:hover .av-band-track, .av-band-move:active .av-band-track { animation-play-state: paused; }
+.av-band-card { flex: none; width: 220px; background: #fff; color: var(--navy); border-radius: 18px; padding: 16px 14px 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,.35); }
+.av-band-card .av-pa-logo { width: 84px; height: 84px; border-radius: 16px; }
+.av-band-card .av-logo-letter { font-size: 34px; }
+.av-band-card .av-pa-name { font-size: 18px; }
+.av-band-card .av-pa-text { font-size: 13px; line-height: 1.35; }
+.av-band-card .av-pa-link { margin-top: auto; font-size: 13px; padding: 7px 14px; }
+.av-band-prizes { width: 100%; display: flex; flex-direction: column; gap: 5px; margin: 4px 0 6px; padding-top: 8px; border-top: 1px dashed #d8d4f5; }
+.av-band-prizes > span { font-size: 11px; font-weight: 800; color: #7c74c9; }
+.av-band-prize { display: block; font-size: 13px; font-weight: 700; padding: 5px 8px; border-radius: 9px; background: #e0f7f2; color: #0f5e57; }
+.av-band-prize small { font-weight: 600; opacity: .75; }
+.av-band-rare { background: #ece9ff; color: #3f33b0; }
+.av-band-legendaire { background: linear-gradient(90deg, #ffe700, #ffc400); color: var(--navy); }
+.av-s-band .av-band { animation: av-fade-up .7s .3s both; }
+.av-partners-section .av-band { padding-bottom: 6px; }
+.av-m-partner { margin: -10px 0 16px !important; font-size: 13px; font-weight: 700; color: #7c74c9 !important; }
+@keyframes av-marquee { to { transform: translateX(calc(-50% - 7px)); } }
+@media (prefers-reduced-motion: reduce) { .av-band-move .av-band-track { animation: none; } .av-band-move { overflow-x: auto; } }
+.av-band-card .av-pa-name { color: var(--navy); margin: 0; }
+@media (max-width: 640px) { .av-band-card { width: 168px; padding: 12px 10px; } .av-band-card .av-pa-logo { width: 64px; height: 64px; } .av-band-card .av-pa-name { font-size: 16px; } .av-band-prize { font-size: 12px; } }
