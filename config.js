@@ -91,8 +91,17 @@ const PORTAIL = {
   // à l'inscription, ce choix passe directement au formulaire avec ce site.
   meetingRoomSite: "nabo06",
 
-  // Sites qui ont un espace coworking (signalés « (coworking) » dans Gestion des comptes)
+  // Espace coworking de chaque ville : un seul au plus par ville (Bordeaux : NABO06,
+  // Marseille : PAMA02). Dans Gestion, ces espaces ont deux parties, « Clients en
+  // coworking » et « Salles de réunion » ; les autres espaces n'ont que « Clients ».
   coworkingSites: ["nabo06", "pama02"],
+
+  // Espaces partagés par plusieurs entreprises : dans Gestion, l'espace est divisé en
+  // une partie par entreprise (les comptes sont rangés d'après le nom de leur entreprise).
+  // Pour les autres espaces, le nom de l'entreprise occupante vient des comptes.
+  siteOccupants: {
+    nabo04: ["Asphalte", "Mano-Mano"],
+  },
 
   // Crédits coworking proposés par poste négocié dans le contrat (modifiable
   // entreprise par entreprise dans « Gestion des entreprises »)
