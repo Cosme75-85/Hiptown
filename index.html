@@ -1256,6 +1256,8 @@
          L'admin général choisit la ville avec les boutons ; un admin de ville ne voit que la sienne. -->
     <div class="sites-city-filter" id="sites-city-filter" hidden></div>
     <div id="sites-by-city"></div>
+    <!-- Ajout / retrait des sites par l'admin de ville (sites.js) -->
+    <div id="sites-manage" hidden></div>
   </section>
 
   <!-- PAGE RÉSERVATION DES SALLES (ESPACE COWORKING) — logique dans resa-coworking.js -->
@@ -1613,6 +1615,7 @@
 <script type="module" src="messagerie.js"></script>
 <script type="module" src="communications.js"></script>
 <script type="module" src="accueil-visites.js"></script>
+<script type="module" src="sites.js"></script>
 <script type="module" src="avent.js"></script>
 <script>
   if ("serviceWorker" in navigator) {

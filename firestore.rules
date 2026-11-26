@@ -325,6 +325,27 @@ service cloud.firestore {
       allow delete: if canManageAccueilCity(resource.data.city);
     }
 
+    // ── Sites de chaque ville (sites.js) ─────────────────────
+    // citySites/{ville} = { city, sites: { pama01: { name, address } }, order: [ids], updatedAt }.
+    // Lisible par tous (l'inscription montre les sites sans connexion). Modifiable par
+    // l'admin général (toutes les villes) et l'admin de ville (la sienne), pas par l'équipe de site.
+    function canManageCitySites(city) {
+      return isSuperAdmin() || (isAdmin() && myLevel() == 'city' && city == mySite());
+    }
+
+    function isValidCitySites(city, data) {
+      return data.keys().hasOnly(['city', 'sites', 'order', 'updatedAt'])
+        && data.city == city
+        && data.sites is map && data.sites.size() <= 60
+        && data.order is list && data.order.size() <= 60;
+    }
+
+    match /citySites/{city} {
+      allow read: if true;
+      allow create, update: if canManageCitySites(city) && isValidCitySites(city, request.resource.data);
+      allow delete: if canManageCitySites(city);
+    }
+
     // Ancienne collection des réservations : plus utilisée (les réservations sont dans
     // Google Agenda, via l'outil de réservation). Fermée pour qu'on ne puisse rien y lire ni écrire.
     match /bookings/{bookingId} {

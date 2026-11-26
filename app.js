@@ -561,17 +561,20 @@
   // ── Sites ─────────────────────────────────────────────
   // Une rubrique par ville et une carte par site, d'après PORTAIL.cities (config.js) :
   // pour ajouter un site (IFPA01, ARLY01...), il suffit de l'ajouter dans config.js.
-  (function buildSitesPage() {
+  // Reconstruite aussi quand les sites enregistrés par les admins de ville arrivent (sites.js).
+  window.rebuildSitesPage = function buildSitesPage() {
     var holder = document.getElementById("sites-by-city");
     var filter = document.getElementById("sites-city-filter");
+    holder.innerHTML = ""; filter.innerHTML = "";
     var esc = function (t) { var d = document.createElement("div"); d.textContent = t; return d.innerHTML; };
     Object.keys(PORTAIL.cities || {}).forEach(function (cityId) {
       var city = PORTAIL.cities[cityId];
       var ids = Object.keys(city.sites || {});
-      if (!ids.length) return;
+      // Une ville sans site garde sa rubrique (vide) : son admin peut y ajouter le premier site
       holder.insertAdjacentHTML("beforeend",
         '<div class="sites-city" data-city="' + esc(cityId) + '">' +
           '<h3 class="sites-city-title">' + esc(city.name) + '</h3>' +
+          (ids.length ? '' : '<p class="profile-help">Aucun site pour l\'instant.</p>') +
           '<div class="sites-grid">' + ids.map(function (id) {
             var parts = city.sites[id].split(" — ");
             return '<div class="site-card" data-site="' + esc(id) + '"><div class="site-code">' + esc(parts[0]) +
@@ -581,7 +584,8 @@
       filter.insertAdjacentHTML("beforeend",
         '<button type="button" class="sites-city-btn" data-city="' + esc(cityId) + '">' + esc(city.name) + '</button>');
     });
-  })();
+  };
+  window.rebuildSitesPage();
 
   // Page « Sites » : affiche une seule ville (boutons en haut quand on voit plusieurs villes).
   // Appelée par app-auth.js avec la liste des villes visibles par le compte connecté.
@@ -592,17 +596,22 @@
     document.querySelectorAll("#sites-city-filter .sites-city-btn").forEach(function (b) {
       b.classList.toggle("active", b.getAttribute("data-city") === cityId);
     });
+    // Bouton « Gérer les sites » de la ville affichée (sites.js)
+    document.dispatchEvent(new CustomEvent("hiptown-sites-city", { detail: cityId }));
   };
   document.getElementById("sites-city-filter").addEventListener("click", function (e) {
     var btn = e.target.closest(".sites-city-btn");
     if (btn) window.showSitesCity(btn.getAttribute("data-city"));
   });
 
-  document.querySelectorAll(".site-card").forEach(function (card) {
-    card.addEventListener("click", function () {
-      var siteId = this.getAttribute("data-site");
+  document.getElementById("sites-by-city").addEventListener("click", function (e) {
+    var card = e.target.closest(".site-card");
+    if (!card) return;
+    (function () {
+      var siteId = card.getAttribute("data-site");
       var cityOf = Object.keys(PORTAIL.cities || {}).find(function (c) { return (PORTAIL.cities[c].sites || {})[siteId]; });
-      var site   = SITES[siteId] || (cityOf ? { name: PORTAIL.cities[cityOf].sites[siteId], tools: [] } : null);
+      // Nom : celui de la liste des sites (modifiable par l'admin de ville) ; outils : SITES ci-dessus
+      var site   = cityOf ? { name: PORTAIL.cities[cityOf].sites[siteId], tools: (SITES[siteId] || {}).tools || [] } : SITES[siteId];
       if (!site) return;
       siteDetailTitle.textContent = site.name;
       siteDetailTools.innerHTML   = "";
@@ -634,7 +643,7 @@
 
       hideAll(); stepSiteDetail.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+    })();
   });
 
   // ── Recherche outils Hiptown ──────────────────────────

@@ -639,7 +639,9 @@ function applySiteAccess() {
   });
   // Une ville sans aucun site visible (ex. Marseille pour l'équipe de Bordeaux) est masquée en entier
   const groups = [...document.querySelectorAll("#step-hiptown-espaces .sites-city")];
-  groups.forEach(g => { g.hidden = !g.querySelector(".site-card:not([hidden])"); });
+  // (sauf pour qui peut y ajouter des sites : l'admin général et l'admin de cette ville)
+  const canAddSites = city => !scope || (!scope.siteIds && scope.city === city);
+  groups.forEach(g => { g.hidden = !g.querySelector(".site-card:not([hidden])") && !canAddSites(g.dataset.city); });
   // Boutons de ville seulement quand le compte voit plusieurs villes (admin général) :
   // on montre une ville à la fois, celle du compte ou la première.
   const shown = groups.filter(g => !g.hidden).map(g => g.dataset.city);
@@ -649,7 +651,9 @@ function applySiteAccess() {
     filter.querySelectorAll(".sites-city-btn").forEach(b => { b.hidden = !shown.includes(b.dataset.city); });
   }
   if (shown.length && window.showSitesCity) {
-    window.showSitesCity(shown.includes(scope?.city) ? scope.city : shown.includes(PORTAIL.defaultSite) ? PORTAIL.defaultSite : shown[0]);
+    const current = document.querySelector("#sites-city-filter .sites-city-btn.active")?.dataset.city;
+    window.showSitesCity(shown.includes(scope?.city) ? scope.city : shown.includes(current) ? current
+      : shown.includes(PORTAIL.defaultSite) ? PORTAIL.defaultSite : shown[0]);
   }
   const grid = document.getElementById("sites-by-city");
   let empty = document.getElementById("sites-none");
@@ -660,8 +664,12 @@ function applySiteAccess() {
     empty.textContent = "Aucun site ne t'est attribué pour l'instant.";
     grid.after(empty);
   }
-  if (empty) empty.hidden = visible > 0;
+  if (empty) empty.hidden = visible > 0 || shown.length > 0;
 }
+// Sites ajoutés ou retirés par un admin de ville (sites.js) : la page Sites est reconstruite
+document.addEventListener("hiptown-sites-changed", () => {
+  if (session?.profile?.role === "admin") applySiteAccess();
+});
 
 /** Libellé court du rattachement d'un compte (ville, niveau, sites). */
 function accountPlaceLabel(u) {
@@ -1965,6 +1973,7 @@ if (signupCity && signupSite) {
     showAuthStep("signup");
   };
   signupCity.addEventListener("change", drawSiteCards);
+  document.addEventListener("hiptown-sites-changed", drawSiteCards);
   drawSiteCards();
 }
 
