@@ -797,6 +797,49 @@ footer {
 .sites-city { margin-bottom: 20px; }
 .sites-city.sites-city-off { display: none; }
 #sites-manage { margin-top: 8px; }
+/* Case « Contacts » en haut de la page Sites (contacts.js) */
+#sites-contacts { margin-bottom: 16px; }
+.contacts-box {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.contacts-box:hover, .contacts-box.open { border-color: var(--yellow); box-shadow: 0 4px 16px rgba(30,24,71,0.08); }
+.contacts-head {
+  font: inherit; width: 100%; background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; padding: 18px 16px; text-align: left; color: var(--navy);
+}
+.contacts-icon { font-size: 22px; }
+.contacts-title { font-size: 16px; font-weight: 800; }
+.contacts-sub { font-size: 12px; color: var(--text-soft); flex: 1; }
+.contacts-chevron { font-size: 12px; color: var(--text-pale); }
+.contacts-body { padding: 0 16px 16px; }
+.contacts-search { margin: 0 0 10px; }
+.contacts-add-btn { margin: 0 0 12px; }
+.contacts-group { margin-top: 10px; }
+.contacts-group-title {
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--navy); margin: 0 0 6px; padding-bottom: 4px; border-bottom: 2px solid var(--border);
+}
+.contact-card {
+  display: flex; gap: 10px; align-items: flex-start; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.contact-main { min-width: 0; }
+.contact-name { font-weight: 700; color: var(--text-dark); overflow-wrap: anywhere; }
+.contact-role { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+.contact-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 13px; }
+.contact-links a { color: #0369a1; text-decoration: none; font-weight: 600; overflow-wrap: anywhere; }
+.contact-note { font-size: 12px; color: var(--text-soft); margin-top: 4px; white-space: pre-line; overflow-wrap: anywhere; }
+.contact-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.contact-edit {
+  font: inherit; font-size: 12px; font-weight: 700;
+  background: none; border: 1.5px solid var(--border); color: var(--navy);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+.contact-form { background: var(--bg); border-radius: var(--radius-md); padding: 12px; margin: 8px 0 12px; }
+.contact-form .profile-label:first-of-type { margin-top: 4px; }
 .sites-editor {
   background: var(--white);
   border: 1.5px solid var(--border);
