@@ -922,6 +922,67 @@ function categoryOf(u) {
   return role === "salle" ? "sdr" : "clients";
 }
 
+// ── Parties d'un espace dans Gestion (comptes et entreprises) ──
+// Coworking de la ville : « Clients en coworking » et « Salles de réunion ».
+// Espace partagé (PORTAIL.siteOccupants, ex. NABO04) : une partie par entreprise.
+// Autres espaces : une seule partie « Clients ».
+const normCompanyName = n => String(n || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function isCoworkingSite(siteId) {
+  return !!siteId && (PORTAIL.coworkingSites || []).includes(siteId);
+}
+
+function configuredOccupants(siteId) {
+  return (PORTAIL.siteOccupants || {})[siteId] || [];
+}
+
+// « Mano-Mano », « ManoMano » ou « ManoMano SAS » : même entreprise
+function occupantMatches(occupant, companyName) {
+  const a = normCompanyName(occupant), b = normCompanyName(companyName);
+  return !!a && !!b && (b.includes(a) || a.includes(b));
+}
+
+/** Découpe les éléments d'un espace en parties : [{ label, items }]. */
+function siteParts(siteId, items, nameOf, catOf) {
+  if (isCoworkingSite(siteId)) {
+    return [
+      { label: "💼 Clients en coworking", items: items.filter(x => catOf(x) !== "sdr") },
+      { label: "🚪 Salles de réunion", items: items.filter(x => catOf(x) === "sdr") },
+    ];
+  }
+  const occupants = configuredOccupants(siteId);
+  if (occupants.length > 1) {
+    const parts = occupants.map(o => ({ label: "🏢 " + o, items: items.filter(x => occupantMatches(o, nameOf(x))) }));
+    const rest = items.filter(x => !occupants.some(o => occupantMatches(o, nameOf(x))));
+    if (rest.length) parts.push({ label: "👥 Autres clients", items: rest });
+    return parts;
+  }
+  return [{ label: "👥 Clients", items }];
+}
+
+/**
+ * Titre de la case d'un espace : son nom, puis « (coworking) » ou le nom des
+ * entreprises qui l'occupent. Affiché seulement dans Gestion (équipe Hiptown).
+ */
+function siteBoxTitle(siteId, companyNamesOnSite = []) {
+  if (isCoworkingSite(siteId)) return siteLabel(siteId) + " (coworking)";
+  let names = configuredOccupants(siteId);
+  if (!names.length) {
+    const seen = new Map();
+    companyNamesOnSite.map(n => String(n || "").trim()).filter(Boolean).forEach(n => {
+      const k = normCompanyName(n);
+      if (k && !seen.has(k)) seen.set(k, n);
+    });
+    names = [...seen.values()].sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+  }
+  // Nom déjà dans celui de l'espace (« NABO02 — … CCI Tetris ») : pas de doublon
+  const label = normCompanyName(siteLabel(siteId));
+  names = names.filter(n => !label.includes(normCompanyName(n)));
+  if (!names.length) return siteLabel(siteId);
+  const shown = names.slice(0, 3).join(", ") + (names.length > 3 ? ` +${names.length - 3}` : "");
+  return siteLabel(siteId) + " · " + shown;
+}
+
 function categoriesForMe() {
   return myAdminLevel() === "site" ? ["allClients"] : ["allClients", "salaries"];
 }
@@ -969,12 +1030,13 @@ function renderAllUsersList() {
         shown.forEach(u => listEl.appendChild(createUserCard(u, companyNames)));
         return;
       }
-      // Clients d'un site : salles de réunion d'un côté, clients coworking de l'autre ;
-      // dans chaque colonne, regroupés par entreprise (A → Z), puis par nom
-      listEl.className = "companies-columns account-list";
+      // Clients d'un espace : ses parties (voir siteParts) ; dans chaque partie,
+      // les comptes regroupés par entreprise (A → Z), puis par nom
+      const siteId = key.includes("|site|") ? key.split("|site|")[1] : "";
+      const parts = siteParts(siteId, shown, u => companyNames[u.companyId] || u.companyNameHint, categoryOf);
+      listEl.className = (parts.length > 1 ? "companies-columns " : "") + "account-list";
       listEl.innerHTML = "";
-      [["sdr", "🚪 Salles de réunion"], ["clients", "💼 Clients coworking"]].forEach(([cat, label]) => {
-        const users = shown.filter(u => categoryOf(u) === cat);
+      parts.forEach(({ label, items: users }) => {
         const col = document.createElement("div");
         col.className = "companies-col";
         col.innerHTML = `<p class="account-col-title">${label} <span>${users.length}</span></p><div class="info-grid"></div>`;
@@ -1033,8 +1095,11 @@ function renderAllUsersList() {
     const extra = [...new Set(clients.map(u => u.siteId).filter(id => id && !sites.includes(id)))].sort();
     sites = sites.concat(extra);
     sites.forEach(siteId => {
-      const isCoworking = (PORTAIL.coworkingSites || []).includes(siteId);
-      addBox(cityKey + "|site|" + siteId, siteLabel(siteId) + (isCoworking ? " (coworking)" : ""), clients.filter(u => u.siteId === siteId));
+      // Nom des entreprises de l'espace, pris sur tous ses comptes (pas seulement ceux de la recherche)
+      const occupantNames = adminUsersCache
+        .filter(u => u.siteId === siteId && categoryOf(u) === "clients" && u.status !== "rejected")
+        .map(u => companyNames[u.companyId] || u.companyNameHint);
+      addBox(cityKey + "|site|" + siteId, siteBoxTitle(siteId, occupantNames), clients.filter(u => u.siteId === siteId));
     });
     const noSite = clients.filter(u => !u.siteId);
     if (noSite.length) {
@@ -1424,21 +1489,31 @@ function renderCompaniesList() {
     const siteRooms = rooms.filter(g => g.site === siteId).sort(sortFr);
     const n = siteCoworking.length + siteRooms.length;
     if (!n) return;
-    const isCoworking = (PORTAIL.coworkingSites || []).includes(siteId);
-    const title = siteId ? siteLabel(siteId) + (isCoworking ? " (coworking)" : "") : "Sans site (aucun salarié rattaché à un site)";
+    // Titre : nom de l'espace et entreprises qui l'occupent (Gestion : équipe Hiptown seulement)
+    const title = siteId
+      ? siteBoxTitle(siteId, siteCoworking.map(x => x.name))
+      : "Sans site (aucun salarié rattaché à un site)";
     const box = accountBox("companies|" + siteId, title, n, !!term || sites.length === 1, "city");
     const body = box.querySelector(".account-box-body");
-    body.innerHTML = `<div class="companies-columns">
-        <div class="companies-col"><p class="account-company-title">🚪 Salles de réunion <span>${siteRooms.length}</span></p><div class="info-grid col-rooms"></div></div>
-        <div class="companies-col"><p class="account-company-title">💼 Clients coworking <span>${siteCoworking.length}</span></p><div class="info-grid col-coworking"></div></div>
-      </div>`;
-    const empty = text => `<p style="color:#94a3b8;padding:8px 12px;font-size:13px;">${text}</p>`;
-    const roomsEl = body.querySelector(".col-rooms");
-    const coworkEl = body.querySelector(".col-coworking");
-    roomsEl.innerHTML = siteRooms.length ? "" : empty("Aucun client salle de réunion.");
-    coworkEl.innerHTML = siteCoworking.length ? "" : empty("Aucun client coworking.");
-    siteRooms.forEach(g => roomsEl.appendChild(createRoomClientCard(g)));
-    siteCoworking.forEach(x => coworkEl.appendChild(createCompanyCard(x.company, (companyMembers[x.company.id] || []).length)));
+    // Parties de l'espace (voir siteParts) : coworking → clients en coworking et salles de
+    // réunion ; NABO04 → une partie par entreprise ; sinon une seule partie « Clients »
+    const items = [
+      ...siteCoworking.map(x => ({ cat: "clients", name: x.name, el: () => createCompanyCard(x.company, (companyMembers[x.company.id] || []).length) })),
+      ...siteRooms.map(g => ({ cat: "sdr", name: g.name, el: () => createRoomClientCard(g) })),
+    ].sort(sortFr);
+    const parts = siteParts(siteId, items, x => x.name, x => x.cat);
+    const wrap = document.createElement("div");
+    if (parts.length > 1) wrap.className = "companies-columns";
+    parts.forEach(({ label, items: partItems }) => {
+      const col = document.createElement("div");
+      col.className = "companies-col";
+      col.innerHTML = `<p class="account-company-title">${escapeHtml(label)} <span>${partItems.length}</span></p><div class="info-grid"></div>`;
+      const colEl = col.querySelector(".info-grid");
+      if (!partItems.length) colEl.innerHTML = '<p style="color:#94a3b8;padding:8px 12px;font-size:13px;">Aucun client.</p>';
+      partItems.forEach(x => colEl.appendChild(x.el()));
+      wrap.appendChild(col);
+    });
+    body.appendChild(wrap);
     list.appendChild(box);
   });
 }
