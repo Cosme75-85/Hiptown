@@ -66,6 +66,18 @@ function canEdit(city) {
 }
 
 function renderManage() {
+  // Le formulaire est redessiné à chaque ajout ou retrait : on garde la page au même endroit
+  // (la zone « Nouveau site » reste à la même hauteur à l'écran pour enchaîner les ajouts)
+  const anchorTop = () => document.querySelector("#sites-manage .sites-editor-add")?.getBoundingClientRect().top;
+  const before = anchorTop();
+  const scrollY = window.scrollY;
+  renderManageInner();
+  window.scrollTo(0, scrollY);
+  const after = anchorTop();
+  if (before != null && after != null) window.scrollBy(0, after - before);
+}
+
+function renderManageInner() {
   const box = document.getElementById("sites-manage");
   if (!box) return;
   if (!canEdit(shownCity)) { box.hidden = true; box.innerHTML = ""; draft = null; return; }
@@ -162,7 +174,8 @@ function addSite() {
   });
   draft.sort((a, b) => a.id.localeCompare(b.id));
   renderManage();
-  message(`${value} ajouté. Pense à enregistrer.`);
+  message(`${value} ajouté. Tu peux en ajouter d'autres, puis enregistrer.`);
+  document.querySelector("#sites-manage .se-new-name")?.focus({ preventScroll: true });
 }
 
 async function saveSites() {
@@ -178,8 +191,13 @@ async function saveSites() {
   try {
     await setDoc(doc(db, "citySites", city), data);
     applyCityDoc(city, data);
-    draft = null;
+    const scrollY = window.scrollY;
     sitesChanged();
+    // Le formulaire reste ouvert sur la même ville, au même endroit
+    shownCity = city;
+    openEditor();
+    window.scrollTo(0, scrollY);
+    message("Sites enregistrés.");
   } catch (err) {
     console.error(err);
     btn.disabled = false;

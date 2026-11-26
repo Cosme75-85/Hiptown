@@ -565,6 +565,9 @@
   window.rebuildSitesPage = function buildSitesPage() {
     var holder = document.getElementById("sites-by-city");
     var filter = document.getElementById("sites-city-filter");
+    // On garde la ville affichée (sinon, après un ajout de site, la page revenait à Bordeaux)
+    var activeBtn = filter.querySelector(".sites-city-btn.active");
+    var keepCity = activeBtn ? activeBtn.getAttribute("data-city") : null;
     holder.innerHTML = ""; filter.innerHTML = "";
     var esc = function (t) { var d = document.createElement("div"); d.textContent = t; return d.innerHTML; };
     Object.keys(PORTAIL.cities || {}).forEach(function (cityId) {
@@ -584,6 +587,7 @@
       filter.insertAdjacentHTML("beforeend",
         '<button type="button" class="sites-city-btn" data-city="' + esc(cityId) + '">' + esc(city.name) + '</button>');
     });
+    if (keepCity && holder.querySelector('.sites-city[data-city="' + keepCity + '"]')) window.showSitesCity(keepCity);
   };
   window.rebuildSitesPage();
 
