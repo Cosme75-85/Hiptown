@@ -559,10 +559,50 @@
   });
 
   // ── Sites ─────────────────────────────────────────────
+  // Une rubrique par ville et une carte par site, d'après PORTAIL.cities (config.js) :
+  // pour ajouter un site (IFPA01, ARLY01...), il suffit de l'ajouter dans config.js.
+  (function buildSitesPage() {
+    var holder = document.getElementById("sites-by-city");
+    var filter = document.getElementById("sites-city-filter");
+    var esc = function (t) { var d = document.createElement("div"); d.textContent = t; return d.innerHTML; };
+    Object.keys(PORTAIL.cities || {}).forEach(function (cityId) {
+      var city = PORTAIL.cities[cityId];
+      var ids = Object.keys(city.sites || {});
+      if (!ids.length) return;
+      holder.insertAdjacentHTML("beforeend",
+        '<div class="sites-city" data-city="' + esc(cityId) + '">' +
+          '<h3 class="sites-city-title">' + esc(city.name) + '</h3>' +
+          '<div class="sites-grid">' + ids.map(function (id) {
+            var parts = city.sites[id].split(" — ");
+            return '<div class="site-card" data-site="' + esc(id) + '"><div class="site-code">' + esc(parts[0]) +
+              '</div><div class="site-name">' + esc(parts.slice(1).join(" — ")) + '</div></div>';
+          }).join("") + '</div>' +
+        '</div>');
+      filter.insertAdjacentHTML("beforeend",
+        '<button type="button" class="sites-city-btn" data-city="' + esc(cityId) + '">' + esc(city.name) + '</button>');
+    });
+  })();
+
+  // Page « Sites » : affiche une seule ville (boutons en haut quand on voit plusieurs villes).
+  // Appelée par app-auth.js avec la liste des villes visibles par le compte connecté.
+  window.showSitesCity = function (cityId) {
+    document.querySelectorAll("#step-hiptown-espaces .sites-city").forEach(function (g) {
+      g.classList.toggle("sites-city-off", g.getAttribute("data-city") !== cityId);
+    });
+    document.querySelectorAll("#sites-city-filter .sites-city-btn").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-city") === cityId);
+    });
+  };
+  document.getElementById("sites-city-filter").addEventListener("click", function (e) {
+    var btn = e.target.closest(".sites-city-btn");
+    if (btn) window.showSitesCity(btn.getAttribute("data-city"));
+  });
+
   document.querySelectorAll(".site-card").forEach(function (card) {
     card.addEventListener("click", function () {
       var siteId = this.getAttribute("data-site");
-      var site   = SITES[siteId];
+      var cityOf = Object.keys(PORTAIL.cities || {}).find(function (c) { return (PORTAIL.cities[c].sites || {})[siteId]; });
+      var site   = SITES[siteId] || (cityOf ? { name: PORTAIL.cities[cityOf].sites[siteId], tools: [] } : null);
       if (!site) return;
       siteDetailTitle.textContent = site.name;
       siteDetailTools.innerHTML   = "";
