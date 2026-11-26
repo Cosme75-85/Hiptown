@@ -32,6 +32,7 @@ const PORTAIL = {
       name: "Bordeaux",
       code: "NABO",
       sites: {
+        nabo01: "NABO01",
         nabo02: "NABO02 — Place de la Bourse CCI Tetris",
         nabo03: "NABO03 — Ferrere",
         nabo04: "NABO04 — Chartrons",
@@ -41,9 +42,29 @@ const PORTAIL = {
         nabo08: "NABO08 — Madéra",
       },
     },
-    // Sites à compléter (identifiant en minuscules : "Code — nom", comme Bordeaux)
-    paris:     { name: "Paris",     code: "IFPA", sites: {} },
-    lyon:      { name: "Lyon",      code: "ARLY", sites: {} },
+    // 5 sites par ville pour commencer : noms, adresses et autres sites se complètent depuis la page Sites
+    paris: {
+      name: "Paris",
+      code: "IFPA",
+      sites: {
+        ifpa01: "IFPA01",
+        ifpa02: "IFPA02",
+        ifpa03: "IFPA03",
+        ifpa04: "IFPA04",
+        ifpa05: "IFPA05",
+      },
+    },
+    lyon: {
+      name: "Lyon",
+      code: "ARLY",
+      sites: {
+        arly01: "ARLY01",
+        arly02: "ARLY02",
+        arly03: "ARLY03",
+        arly04: "ARLY04",
+        arly05: "ARLY05",
+      },
+    },
     marseille: {
       name: "Marseille",
       code: "PAMA",
@@ -64,8 +85,28 @@ const PORTAIL = {
         pama13: "PAMA13",
       },
     },
-    rennes:    { name: "Rennes",    code: "BRRE", sites: {} },
-    lille:     { name: "Lille",     code: "HFLI", sites: {} },
+    rennes: {
+      name: "Rennes",
+      code: "BRRE",
+      sites: {
+        brre01: "BRRE01",
+        brre02: "BRRE02",
+        brre03: "BRRE03",
+        brre04: "BRRE04",
+        brre05: "BRRE05",
+      },
+    },
+    lille: {
+      name: "Lille",
+      code: "HFLI",
+      sites: {
+        hfli01: "HFLI01",
+        hfli02: "HFLI02",
+        hfli03: "HFLI03",
+        hfli04: "HFLI04",
+        hfli05: "HFLI05",
+      },
+    },
   },
   // Adresse de chaque site, affichée sous son nom quand un client choisit son site
   // à l'inscription. Un site sans adresse ici s'affiche sans adresse.
