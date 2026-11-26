@@ -170,11 +170,13 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
   const weak = passwordProblem(password);
   if (weak) { showAuthError(weak); return; }
   try {
-    const user = await signUp(email, password, role, company, firstName, lastName, birthDate,
+    const { user, verificationFailed } = await signUp(email, password, role, company, firstName, lastName, birthDate,
       { site: city, siteId: siteId || null });
     // La connexion a pu être routée avant que la fiche soit écrite : on relance
     // le routage avec la fiche, pour afficher le bon écran « en attente ».
     await routeSession(user, await getUserProfile(user.uid));
+    // Le client ne doit pas attendre un e-mail qui n'est jamais parti
+    if (verificationFailed) showVerifyMessage("L'e-mail de vérification n'a pas pu partir. Cliquez sur « Renvoyer l'e-mail ».", false);
   } catch (err) {
     showAuthError(friendlyError(err));
   }

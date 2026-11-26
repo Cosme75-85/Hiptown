@@ -33,6 +33,7 @@ import {
  * @param {string} firstName
  * @param {string} lastName
  * @param {string} birthDate - format YYYY-MM-DD (issu d'un <input type="date">)
+ * @returns {{ user, verificationFailed: boolean }} verificationFailed : l'e-mail de vérification n'est pas parti
  */
 export async function signUp(email, password, requestedRole, companyNameHint = "", firstName = "", lastName = "", birthDate = "", place = {}) {
   if (requestedRole !== "salle" && requestedRole !== "coworking") {
@@ -56,11 +57,15 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     siteId: place.siteId || null,            // site choisi par le client (ex. "nabo06")
     createdAt: serverTimestamp()
   });
+  let verificationFailed = false;
   if (requestedRole === "salle") {
-    await sendVerificationEmail().catch(err => console.error("E-mail de vérification non envoyé", err));
+    await sendVerificationEmail().catch(err => {
+      console.error("E-mail de vérification non envoyé", err);
+      verificationFailed = true;
+    });
   }
   await notifyAccountRequest(cred.user);
-  return cred.user;
+  return { user: cred.user, verificationFailed };
 }
 
 /**
