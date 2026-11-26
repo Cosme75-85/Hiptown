@@ -795,6 +795,26 @@ footer {
 }
 
 .sites-city { margin-bottom: 20px; }
+.sites-city.sites-city-off { display: none; }
+.sites-city-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sites-city-filter[hidden], .sites-city-btn[hidden] { display: none; }
+.sites-city-btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  color: var(--navy);
+  cursor: pointer;
+}
+.sites-city-btn.active { background: var(--navy); border-color: var(--navy); color: #fff; }
 .sites-city-title {
   font-size: 14px;
   font-weight: 800;

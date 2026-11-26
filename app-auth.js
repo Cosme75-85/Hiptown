@@ -638,7 +638,18 @@ function applySiteAccess() {
   // Une ville sans aucun site visible (ex. Marseille pour l'équipe de Bordeaux) est masquée en entier
   const groups = [...document.querySelectorAll("#step-hiptown-espaces .sites-city")];
   groups.forEach(g => { g.hidden = !g.querySelector(".site-card:not([hidden])"); });
-  const grid = groups[groups.length - 1];
+  // Boutons de ville seulement quand le compte voit plusieurs villes (admin général) :
+  // on montre une ville à la fois, celle du compte ou la première.
+  const shown = groups.filter(g => !g.hidden).map(g => g.dataset.city);
+  const filter = document.getElementById("sites-city-filter");
+  if (filter) {
+    filter.hidden = shown.length < 2;
+    filter.querySelectorAll(".sites-city-btn").forEach(b => { b.hidden = !shown.includes(b.dataset.city); });
+  }
+  if (shown.length && window.showSitesCity) {
+    window.showSitesCity(shown.includes(scope?.city) ? scope.city : shown.includes(PORTAIL.defaultSite) ? PORTAIL.defaultSite : shown[0]);
+  }
+  const grid = document.getElementById("sites-by-city");
   let empty = document.getElementById("sites-none");
   if (!empty && grid) {
     empty = document.createElement("p");
