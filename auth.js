@@ -33,6 +33,7 @@ import {
  * @param {string} firstName
  * @param {string} lastName
  * @param {string} birthDate - format YYYY-MM-DD (issu d'un <input type="date">)
+ * @returns {{ user, verificationFailed: boolean }} verificationFailed : l'e-mail de vérification n'est pas parti
  */
 export async function signUp(email, password, requestedRole, companyNameHint = "", firstName = "", lastName = "", birthDate = "", place = {}) {
   if (requestedRole !== "salle" && requestedRole !== "coworking") {
@@ -56,10 +57,33 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     siteId: place.siteId || null,            // site choisi par le client (ex. "nabo06")
     createdAt: serverTimestamp()
   });
+  let verificationFailed = false;
   if (requestedRole === "salle") {
-    await sendVerificationEmail().catch(err => console.error("E-mail de vérification non envoyé", err));
+    await sendVerificationEmail().catch(err => {
+      console.error("E-mail de vérification non envoyé", err);
+      verificationFailed = true;
+    });
   }
-  return cred.user;
+  await notifyAccountRequest(cred.user);
+  return { user: cred.user, verificationFailed };
+}
+
+/**
+ * Prévient l'équipe Hiptown de la nouvelle demande (e-mail à l'équipe de la ville
+ * + notification aux admins, voir reservation/Messagerie.gs). Ne bloque jamais l'inscription.
+ */
+async function notifyAccountRequest(user) {
+  if (!PORTAIL.reservationUrl) return;
+  try {
+    const idToken = await user.getIdToken();
+    await fetch(PORTAIL.reservationUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
+      body: JSON.stringify({ action: "notifyAccountRequest", idToken })
+    });
+  } catch (err) {
+    console.error("Équipe non prévenue de la demande de compte", err);
+  }
 }
 
 /**
