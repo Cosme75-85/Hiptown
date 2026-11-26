@@ -562,7 +562,9 @@ function cityOfSite(siteId) {
 function siteLabel(siteId) {
   if (!siteId) return "Sans site";
   const city = cityOfSite(siteId);
-  return (city && PORTAIL.cities[city].sites[siteId]) || siteId;
+  const name = (city && PORTAIL.cities[city].sites[siteId]) || siteId;
+  // Coworking de la ville (outils de l'équipe) : « NABO06 — Émergence (Coworking) »
+  return isCoworkingSite(siteId) && !/coworking/i.test(name) ? name + " (Coworking)" : name;
 }
 
 // Villes visibles par l'admin connecté (toutes pour l'admin général)
@@ -972,11 +974,11 @@ function siteParts(siteId, items, nameOf, catOf) {
 }
 
 /**
- * Titre de la case d'un espace : son nom, puis « (coworking) » ou le nom des
+ * Titre de la case d'un espace : son nom (avec « (Coworking) »), ou le nom des
  * entreprises qui l'occupent. Affiché seulement dans Gestion (équipe Hiptown).
  */
 function siteBoxTitle(siteId, companyNamesOnSite = []) {
-  if (isCoworkingSite(siteId)) return siteLabel(siteId) + " (coworking)";
+  if (isCoworkingSite(siteId)) return siteLabel(siteId);
   let names = configuredOccupants(siteId);
   if (!names.length) {
     const seen = new Map();
