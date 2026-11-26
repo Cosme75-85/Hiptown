@@ -164,6 +164,10 @@ function doPost(e) {
     if (body.action === 'notifyNewMessage') {
       return jsonResponse(notifyNewMessage(body.idToken, body.payload));
     }
+    // Nouvelle demande de compte sur le portail : email + notification à l'équipe (voir Messagerie.gs)
+    if (body.action === 'notifyAccountRequest') {
+      return jsonResponse(notifyAccountRequest(body.idToken));
+    }
     // Accueil visiteurs (page publique, sans connexion) : email à l'entreprise du visiteur (voir Accueil.gs)
     if (body.action === 'notifyVisitor') {
       return jsonResponse(notifyVisitor(body.payload));

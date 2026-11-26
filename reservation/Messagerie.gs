@@ -117,6 +117,82 @@ function emailClientAboutReply(client, conv, msg) {
   });
 }
 
+// ==================== DEMANDES DE COMPTE ====================
+// Juste après une inscription, le portail demande ici de prévenir l'équipe :
+//  - par email : l'équipe de la ville du compte (ex. marseille@hiptown.com) + TEAM_COPY_EMAILS ;
+//  - par notification : les admins qui gèrent ce compte (même périmètre que pushToTeam).
+// Les comptes « salle de réunion » se valident seuls après vérification de leur e-mail :
+// l'équipe est prévenue pour information, sans notification sur le téléphone.
+// La fiche est relue avec le jeton du nouveau compte : on ne peut prévenir que pour soi-même,
+// pour un compte encore en attente, et une seule fois par 6 heures.
+
+function notifyAccountRequest(idToken) {
+  try {
+    const uid = tokenUid(idToken);
+    if (!uid) return { success: false, message: 'Session expirée, merci de vous reconnecter au portail.' };
+
+    const cache = CacheService.getScriptCache();
+    const doneKey = 'accountreq:' + uid;
+    if (cache.get(doneKey)) return { success: true, alreadySent: true };
+
+    const profile = readFirestoreDoc('users/' + encodeURIComponent(uid), idToken);
+    if (!profile || profile.status !== 'pending') return { success: false, message: 'Demande inconnue.' };
+    cache.put(doneKey, '1', 21600); // 6 h, le maximum du cache
+
+    const isMeetingRoom = profile.requestedRole === 'salle';
+    const name = [cleanText(profile.firstName, MAX_TEXT_LENGTH), cleanText(profile.lastName, MAX_TEXT_LENGTH)]
+      .filter(Boolean).join(' ') || cleanText(profile.email, 120) || 'Un client';
+    const company = cleanText(profile.companyNameHint, 120);
+    const kind = isMeetingRoom ? 'Réserver une salle de réunion' : 'Client Hiptown (coworking)';
+    const site = profile.siteId ? String(profile.siteId).toUpperCase() : '';
+    const city = profile.site ? String(profile.site).charAt(0).toUpperCase() + String(profile.site).slice(1) : '';
+    const details = [
+      ['Nom', name], ['Entreprise', company], ['E-mail', cleanText(profile.email, 120)],
+      ['Type de compte', kind], ['Ville', city], ['Site', site]
+    ].filter(r => r[1]).map(r => '<tr><td style="color:#64748b;padding:2px 12px 2px 0;">' + r[0] + '</td><td><b>'
+      + escapeHtml(r[1]) + '</b></td></tr>').join('');
+
+    MailApp.sendEmail({
+      to: teamRecipients({ city: profile.site }),
+      subject: (isMeetingRoom ? '🔑 Nouveau compte salle de réunion — ' : '🔑 Demande de compte à valider — ')
+        + name + (company ? ' (' + company + ')' : ''),
+      htmlBody: '<p>' + (isMeetingRoom
+        ? 'Un nouveau compte « salle de réunion » vient d\'être créé sur le portail.'
+        : 'Une nouvelle demande de compte attend votre validation sur le portail.') + '</p>'
+        + '<table style="font-size:14px;margin:12px 0;">' + details + '</table>'
+        + (isMeetingRoom
+          ? '<p style="color:#64748b;font-size:13px;">Pour information : ce compte se validera tout seul dès que le client '
+            + 'aura cliqué sur le lien de vérification reçu par e-mail. Vous pouvez aussi le valider à la main.</p>'
+          : '')
+        + '<p><a href="https://cosme75-85.github.io/Hiptown/" style="background:#1e1847;color:#ffffff;padding:10px 18px;'
+        + 'border-radius:6px;text-decoration:none;display:inline-block;">'
+        + (isMeetingRoom ? 'Voir dans le portail' : 'Valider ou refuser dans le portail') + '</a></p>'
+        + '<p style="color:#64748b;font-size:12px;">Dans le portail : cloche 🔔 en haut, ou Gestion &gt; Gestion des comptes.</p>'
+    });
+
+    if (!isMeetingRoom) {
+      pushSafely(() => {
+        const token = serviceAccountToken();
+        if (!token) return;
+        const admins = usersWhere(token, 'role', 'admin').filter(a => {
+          if (!a.site) return true; // admin général
+          if (a.site !== profile.site) return false;
+          return a.adminLevel !== 'site' || (Array.isArray(a.siteIds) && a.siteIds.indexOf(profile.siteId) !== -1);
+        });
+        pushToUsers(admins.map(a => a.uid), {
+          title: '🔑 Demande de compte à valider',
+          body: name + (company ? ' (' + company + ')' : '') + (site ? ' · ' + site : ''),
+          tag: 'account-' + uid, url: './'
+        }, token);
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    Logger.log('⚠️ Demande de compte non annoncée : ' + err.message);
+    return { success: false, message: err.message };
+  }
+}
+
 // ==================== NOTIFICATIONS (FIREBASE CLOUD MESSAGING) ====================
 // Chaque appareil qui accepte les notifications range son jeton dans pushTokens/{uid}
 // (messagerie.js). Pour trouver les destinataires et leur envoyer la notification, ce script

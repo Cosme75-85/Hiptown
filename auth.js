@@ -59,7 +59,26 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
   if (requestedRole === "salle") {
     await sendVerificationEmail().catch(err => console.error("E-mail de vérification non envoyé", err));
   }
+  await notifyAccountRequest(cred.user);
   return cred.user;
+}
+
+/**
+ * Prévient l'équipe Hiptown de la nouvelle demande (e-mail à l'équipe de la ville
+ * + notification aux admins, voir reservation/Messagerie.gs). Ne bloque jamais l'inscription.
+ */
+async function notifyAccountRequest(user) {
+  if (!PORTAIL.reservationUrl) return;
+  try {
+    const idToken = await user.getIdToken();
+    await fetch(PORTAIL.reservationUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // évite une requête préalable (CORS)
+      body: JSON.stringify({ action: "notifyAccountRequest", idToken })
+    });
+  } catch (err) {
+    console.error("Équipe non prévenue de la demande de compte", err);
+  }
 }
 
 /**
