@@ -33,7 +33,7 @@ import {
  * @param {string} firstName
  * @param {string} lastName
  * @param {string} birthDate - format YYYY-MM-DD (issu d'un <input type="date">)
- * @returns {{ user, verificationFailed: boolean }} verificationFailed : l'e-mail de vérification n'est pas parti
+ * @returns {{ user, verificationFailed: false|string }} verificationFailed : l'e-mail de vérification n'est pas parti (code de l'erreur)
  */
 export async function signUp(email, password, requestedRole, companyNameHint = "", firstName = "", lastName = "", birthDate = "", place = {}) {
   if (requestedRole !== "salle" && requestedRole !== "coworking") {
@@ -57,11 +57,11 @@ export async function signUp(email, password, requestedRole, companyNameHint = "
     siteId: place.siteId || null,            // site choisi par le client (ex. "nabo06")
     createdAt: serverTimestamp()
   });
-  let verificationFailed = false;
+  let verificationFailed = false; // sinon : code de l'erreur Firebase (affiché pour le diagnostic)
   if (requestedRole === "salle") {
     await sendVerificationEmail().catch(err => {
       console.error("E-mail de vérification non envoyé", err);
-      verificationFailed = true;
+      verificationFailed = String(err.code || err.message || "inconnue");
     });
   }
   await notifyAccountRequest(cred.user);
@@ -95,7 +95,16 @@ export async function sendVerificationEmail() {
   if (!user) throw new Error("Vous n'êtes plus connecté. Reconnectez-vous.");
   auth.languageCode = "fr";
   const portalUrl = location.origin + location.pathname;
-  await sendEmailVerification(user, { url: portalUrl });
+  try {
+    await sendEmailVerification(user, { url: portalUrl });
+  } catch (err) {
+    // Adresse de retour refusée par Firebase (domaine absent des « domaines autorisés », par
+    // exemple portail ouvert depuis une autre adresse) : on envoie quand même le mail, sans
+    // bouton « Continuer » vers le portail. Le compte se valide au retour sur le portail.
+    if (!/continue-uri|unauthorized-domain|invalid-dynamic-link|argument-error/.test(String(err.code || ""))) throw err;
+    console.warn("Adresse de retour refusée, mail envoyé sans lien de retour", err);
+    await sendEmailVerification(user);
+  }
 }
 
 /**

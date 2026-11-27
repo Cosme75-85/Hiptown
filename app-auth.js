@@ -176,7 +176,7 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
     // le routage avec la fiche, pour afficher le bon écran « en attente ».
     await routeSession(user, await getUserProfile(user.uid));
     // Le client ne doit pas attendre un e-mail qui n'est jamais parti
-    if (verificationFailed) showVerifyMessage("L'e-mail de vérification n'a pas pu partir. Cliquez sur « Renvoyer l'e-mail ».", false);
+    if (verificationFailed) showVerifyMessage(verifyErrorText(verificationFailed, "L'e-mail de vérification n'a pas pu partir. Cliquez sur « Renvoyer l'e-mail »."), false);
   } catch (err) {
     showAuthError(friendlyError(err));
   }
@@ -217,6 +217,12 @@ function showPendingStep(user, profile) {
   if (verify) document.getElementById("pending-verify-email").textContent = user.email || "";
 }
 
+/** Message clair selon l'erreur Firebase, avec son code entre parenthèses (pour le diagnostic). */
+function verifyErrorText(code, fallback) {
+  if (code.includes("too-many-requests")) return "Trop d'e-mails envoyés à la suite : attendez quelques minutes, puis cliquez sur « Renvoyer l'e-mail ». (" + code + ")";
+  return fallback + " (erreur : " + code + ")";
+}
+
 function showVerifyMessage(text, ok) {
   const el = document.getElementById("pending-verify-message");
   if (!el) return;
@@ -252,9 +258,8 @@ document.getElementById("pending-verify-resend")?.addEventListener("click", asyn
     await sendVerificationEmail();
     showVerifyMessage("C'est envoyé ! Regardez votre boîte mail (et les courriers indésirables).", true);
   } catch (err) {
-    showVerifyMessage(String(err.code || "").includes("too-many-requests")
-      ? "Un e-mail vient déjà de partir. Attendez quelques minutes avant de réessayer."
-      : "L'e-mail n'a pas pu être envoyé. Réessayez dans un instant.", false);
+    console.error("Renvoi de l'e-mail de vérification", err);
+    showVerifyMessage(verifyErrorText(String(err.code || err.message || "inconnue"), "L'e-mail n'a pas pu être envoyé. Réessayez dans un instant."), false);
   }
   setTimeout(() => { btn.disabled = false; }, 30000);
 });
