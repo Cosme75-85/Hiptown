@@ -799,24 +799,23 @@ footer {
 #sites-manage { margin-top: 8px; }
 /* Contacts (contacts.js) : case carrée marine dans la grille des sites et dans la page d'un site */
 .contacts-tile {
-  font: inherit; position: relative; cursor: pointer;
+  font: inherit; position: relative; cursor: pointer; text-align: center;
   background: var(--navy); color: #fff; border: 1.5px solid var(--navy);
-  border-radius: var(--radius-lg); padding: 20px 14px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: var(--radius-lg); padding: 20px 14px;    /* comme .site-card */
+  display: flex; align-items: center; justify-content: center;
   transition: transform 0.15s, box-shadow 0.2s;
 }
 .contacts-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(30,24,71,0.25); }
 .contacts-tile:active { transform: scale(0.97); }
 .contacts-tile:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
-.contacts-tile-icon { font-size: 26px; line-height: 1; }
-.contacts-tile-title { font-size: 16px; font-weight: 800; margin-top: 4px; }
-.contacts-tile-sub { font-size: 11px; opacity: 0.8; }
+.contacts-tile-title { font-size: 16px; font-weight: 800; }
 .contacts-tile-badge {
   position: absolute; top: 8px; right: 8px; min-width: 22px;
   background: var(--yellow); color: var(--navy); font-size: 11px; font-weight: 800;
   border-radius: 999px; padding: 2px 7px;
 }
 .site-detail-contacts { margin-bottom: 12px; }
+.site-detail-contacts .contacts-tile { min-height: 92px; }
 
 /* Page Contacts */
 .contacts-search { margin: 0 0 10px; }

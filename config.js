@@ -32,7 +32,6 @@ const PORTAIL = {
       name: "Bordeaux",
       code: "NABO",
       sites: {
-        nabo01: "NABO01",
         nabo02: "NABO02 — Place de la Bourse CCI Tetris",
         nabo03: "NABO03 — Ferrere",
         nabo04: "NABO04 — Chartrons",

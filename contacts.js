@@ -115,11 +115,10 @@ function refreshAll() {
 
 // ── Cases carrées « Contacts » ────────────────────────────
 
-function tileHtml(sub, count) {
+// Même gabarit qu'une case de site (.site-card) : même taille dans la grille
+function tileHtml(count) {
   return `<span class="contacts-tile-badge">${loaded ? count : "…"}</span>
-    <span class="contacts-tile-icon">📇</span>
-    <span class="contacts-tile-title">Contacts</span>
-    <span class="contacts-tile-sub">${escapeHtml(sub)}</span>`;
+    <span class="contacts-tile-title">📇 Contacts</span>`;
 }
 
 /** Page Sites : une case en première place de la grille de chaque ville visible. */
@@ -137,7 +136,7 @@ function drawTiles() {
       grid.prepend(tile);
       group.querySelector(":scope > .profile-help")?.remove();   // « Aucun site pour l'instant. »
     }
-    tile.innerHTML = tileHtml(PORTAIL.cities?.[city]?.name || city, countOf(city, null));
+    tile.innerHTML = tileHtml(countOf(city, null));
   });
 }
 
@@ -159,7 +158,7 @@ function drawSiteTile() {
     });
     document.getElementById("site-detail-tools").before(box);
   }
-  box.firstElementChild.innerHTML = tileHtml(siteCode(detailSite), countOf(city, detailSite));
+  box.firstElementChild.innerHTML = tileHtml(countOf(city, detailSite));
 }
 
 // ── Page Contacts ─────────────────────────────────────────
@@ -518,13 +517,17 @@ function readImport(file) {
       if (filled.length <= 1) { title = (filled[0] || "").trim(); return; }   // ligne de titre (« Badges ») = catégorie
 
       const get = k => (col[k] != null ? String(r[col[k]] || "").trim() : "");
-      let email = get("email");
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) email = "";         // « Nom », « G. » : pas un e-mail
+      let email = get("email"), note = get("note");
+      // « Nom » = case e-mail vide dans Google Sheets ; autre texte qui n'est pas un e-mail : gardé dans les notes
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (email && norm(email) !== "nom") note = [note, "E-mail indiqué dans le tableau : " + email].filter(Boolean).join("\n");
+        email = "";
+      }
       const sites = get("sites").split(/[\n,;/]+/).map(s => s.trim().toLowerCase()).filter(s => siteIds.includes(s));
       const data = cleanContact({
         firstName: get("firstName"), lastName: get("lastName"), company: get("company"),
         category: get("category") || title, subject: get("subject"),
-        role: get("role"), priority: get("priority").replace(/\D/g, ""), email, phone: get("phone"), note: get("note"), sites
+        role: get("role"), priority: get("priority").replace(/\D/g, ""), email, phone: get("phone"), note, sites
       });
       if (!data.name) { skipped++; return; }
       const key = norm(data.name) + "|" + data.phone.replace(/\D/g, "");
