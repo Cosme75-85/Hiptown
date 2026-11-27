@@ -1313,6 +1313,18 @@
     </div>
   </section>
 
+  <!-- Visiteur venu des salles avec un créneau alors qu'un compte est déjà connecté sur l'appareil (resa-salle.js) -->
+  <div class="resa-account-choice" id="resa-account-choice" role="dialog" aria-modal="true" aria-labelledby="resa-account-title" hidden>
+    <div class="resa-account-box">
+      <p class="resa-account-title" id="resa-account-title">Vous êtes déjà connecté</p>
+      <p class="resa-account-text">Compte connecté sur cet appareil : <b id="resa-account-who"></b></p>
+      <p class="resa-account-text" id="resa-account-keep-note" hidden>Ce compte ne réserve pas par cette page. Pour réserver la salle choisie, déconnectez-vous pour créer un compte.</p>
+      <button type="button" class="direct-btn" id="resa-account-switch" style="background:var(--navy);color:#fff;">Me déconnecter et créer un compte</button>
+      <button type="button" class="direct-btn" id="resa-account-keep">Réserver avec ce compte</button>
+      <button type="button" class="direct-btn" id="resa-account-cancel" style="border:none;font-size:12px;">Annuler</button>
+    </div>
+  </div>
+
   <!-- RÉSERVER UNE SALLE (clients salle de réunion) : l'outil de réservation affiché dans le portail (resa-salle.js) -->
   <section id="step-resa-salle" class="resa-salle-step" hidden>
     <button class="back-btn" id="back-from-resa-salle">Salle de réunion</button>

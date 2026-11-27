@@ -407,7 +407,7 @@
         <label for="requesterEmail">Email *</label>
         <input type="email" id="requesterEmail" autocomplete="email" placeholder="prenom.nom@exemple.com">
         </div>
-        <label for="numberOfPeople">Nombre de personnes *</label>
+        <label for="numberOfPeople" id="numberOfPeopleLabel">Nombre de personnes *</label>
         <input type="number" id="numberOfPeople" min="1" value="1" inputmode="numeric">
         <div id="detailFields">
         <label for="meetingTitle">Titre de la réunion</label>
@@ -566,7 +566,7 @@
       const tiers = space.maxPeople ? roomTiers(space) : [];
       if (!tiers.length) {
         return '<div class="space-prices"><b>' + euro(space.hourlyPrice) + '</b> de l\'heure · <b>' + euro(space.halfDayPrice)
-          + '</b> la demi-journée · <b>' + euro(space.fullDayPrice) + '</b> la journée (HT)</div>';
+          + '</b> la demi-journée · <b>' + euro(space.fullDayPrice) + '</b> la journée (HT' + (isShared(space) ? ', par place' : '') + ')</div>';
       }
       let from = 1;
       const rows = tiers.map(t => {
@@ -827,6 +827,11 @@
 
     // ==================== FORMULAIRE ET PRIX ====================
 
+    /** Espace partagé à places (Café Cowork) : une place par personne, tarif à la place (comme isSharedSpace dans Code.gs). */
+    function isShared(space) {
+      return !!space && !space.maxPeople && !space.quantitySelectable && space.capacity > 1;
+    }
+
     function numberOfDaysBooked() {
       const b = pendingBooking;
       if (!b.endDateString) return 1;
@@ -843,7 +848,8 @@
       // Depuis le portail, les champs vides reprennent les coordonnées du compte.
       [['firstName', 'firstName'], ['lastName', 'lastName'], ['company', 'company'], ['requesterEmail', 'email']]
         .forEach(([field, key]) => { if (!$(field).value && PREFILLED[key]) $(field).value = PREFILLED[key]; });
-      $('numberOfPeople').max = b.space.maxPeople || '';
+      $('numberOfPeople').max = b.space.maxPeople || (isShared(b.space) ? b.space.capacity : '');
+      $('numberOfPeopleLabel').textContent = isShared(b.space) ? 'Nombre de places (une par personne) *' : 'Nombre de personnes *';
       $('formStep').hidden = false;
       // Visiteur sans compte : seulement le nombre de personnes et le prix, puis l'inscription
       ['contactFields', 'detailFields', 'notesField'].forEach(id => { $(id).hidden = IS_PUBLIC; });
@@ -930,6 +936,7 @@
       const services = readServices();
       const days = numberOfDaysBooked();
       const people = services.numberOfPeople;
+      if (isShared(b.space)) b.spaceQuantity = Math.min(Math.max(people, 1), b.space.capacity); // une place par personne
       const known = roomPrice.key === roomPriceKey(b, people);
       if (b.space.maxPeople && b.space.hourlyPrice && people >= 1 && people <= b.space.maxPeople) fetchRoomPrice(b, people);
 
@@ -967,7 +974,7 @@
       const params = new URLSearchParams({ salle: b.space.id, date: b.dateString, debut: b.startHour, fin: b.endHour });
       if (b.endDateString) params.set('jusquau', b.endDateString);
       if (people >= 1) params.set('personnes', people);
-      if (b.spaceQuantity > 1) params.set('postes', b.spaceQuantity);
+      if (b.space.quantitySelectable && b.spaceQuantity > 1) params.set('postes', b.spaceQuantity);
       // Pour l'affichage seulement (le portail l'écrit tel quel, la page recalcule tout)
       params.set('nom', b.space.name);
       params.set('creneau', $('slotBanner').textContent);
@@ -1061,8 +1068,20 @@
 
     // Nombre de personnes ramené à la capacité de la salle dès la saisie (le serveur refuse aussi au-delà)
     $('numberOfPeople').addEventListener('input', () => {
-      const space = pendingBooking && pendingBooking.space;
-      if (!space || !space.maxPeople || !(parseInt($('numberOfPeople').value, 10) > space.maxPeople)) return;
+      const b = pendingBooking;
+      const space = b && b.space;
+      if (!space) return;
+      const n = parseInt($('numberOfPeople').value, 10);
+      if (isShared(space) && b.startHour !== null) {
+        // Une place par personne, dans la limite des places encore libres sur le créneau
+        const free = b.endDateString ? space.capacity : minRemainingInRange(b.startHour, b.endHour);
+        if (n > free) {
+          $('numberOfPeople').value = Math.max(free, 1);
+          showToast('Il reste ' + free + ' place' + (free > 1 ? 's' : '') + ' libre' + (free > 1 ? 's' : '') + ' sur ce créneau.');
+        }
+        return;
+      }
+      if (!space.maxPeople || !(n > space.maxPeople)) return;
       $('numberOfPeople').value = space.maxPeople;
       showToast(space.name + ' accueille au maximum ' + space.maxPeople + ' personnes.');
     });
