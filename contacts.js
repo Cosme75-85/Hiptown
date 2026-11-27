@@ -222,10 +222,15 @@ function render() {
   // Un groupe par catégorie, dans l'ordre alphabétique (« Sans catégorie » à la fin)
   const subjects = [...new Set(shown.map(subjectOf))]
     .sort((a, b) => (a === NO_SUBJECT) - (b === NO_SUBJECT) || collator.compare(a, b));
-  const groupsHtml = subjects.map(sub => `
-    <div class="contacts-group-title">${escapeHtml(sub)}</div>
-    ${shown.filter(c => subjectOf(c) === sub).sort(byPriorityThenName)
-      .map(c => view.editing === c.id ? renderForm(c) : renderRow(c, edit)).join("")}`).join("");
+  // Bandeau de catégorie bien visible (comme les lignes vertes du tableau de l'équipe)
+  const groupsHtml = subjects.map(sub => {
+    const items = shown.filter(c => subjectOf(c) === sub).sort(byPriorityThenName);
+    return `
+    <div class="contacts-category">
+      <div class="contacts-category-head"><span>${escapeHtml(sub)}</span><span class="contacts-category-count">${items.length}</span></div>
+      ${items.map(c => view.editing === c.id ? renderForm(c) : renderRow(c, edit)).join("")}
+    </div>`;
+  }).join("");
 
   // Filtres par site (page ville) : Tous, Ville, puis chaque site qui a des contacts
   let chips = "";
