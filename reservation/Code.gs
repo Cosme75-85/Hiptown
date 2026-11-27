@@ -62,7 +62,9 @@ function doGet(e) {
     computeQuote.toString(),
     // Page intégrée au portail client (?embed=1) : coordonnées du compte préremplies
     'const EMBEDDED = ' + !!(e && e.parameter && e.parameter.embed === '1') + ';',
-    'const PREFILL = ' + JSON.stringify(portalPrefill(e && e.parameter)).replace(/</g, '\\u003c') + ';'
+    'const PREFILL = ' + JSON.stringify(portalPrefill(e && e.parameter)).replace(/</g, '\\u003c') + ';',
+    // Créneau choisi par un visiteur avant de créer son compte (repris par le portail, voir resa-salle.js)
+    'const INTENT = ' + JSON.stringify(bookingIntent(e && e.parameter)) + ';'
   ].join('\n');
   return template.evaluate()
     .setTitle('Réservation d\'espaces')
@@ -83,6 +85,29 @@ function portalPrefill(params) {
     lastName: cleanText(p.lastName, MAX_TEXT_LENGTH),
     company: cleanText(p.company, MAX_TEXT_LENGTH),
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
+  };
+}
+
+/**
+ * Créneau choisi par un visiteur sur la page publique, avant de créer son compte : le portail le
+ * renvoie à la page une fois le client connecté, pour rouvrir la fenêtre au même endroit.
+ * Simple confort : la page revérifie la disponibilité, et bookRoom revérifie tout à l'envoi.
+ */
+function bookingIntent(params) {
+  const p = params || {};
+  const space = p.space ? findSpace(String(p.space)) : null;
+  const isDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+  if (!space || !isDate(p.date)) return null;
+  const hour = v => { const h = parseInt(v, 10); return h >= START_HOUR && h <= END_HOUR ? h : null; };
+  const whole = (v, max) => { const n = parseInt(v, 10); return n >= 1 && n <= max ? n : null; };
+  return {
+    spaceId: space.id,
+    dateString: String(p.date),
+    endDateString: isDate(p.endDate) && String(p.endDate) > String(p.date) ? String(p.endDate) : null,
+    startHour: hour(p.start),
+    endHour: hour(p.end),
+    people: whole(p.people, 500),
+    spaceQuantity: whole(p.qty, 2) || 1
   };
 }
 

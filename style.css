@@ -1318,6 +1318,13 @@ footer {
 .resa-salle-frame { display: block; width: 100%; height: calc(100vh - 140px); min-height: 520px; border: 0; border-radius: 12px; background: #f6f5f4; }
 .resa-salle-fallback { font-size: 12px; color: var(--text-soft); margin-top: 8px; text-align: center; }
 .resa-salle-fallback a { color: var(--navy); }
+/* Créneau choisi par un visiteur sur la page publique des salles, rappelé pendant l'inscription */
+.resa-visiteur { background: #fff4a2; border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; text-align: left; color: #1e1847; }
+.resa-visiteur p { margin: 0; }
+.resa-visiteur-title { font-weight: 700; font-size: 14px; }
+.resa-visiteur-detail { font-size: 13px; margin-top: 4px !important; line-height: 1.45; }
+.resa-visiteur-help { font-size: 12px; margin-top: 6px !important; opacity: 0.8; }
+#step-pending .resa-visiteur { margin: 16px 0 0; }
 /* Assez large pour la liste des types de salles à gauche (ordinateur) */
 .container:has(#step-resa-salle:not([hidden])) { max-width: 1180px; }
 /* Téléphone : l'outil de réservation prend tout l'écran, seul le bouton retour reste au-dessus */

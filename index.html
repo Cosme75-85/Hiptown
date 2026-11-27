@@ -129,6 +129,13 @@
 
       <p class="pin-title" id="auth-title">Connexion</p>
 
+      <!-- Visiteur venu de la page publique des salles avec un créneau choisi (resa-salle.js) -->
+      <div class="resa-visiteur" id="resa-visiteur-auth" hidden>
+        <p class="resa-visiteur-title">🗓️ Votre réservation</p>
+        <p class="resa-visiteur-detail"></p>
+        <p class="resa-visiteur-help">Créez votre compte (ou connectez-vous) : votre créneau s'ouvrira ensuite tout seul, il ne restera qu'à envoyer la demande.</p>
+      </div>
+
       <div id="auth-error" class="pin-error" hidden></div>
 
       <!-- Connexion -->
@@ -211,6 +218,11 @@
         <button class="direct-btn" id="pending-verify-check" style="background:var(--navy);color:#fff;">J'ai cliqué sur le lien</button>
         <button class="direct-btn" id="pending-verify-resend">Renvoyer l'e-mail</button>
         <p class="profile-help" id="pending-verify-message" role="status" hidden style="margin-top:10px;"></p>
+        <div class="resa-visiteur" id="resa-visiteur-pending" hidden>
+          <p class="resa-visiteur-title">🗓️ Votre réservation vous attend</p>
+          <p class="resa-visiteur-detail"></p>
+          <p class="resa-visiteur-help">Dès que votre adresse est vérifiée, ce créneau s'ouvre pour que vous envoyiez la demande.</p>
+        </div>
       </div>
       <button class="direct-btn" id="pending-logout">Se déconnecter</button>
     </div>

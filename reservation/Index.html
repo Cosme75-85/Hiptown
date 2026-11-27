@@ -247,6 +247,26 @@
     .btn-secondary { background: var(--gris-chaud-light); }
     .btn-primary { background: var(--citron); }
     .btn-primary:disabled { opacity: 0.6; cursor: wait; }
+    /* Lien « Créer mon compte et réserver » (visiteurs) : même allure que les boutons */
+    .modal-actions a { flex: 1; min-height: 48px; border-radius: 8px; font-weight: 700; display: flex; align-items: center;
+      justify-content: center; text-align: center; text-decoration: none; color: var(--navy); padding: 6px 10px; }
+    .modal-actions a[hidden] { display: none; }
+
+    /* Tarifs sur la carte de chaque espace (visibles sans compte) */
+    .space-prices { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
+    .space-prices b { font-weight: 700; }
+    .space-prices details { margin-top: 4px; }
+    .space-prices summary { cursor: pointer; color: var(--text-soft); font-weight: 600; font-size: 12px; }
+    .space-prices table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
+    .space-prices th, .space-prices td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--gris-chaud-light); }
+    .space-prices th { color: var(--text-soft); font-weight: 600; }
+
+    /* Visiteur sans compte : dernière étape avant l'inscription */
+    .public-cta { background: var(--citron-light); border-radius: 8px; padding: 12px; margin-top: 14px; font-size: 14px; line-height: 1.5; }
+    .public-cta p { margin: 0; }
+    .public-cta p + p { margin-top: 6px; font-size: 13px; }
+    .public-cta a { color: var(--navy); font-weight: 700; }
+    .header .public-intro { margin-top: 10px; font-size: 13px; opacity: 1; background: rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; }
 
     .toast {
       position: fixed;
@@ -299,6 +319,7 @@
     </div>
     <p>Réservation de salles de réunion chez Hiptown Bordeaux</p>
     <p class="address">52 quai de Paludate</p>
+    <p class="public-intro" id="publicIntro" hidden>Consultez librement les disponibilités et les tarifs. Un compte gratuit vous sera demandé seulement pour envoyer votre demande.</p>
   </header>
 
   <div class="layout">
@@ -370,6 +391,7 @@
         <hr class="divider">
         <div class="slot-banner" id="slotBanner"></div>
 
+        <div id="contactFields">
         <label for="civility">Civilité *</label>
         <select id="civility" autocomplete="honorific-prefix">
           <option value="">Choisir…</option>
@@ -384,8 +406,10 @@
         <input type="text" id="company" autocomplete="organization">
         <label for="requesterEmail">Email *</label>
         <input type="email" id="requesterEmail" autocomplete="email" placeholder="prenom.nom@exemple.com">
+        </div>
         <label for="numberOfPeople">Nombre de personnes *</label>
         <input type="number" id="numberOfPeople" min="1" value="1" inputmode="numeric">
+        <div id="detailFields">
         <label for="meetingTitle">Titre de la réunion</label>
         <input type="text" id="meetingTitle" placeholder="Ex : Point client">
 
@@ -398,17 +422,29 @@
             <label for="wantsOther">Autre (précisez dans la note)</label>
           </div>
         </div>
+        </div>
 
         <div class="price-summary" id="priceSummary" hidden></div>
         <div class="size-warning" id="sizeWarning" hidden></div>
 
+        <div id="notesField">
         <label for="meetingNotes">Note / demande particulière (optionnel)</label>
         <textarea id="meetingNotes" placeholder="Si vous réservez pour la première fois, merci de nous transmettre la raison sociale et l'adresse complète pour l'envoi de la facture"></textarea>
+        </div>
+
+        <!-- Visiteur sans compte : il voit le prix, puis crée son compte pour envoyer la demande -->
+        <div class="public-cta" id="publicCta" hidden>
+          <p><b>Dernière étape :</b> créez votre compte Hiptown, gratuit et en une minute, pour envoyer votre demande.
+            Votre créneau sera repris automatiquement.</p>
+          <p>Petit déjeuner, déjeuner et autres services se choisissent juste après.
+            Déjà un compte ? <a id="loginLink" href="#" target="_blank" rel="noopener">Me connecter</a></p>
+        </div>
       </div>
 
       <div class="modal-actions">
         <button class="btn-secondary" id="cancelBtn">Annuler</button>
         <button class="btn-primary" id="submitBtn" hidden>Envoyer la demande</button>
+        <a class="btn-primary" id="signupLink" href="#" target="_blank" rel="noopener" hidden>Créer mon compte et réserver</a>
       </div>
     </div>
   </div>
@@ -425,6 +461,10 @@
     // (sinon toute la page s'arrête et plus aucune disponibilité ne s'affiche)
     const IS_EMBEDDED = typeof EMBEDDED !== 'undefined' && EMBEDDED === true;
     const PREFILLED = typeof PREFILL !== 'undefined' && PREFILL ? PREFILL : {};
+    const RESUME = typeof INTENT !== 'undefined' && INTENT ? INTENT : null;
+    // Hors du portail (lien public, ou page intégrée au site hiptown.com) : on montre disponibilités
+    // et tarifs, puis on envoie le visiteur créer son compte dans le portail avec son créneau
+    const IS_PUBLIC = !IS_EMBEDDED;
     const MONTH_NAMES = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
     const $ = id => document.getElementById(id);
@@ -507,6 +547,40 @@
       return '';
     }
 
+    /** Tranches de tarif d'une salle de réunion : celles jusqu'à sa capacité (voir computeQuote). */
+    function roomTiers(space) {
+      const tiers = PRICES.roomsByPeople || [];
+      const last = tiers.findIndex(t => t.maxPeople >= space.maxPeople);
+      return last < 0 ? [] : tiers.slice(0, last + 1);
+    }
+
+    /** Tarifs HT affichés sur la carte de l'espace, sans compte. */
+    function spacePricesHtml(space) {
+      const euro = n => formatEuro(n, '');
+      if (space.quantitySelectable && PRICES.deskHalfDay) {
+        return '<div class="space-prices">1 poste : <b>' + euro(PRICES.deskHalfDay[0]) + '</b> la demi-journée, <b>'
+          + euro(PRICES.deskFullDay[0]) + '</b> la journée · 2 postes : <b>' + euro(PRICES.deskHalfDay[1]) + '</b> / <b>'
+          + euro(PRICES.deskFullDay[1]) + '</b> (HT)</div>';
+      }
+      if (!space.hourlyPrice) return '';
+      const tiers = space.maxPeople ? roomTiers(space) : [];
+      if (!tiers.length) {
+        return '<div class="space-prices"><b>' + euro(space.hourlyPrice) + '</b> de l\'heure · <b>' + euro(space.halfDayPrice)
+          + '</b> la demi-journée · <b>' + euro(space.fullDayPrice) + '</b> la journée (HT)</div>';
+      }
+      let from = 1;
+      const rows = tiers.map(t => {
+        const to = Math.min(t.maxPeople, space.maxPeople);
+        const label = from === to ? to + ' pers.' : from + ' à ' + to + ' pers.';
+        from = t.maxPeople + 1;
+        return '<tr><td>' + label + '</td><td>' + euro(t.hourly) + '</td><td>' + euro(t.halfDay) + '</td><td>' + euro(t.fullDay) + '</td></tr>';
+      }).join('');
+      return '<div class="space-prices">Demi-journée dès <b>' + euro(tiers[0].halfDay) + '</b> · journée dès <b>'
+        + euro(tiers[0].fullDay) + '</b> (HT, selon le nombre de personnes)'
+        + '<details><summary>Voir tous les tarifs</summary><table><thead><tr><th>Personnes</th><th>Heure</th><th>Demi-journée</th><th>Journée</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody></table></details></div>';
+    }
+
     function renderSkeleton() {
       // Regroupe les espaces par catégorie, dans l'ordre de la liste des salles
       const byCategory = new Map();
@@ -528,6 +602,7 @@
             + '<div class="space-header"><h3 class="space-name">' + escapeHtml(space.name) + '</h3>'
             + (badge ? '<span class="badge">' + escapeHtml(badge) + '</span>' : '') + '</div>'
             + (space.closureNote ? '<p class="opening-note">' + escapeHtml(space.closureNote) + '</p>' : '')
+            + spacePricesHtml(space)
             + '<div class="month-grid" id="grid-' + space.id + '" data-space-id="' + space.id + '">'
             + '<div class="loading-mini">Chargement...</div></div>'
             + '</article>';
@@ -634,6 +709,7 @@
       $('timeStep').hidden = false;
       $('formStep').hidden = true;
       $('submitBtn').hidden = true;
+      $('signupLink').hidden = true;
       $('quickSlots').innerHTML = '<div class="loading-mini">Chargement des disponibilités...</div>';
 
       // Nombre de postes (Bureau 2 postes uniquement)
@@ -651,11 +727,12 @@
       countStat('open', spaceId);
 
       const requestId = ++dayRequestToken;
-      getJson({ action: 'getDayAvailability', spaceId: spaceId, dateString: dateString })
+      return getJson({ action: 'getDayAvailability', spaceId: spaceId, dateString: dateString })
         .then(data => {
           if (requestId !== dayRequestToken) return; // une autre journée a été ouverte entre-temps
           currentDayHours = data.hours;
           renderTimeOptions();
+          return true;
         })
         .catch(err => {
           if (requestId === dayRequestToken) showToast('Erreur : ' + err.message);
@@ -769,7 +846,11 @@
         .forEach(([field, key]) => { if (!$(field).value && PREFILLED[key]) $(field).value = PREFILLED[key]; });
       $('numberOfPeople').max = b.space.maxPeople || '';
       $('formStep').hidden = false;
-      $('submitBtn').hidden = false;
+      // Visiteur sans compte : seulement le nombre de personnes et le prix, puis l'inscription
+      ['contactFields', 'detailFields', 'notesField'].forEach(id => { $(id).hidden = IS_PUBLIC; });
+      $('publicCta').hidden = !IS_PUBLIC;
+      $('signupLink').hidden = !IS_PUBLIC;
+      $('submitBtn').hidden = IS_PUBLIC;
       updatePriceSummary();
       $('formStep').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -870,11 +951,31 @@
 
       const lines = q.lines.map(l => l.label + (l.qty > 1 ? ' × ' + l.qty : '') + ' : ' + formatEuro(l.total));
 
+      if (IS_PUBLIC) updatePortalLinks(b, people, q);
+
       $('priceSummary').hidden = q.totalHT <= 0;
       $('priceSummary').innerHTML = lines.map(escapeHtml).join('<br>')
         + '<br><b>Total HT : ' + formatEuro(q.totalHT) + '</b>'
         + '<br>TVA ' + Math.round(PRICES.vatRate * 100) + ' % : ' + formatEuro(q.totalVAT, '')
         + '<br><b>Total TTC : ' + formatEuro(q.totalTTC, 'TTC') + '</b>';
+    }
+
+    /**
+     * Liens vers l'inscription (ou la connexion) du portail, avec le créneau choisi : une fois le
+     * compte créé, le portail rouvre cette page sur le même créneau (voir resa-salle.js du portail).
+     */
+    function updatePortalLinks(b, people, q) {
+      const params = new URLSearchParams({ salle: b.space.id, date: b.dateString, debut: b.startHour, fin: b.endHour });
+      if (b.endDateString) params.set('jusquau', b.endDateString);
+      if (people >= 1) params.set('personnes', people);
+      if (b.spaceQuantity > 1) params.set('postes', b.spaceQuantity);
+      // Pour l'affichage seulement (le portail l'écrit tel quel, la page recalcule tout)
+      params.set('nom', b.space.name);
+      params.set('creneau', $('slotBanner').textContent);
+      if (q.totalHT > 0) params.set('prix', formatEuro(q.totalHT));
+      $('signupLink').href = PORTAL_URL + '?' + params;
+      params.set('compte', '1');
+      $('loginLink').href = PORTAL_URL + '?' + params;
     }
 
     function confirmBooking() {
@@ -982,9 +1083,50 @@
     // ==================== DÉMARRAGE ====================
 
 
+    // Client qui vient de créer son compte (ou de se connecter) depuis la page publique :
+    // on rouvre la fenêtre sur le créneau qu'il avait choisi, s'il est encore libre
+    function resumeIntent() {
+      const r = RESUME;
+      const space = SPACES.find(s => s.id === r.spaceId);
+      const todayString = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+      if (!space || r.dateString < todayString) return;
+      openDayModal(space.id, r.dateString).then(ok => {
+        if (!ok || !pendingBooking || pendingBooking.space !== space) return;
+        if (space.quantitySelectable && r.spaceQuantity > 1) selectSpaceQuantity(r.spaceQuantity);
+        if (r.people) $('numberOfPeople').value = space.maxPeople ? Math.min(r.people, space.maxPeople) : r.people;
+        if (r.endDateString && space.allowMultiDay) {
+          $('multiDayCheckbox').checked = true;
+          $('multiDayEnd').value = r.endDateString;
+          toggleMultiDay();
+          selectMultiDay();
+          return;
+        }
+        if (r.startHour === null || r.endHour === null || r.startHour >= r.endHour) return;
+        if (!isRangeFree(r.startHour, r.endHour)) {
+          showToast('Le créneau choisi vient d\'être pris : merci d\'en choisir un autre.');
+          return;
+        }
+        document.querySelectorAll('#quickSlots .option-btn').forEach(btn => {
+          btn.classList.toggle('selected', Number(btn.dataset.start) === r.startHour && Number(btn.dataset.end) === r.endHour);
+        });
+        selectSlot(r.startHour, r.endHour);
+      });
+    }
+
+    $('publicIntro').hidden = !IS_PUBLIC;
+    if (IS_EMBEDDED && RESUME && /^\d{4}-\d{2}-\d{2}$/.test(RESUME.dateString)) {
+      // Le calendrier s'ouvre sur le mois du créneau choisi
+      currentYear = Number(RESUME.dateString.slice(0, 4));
+      currentMonth = Number(RESUME.dateString.slice(5, 7));
+      if (currentYear * 12 + currentMonth < today.getFullYear() * 12 + today.getMonth() + 1) {
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth() + 1;
+      }
+    }
     renderSkeleton();
     loadMonth();
     countStat('visit');
+    if (IS_EMBEDDED && RESUME) resumeIntent();
   </script>
 </body>
 </html>
