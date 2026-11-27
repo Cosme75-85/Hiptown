@@ -266,7 +266,15 @@ window.addEventListener("focus", () => checkVerification(false));
 watchAuthState(routeSession);
 
 async function routeSession(user, profile) {
-  if (!user) { clearPreview(); session = null; applyUserSettings(null); return; } // reste sur l'écran de choix / auth, rien à faire
+  if (!user) {
+    clearPreview(); session = null; applyUserSettings(null);
+    // Personne de connecté (reste sur l'écran de choix / auth) : un visiteur venu réserver
+    // depuis la page publique des salles est envoyé à l'inscription (resa-salle.js)
+    window.hiptownSignedOut = true;
+    document.dispatchEvent(new CustomEvent("hiptown-signed-out"));
+    return;
+  }
+  window.hiptownSignedOut = false;
 
   if (profile && profile.status === "pending" && profile.requestedRole === "salle") {
     // Salle de réunion : validation automatique dès que l'e-mail est vérifié
