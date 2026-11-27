@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Salles de réunion Hiptown Bordeaux</title>
+  <meta name="description" content="Disponibilités et tarifs des salles de réunion Hiptown, réservation en ligne."/>
+  <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32.png"/>
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png"/>
+  <!--
+    Lien à part pour les salles de réunion : cosme75-85.github.io/Hiptown/salles/
+    Affiche l'outil de réservation (Apps Script) en plein écran : disponibilités et tarifs
+    sans compte, puis « Créer mon compte et réserver » ouvre le portail avec le créneau choisi.
+    La page de connexion habituelle du portail ne change pas.
+    L'adresse de l'outil est celle de config.js (PORTAIL.reservationUrl).
+  -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #f6f5f4; }
+    body { display: flex; flex-direction: column; }
+    iframe { display: block; flex: 1; width: 100%; min-height: 0; border: 0; }
+    .fallback { margin: 0; padding: 6px 16px calc(6px + env(safe-area-inset-bottom)); font: 12px Arial, sans-serif;
+      text-align: center; color: #5b5775; }
+    .fallback a { color: #1e1847; }
+  </style>
+</head>
+<body>
+  <iframe id="salles" title="Salles de réunion Hiptown" allow="clipboard-write"></iframe>
+  <p class="fallback">La page ne s'affiche pas ? <a id="salles-open" href="#" rel="noopener">Ouvrir les salles directement</a></p>
+  <script src="../config.js"></script>
+  <script>
+    document.getElementById("salles").src = PORTAIL.reservationUrl;
+    document.getElementById("salles-open").href = PORTAIL.reservationUrl;
+  </script>
+</body>
+</html>
