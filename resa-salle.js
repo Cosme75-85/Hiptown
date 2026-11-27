@@ -71,6 +71,11 @@ let signupOpened = false;
 function openSignupForIntent() {
   if (!intent || signupOpened) return;
   signupOpened = true;
+  hideAccountChoice();
+  // Le visiteur passe par l'inscription (ou la connexion) : le compte qui sera connecté
+  // ensuite est le sien, même si le lien du mail de vérification s'ouvre dans un autre onglet
+  intent.viaAuth = true;
+  try { localStorage.setItem(INTENT_KEY, JSON.stringify(intent)); } catch (err) { /* rien */ }
   if (intent.login && window.openLoginScreen) window.openLoginScreen();
   else if (window.openSignupScreen) window.openSignupScreen("salle");
 }
@@ -90,19 +95,55 @@ function frameUrl() {
   return PORTAIL.reservationUrl + "?" + params;
 }
 
+/** Ouvre l'outil sur le créneau choisi (compte salle de réunion connecté). */
+function resumeIntent() {
+  const pending = intent;
+  intent = null;
+  clearIntent();
+  hideAccountChoice();
+  if (!pending || !window.openTileAction) return;
+  resume = pending;
+  setTimeout(() => window.openTileAction("resasalle"), 0); // après l'affichage du tableau de bord
+}
+
+// ── Quelqu'un était déjà connecté sur cet appareil ──
+// « Créer mon compte et réserver » ne doit pas réserver en silence avec ce compte-là
+// (ex. l'équipe Hiptown qui teste le parcours, ou un ordinateur partagé) : on demande.
+function hideAccountChoice() {
+  const box = $("resa-account-choice");
+  if (box) box.hidden = true;
+}
+
+function askAccountChoice(space, who) {
+  const box = $("resa-account-choice");
+  if (!box) { resumeIntent(); return; }
+  $("resa-account-who").textContent = who || "un autre compte";
+  // Seul un compte « salle de réunion » envoie une demande depuis cet outil
+  $("resa-account-keep").hidden = space !== "salle";
+  $("resa-account-keep-note").hidden = space === "salle";
+  box.hidden = false;
+}
+
+$("resa-account-keep")?.addEventListener("click", resumeIntent);
+$("resa-account-cancel")?.addEventListener("click", () => { intent = null; clearIntent(); hideAccountChoice(); });
+$("resa-account-switch")?.addEventListener("click", () => {
+  hideAccountChoice();
+  // Déconnexion : le créneau reste gardé, et l'inscription s'ouvre (événement hiptown-signed-out)
+  signupOpened = false;
+  $("logout-btn")?.click();
+});
+
 document.addEventListener("hiptown-dashboard", e => {
   contact = (e.detail && e.detail.contact) || null;
   if (!intent) return;
   const space = e.detail && e.detail.space;
   const preview = e.detail && e.detail.preview;
   if (preview) return; // aperçu d'un client par l'admin : on garde le créneau pour plus tard
-  const pending = intent;
-  intent = null;
-  clearIntent();
-  // Compte salle de réunion actif : l'outil s'ouvre sur le créneau choisi
-  if (space !== "salle" || !window.openTileAction) return;
-  resume = pending;
-  setTimeout(() => window.openTileAction("resasalle"), 0); // après l'affichage du tableau de bord
+  // Compte créé ou connecté depuis ce parcours, salle de réunion : l'outil s'ouvre sur le créneau
+  if (intent.viaAuth && space === "salle") { resumeIntent(); return; }
+  const c = contact || {};
+  const who = [[c.firstName, c.lastName].filter(Boolean).join(" "), c.email].filter(Boolean).join(" · ");
+  askAccountChoice(space, who);
 });
 
 document.addEventListener("hiptown-tile-action", e => {

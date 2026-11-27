@@ -88,6 +88,11 @@ function portalPrefill(params) {
   };
 }
 
+/** Espace partagé à places (ex. Café Cowork) : plusieurs places en même temps, tarif à la place. */
+function isSharedSpace(space) {
+  return !!space && !space.maxPeople && !space.quantitySelectable && space.capacity > 1;
+}
+
 /**
  * Créneau choisi par un visiteur sur la page publique, avant de créer son compte : le portail le
  * renvoie à la page une fois le client connecté, pour rouvrir la fenêtre au même endroit.
@@ -496,7 +501,9 @@ function validateBooking(raw, servicesAudience) {
     title: cleanText(raw.title, MAX_TEXT_LENGTH),
     notes: cleanText(raw.notes, MAX_NOTES_LENGTH),
     numberOfPeople: toInt(raw.numberOfPeople),
-    spaceQuantity: space.quantitySelectable ? toInt(raw.spaceQuantity) : 1,
+    // Espace partagé à places (Café Cowork) : une place par personne ; bureau : nombre de postes choisi
+    spaceQuantity: space.quantitySelectable ? toInt(raw.spaceQuantity)
+      : (isSharedSpace(space) ? toInt(raw.numberOfPeople) : 1),
     wantsOther: raw.wantsOther === true,
     dateString: String(raw.dateString || ''),
     endDateString: raw.endDateString ? String(raw.endDateString) : '',
@@ -523,7 +530,7 @@ function validateBooking(raw, servicesAudience) {
   }
   b.services = services.services;
   if (!(b.spaceQuantity >= 1 && b.spaceQuantity <= space.capacity)) {
-    return { error: 'Nombre de postes invalide.' };
+    return { error: isSharedSpace(space) ? space.name + ' : ' + space.capacity + ' places au maximum.' : 'Nombre de postes invalide.' };
   }
 
   const slotError = validateSlot(b);
@@ -1232,8 +1239,12 @@ function computeQuote(space, q, prices) {
     const people = q.pricedPeople || q.numberOfPeople;
     const tier = space.maxPeople && people ? (prices.roomsByPeople || []).find(t => people <= t.maxPeople) : null;
     const rate = tier || { hourly: space.hourlyPrice, halfDay: space.halfDayPrice, fullDay: space.fullDayPrice };
-    const roomLabel = spaceLabel + (tier && tier.maxPeople < space.maxPeople ? ' – tarif ' + tier.maxPeople + ' pers.' : '');
-    if (days > 1) addLine('room', roomLabel + ' – journée complète', days, rate.fullDay); // multi-jours : 1 journée par jour
+    // Espace partagé à places (ex. Café Cowork : plusieurs places en même temps, sans salle à soi) :
+    // le tarif est celui d'une place, multiplié par le nombre de places prises (= nombre de personnes)
+    const places = !space.maxPeople && space.capacity > 1 ? Math.min(Math.max(q.numberOfPeople || 1, 1), space.capacity) : 1;
+    const roomLabel = spaceLabel + (tier && tier.maxPeople < space.maxPeople ? ' – tarif ' + tier.maxPeople + ' pers.' : '')
+      + (places > 1 ? ' – ' + places + ' places' : '');
+    if (days > 1) addLine('room', roomLabel + ' – journée complète', days * places, rate.fullDay); // multi-jours : 1 journée par jour
     else if (space.maxPeople) {
       // Salle de réunion : demi-journée = 4h, journée = 8h. Entre les deux : demi-journée + heures
       // en plus, sans dépasser la journée. Moins de 4h : à l'heure.
@@ -1244,9 +1255,9 @@ function computeQuote(space, q, prices) {
       else if (extra === 0) addLine('room', roomLabel + ' – demi-journée', 1, rate.halfDay);
       else addLine('room', roomLabel + ' – à l\'heure', duration, rate.hourly);
     }
-    else if (isFullDay) addLine('room', roomLabel + ' – journée complète', 1, rate.fullDay);
-    else if (duration === 5) addLine('room', roomLabel + ' – demi-journée', 1, rate.halfDay);
-    else addLine('room', roomLabel + ' – à l\'heure', duration, rate.hourly);
+    else if (isFullDay) addLine('room', roomLabel + ' – journée complète', places, rate.fullDay);
+    else if (duration === 5) addLine('room', roomLabel + ' – demi-journée', places, rate.halfDay);
+    else addLine('room', roomLabel + ' – à l\'heure', duration * places, rate.hourly);
   }
 
   // Services (voir Services.gs) : par personne (une fois), à l'unité (une fois), ou par unité et par jour
