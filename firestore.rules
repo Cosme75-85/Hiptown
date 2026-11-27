@@ -347,7 +347,8 @@ service cloud.firestore {
     }
 
     // ── Contacts par ville et par site (contacts.js) ─────────
-    // contacts/{id} = { city, site, name, role, company, phone, email, note, createdAt, updatedAt }.
+    // contacts/{id} = { city, sites: [ids] (vide = toute la ville), name, firstName, lastName, company,
+    //                   category, subject, role, priority, phone, email, note, createdAt, updatedAt } (ancien : site).
     // Réservés à l'équipe Hiptown : l'admin général voit et modifie tout ; l'admin de ville
     // voit et modifie ceux de sa ville ; l'équipe de site voit ceux de sa ville (lecture seule).
     function canReadContacts(city) {
@@ -359,12 +360,19 @@ service cloud.firestore {
     }
 
     function isValidContact(data) {
-      return data.keys().hasOnly(['city', 'site', 'name', 'role', 'company', 'phone', 'email', 'note', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['city', 'site', 'sites', 'name', 'firstName', 'lastName', 'company', 'category', 'subject',
+                                  'role', 'priority', 'phone', 'email', 'note', 'createdAt', 'updatedAt'])
         && data.city is string && data.city.size() > 0 && data.city.size() <= 40
-        && data.site is string && data.site.size() <= 20
+        && data.get('site', '') is string && data.get('site', '').size() <= 20
+        && data.get('sites', []) is list && data.get('sites', []).size() <= 20
         && data.name is string && data.name.size() > 0 && data.name.size() <= 80
-        && data.get('role', '') is string && data.get('role', '').size() <= 80
+        && data.get('firstName', '') is string && data.get('firstName', '').size() <= 60
+        && data.get('lastName', '') is string && data.get('lastName', '').size() <= 60
         && data.get('company', '') is string && data.get('company', '').size() <= 80
+        && data.get('category', '') is string && data.get('category', '').size() <= 80
+        && data.get('subject', '') is string && data.get('subject', '').size() <= 80
+        && data.get('role', '') is string && data.get('role', '').size() <= 80
+        && data.get('priority', '') is string && data.get('priority', '').size() <= 2
         && data.get('phone', '') is string && data.get('phone', '').size() <= 30
         && data.get('email', '') is string && data.get('email', '').size() <= 120
         && data.get('note', '') is string && data.get('note', '').size() <= 300;

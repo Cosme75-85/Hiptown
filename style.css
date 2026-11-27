@@ -799,24 +799,23 @@ footer {
 #sites-manage { margin-top: 8px; }
 /* Contacts (contacts.js) : case carrée marine dans la grille des sites et dans la page d'un site */
 .contacts-tile {
-  font: inherit; position: relative; cursor: pointer;
+  font: inherit; position: relative; cursor: pointer; text-align: center;
   background: var(--navy); color: #fff; border: 1.5px solid var(--navy);
-  border-radius: var(--radius-lg); padding: 20px 14px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: var(--radius-lg); padding: 20px 14px;    /* comme .site-card */
+  display: flex; align-items: center; justify-content: center;
   transition: transform 0.15s, box-shadow 0.2s;
 }
 .contacts-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(30,24,71,0.25); }
 .contacts-tile:active { transform: scale(0.97); }
 .contacts-tile:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
-.contacts-tile-icon { font-size: 26px; line-height: 1; }
-.contacts-tile-title { font-size: 16px; font-weight: 800; margin-top: 4px; }
-.contacts-tile-sub { font-size: 11px; opacity: 0.8; }
+.contacts-tile-title { font-size: 16px; font-weight: 800; }
 .contacts-tile-badge {
   position: absolute; top: 8px; right: 8px; min-width: 22px;
   background: var(--yellow); color: var(--navy); font-size: 11px; font-weight: 800;
   border-radius: 999px; padding: 2px 7px;
 }
 .site-detail-contacts { margin-bottom: 12px; }
+.site-detail-contacts .contacts-tile { min-height: 92px; }
 
 /* Page Contacts */
 .contacts-search { margin: 0 0 10px; }
@@ -863,6 +862,29 @@ footer {
 }
 .contact-form { background: var(--white); border: 1.5px solid var(--yellow); border-radius: var(--radius-md); padding: 12px; margin: 8px 0 12px; }
 .contact-form .contacts-group-title { margin-top: 0; }
+.contacts-subject { margin: 0 0 12px; }
+.contacts-tools { display: flex; gap: 8px; margin-bottom: 6px; }
+.contacts-tools .contacts-add-btn { margin: 0; flex: 1; }
+.contacts-import-btn {
+  font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  background: var(--white); color: var(--navy); border: 1.5px solid var(--navy); border-radius: var(--radius-md);
+  padding: 10px 14px; display: flex; align-items: center;
+}
+.contact-prio { font-size: 10px; font-weight: 800; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; background: var(--bg); color: var(--text-soft); }
+.contact-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.contact-form-grid .profile-label { margin-top: 8px; }
+.cf-field-note { grid-column: 1 / -1; }
+.cf-sites { display: flex; flex-wrap: wrap; gap: 6px; }
+.cf-site-check {
+  font-size: 12px; font-weight: 700; color: var(--navy); cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: 999px; padding: 6px 10px; display: flex; gap: 4px; align-items: center;
+}
+.cf-site-check:has(input:checked) { background: var(--navy); color: #fff; border-color: var(--navy); }
+.contacts-import-sum { font-size: 14px; margin: 0 0 8px; color: var(--text-dark); }
+.contacts-import-list { max-height: 260px; overflow: auto; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px 10px; background: var(--bg); }
+.contacts-import-list div { padding: 3px 0; border-bottom: 1px solid var(--border); }
+.contacts-import-list span { color: var(--text-soft); font-size: 11px; }
+@media (max-width: 420px) { .contact-form-grid { grid-template-columns: 1fr; } }
 .sites-editor {
   background: var(--white);
   border: 1.5px solid var(--border);
