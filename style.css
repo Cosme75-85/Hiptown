@@ -1472,6 +1472,11 @@ button.agenda-item:hover { background: #fff4a2; }
 .welcome-btn:active { transform: scale(0.98); }
 .welcome-btn-primary { background: var(--yellow); color: var(--navy); border: none; }
 .welcome-btn-secondary { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.7); }
+.welcome-salles { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 300px; margin: 18px auto 0; padding: 12px 16px;
+  border-radius: var(--radius-md); background: rgba(255,255,255,0.12); color: #fff; text-decoration: none; transition: background 0.15s; }
+.welcome-salles:hover { background: rgba(255,255,255,0.2); }
+.welcome-salles-title { font-size: 15px; font-weight: 700; }
+.welcome-salles-sub { font-size: 12px; opacity: 0.8; }
 
 /* Téléphone : l'accueil Connexion / Inscription prend tout l'écran (bandeau du haut masqué, le logo est déjà dans l'accueil) */
 @media (max-width: 599px) {
