@@ -1255,8 +1255,6 @@
     <!-- Une rubrique par ville, construite depuis PORTAIL.cities (config.js) par app.js.
          L'admin général choisit la ville avec les boutons ; un admin de ville ne voit que la sienne. -->
     <div class="sites-city-filter" id="sites-city-filter" hidden></div>
-    <!-- Case « Contacts » de la ville affichée, au-dessus des sites (contacts.js) -->
-    <div id="sites-contacts" hidden></div>
     <div id="sites-by-city"></div>
     <!-- Ajout / retrait des sites par l'admin de ville (sites.js) -->
     <div id="sites-manage" hidden></div>
@@ -1506,6 +1504,13 @@
     <button class="back-btn" id="back-from-site-detail">Sites</button>
     <h2 class="step-title" id="site-detail-title"></h2>
     <div class="info-grid" id="site-detail-tools"></div>
+  </section>
+
+  <!-- PAGE CONTACTS (d'une ville ou d'un site) — ouverte par les cases « Contacts », logique dans contacts.js -->
+  <section id="step-contacts" hidden>
+    <button class="back-btn" id="back-from-contacts">Sites</button>
+    <h2 class="step-title" id="contacts-title">📇 Contacts</h2>
+    <div id="contacts-page"></div>
   </section>
 
 </main>

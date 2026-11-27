@@ -240,8 +240,9 @@
   // ── Helpers ───────────────────────────────────────────
   function hideAll() {
     [stepWelcome, stepChoice, stepDashboard, stepInfo, stepServices, stepMesInfos, stepContrat, stepInfoCowork,
-     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork, stepMesResa, stepResaSalle, stepSalles, stepMessagerie]
-    .forEach(function(s) { s.hidden = true; });
+     stepSalleInfo, stepHiptownOutils, stepHiptownEspaces, stepSiteDetail, stepResaCowork, stepMesResa, stepResaSalle, stepSalles, stepMessagerie,
+     document.getElementById("step-contacts")]
+    .forEach(function(s) { if (s) s.hidden = true; });
     eventsBanner.hidden = true;
   }
 
