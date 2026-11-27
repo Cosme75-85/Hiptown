@@ -610,10 +610,9 @@
         pageHtml += '</div>';
       });
 
-      // Dans le portail : le portail ouvre sa page sans recharger ; sinon, lien vers le portail
-      navHtml += IS_EMBEDDED
-        ? '<a class="nav-my-bookings" href="#" id="navMyBookings">📅 Mes prochaines réservations</a>'
-        : '<a class="nav-my-bookings" href="' + PORTAL_URL + '#mes-reservations" target="_top">📅 Mes prochaines réservations</a>';
+      // Dans le portail seulement : le portail ouvre sa page sans recharger. Hors du portail
+      // (consultation libre, sans compte), pas de lien : il n'y a pas encore de réservations.
+      if (IS_EMBEDDED) navHtml += '<a class="nav-my-bookings" href="#" id="navMyBookings">📅 Mes prochaines réservations</a>';
       $('categoryNav').innerHTML = navHtml;
       if (IS_EMBEDDED) {
         $('navMyBookings').addEventListener('click', e => {
